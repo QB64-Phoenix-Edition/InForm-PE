@@ -1,88 +1,65 @@
-# INI-Manager
+# INI Manager Library
 
-[QB64-PE](https://github.com/QB64-Phoenix-Edition/QB64pe) INI-Manager Library by ***[FellippeHeitor](https://github.com/FellippeHeitor)*** for reading from / writing to [INI](https://en.wikipedia.org/wiki/INI_file) configuration files.
+The `INI Manager` library provides functionality for reading and writing [INI files](https://en.wikipedia.org/wiki/INI_file) in QB64-PE. [INI files](https://en.wikipedia.org/wiki/INI_file) are a simple, human-readable format for storing configuration data.
 
-## .ini format
+## Usage
 
-[INI](https://en.wikipedia.org/wiki/INI_file) files are used to store data required for a program's operation. Modern Windows apps use the Registry to store and retrieve information. However, the .ini method works across platforms and is easy to maintain, besides being human-readable.
-
-### Sample file
-
-Sections are defined by enclosing the section title in [brackets]. Keys are assigned values using the equal sign (Key1=Value1). Quotation marks are allowed to delimit text, but not required. Comments can be added in the beginning of lines or after values, and are started by a semicolon.
-
-    ; last modified 1 April 2001 by John Doe
-    [owner]
-    name="John Doe"
-    organization=Acme Widgets Inc. 'we may need to change this later
-
-    [database]
-    ; use IP address in case network name resolution is not working
-    server=192.0.2.62     
-    port=143 ; change responsibly, be careful with conflicts
-    file="payroll.dat"
-
-See more info at <https://en.wikipedia.org/wiki/INI_file>.
-
-## Library methods
-
-### Writing
+To use the `INI Manager` library in your project, you need to include `Ini.bi` at the top of your code and `Ini.bm` at the bottom.
 
 ```vb
-Ini_WriteSetting file$, section$, key$, value$
+'$INCLUDE:'Ini.bi'
+
+' Your code here...
+
+'$INCLUDE:'Ini.bm'
 ```
 
-Writes a new setting to a file or updates an existing one.
+## API Reference
 
-* file$ = the file name to write to. Can handle multiple .ini files at once. To work with a single file, you only need to pass file$ in the first write operation.
-* section$ = the [section] in the ini file where the new key$ will be added.
-* key$ = the unique identifier of the value you wish to store (multiple identical keys can exist across different sections).
-* value$ = the value to be stored. Numeric values must be converted to strings with STR$() first.
+### Reading Data
 
-### Reading
+Reads a value from a specified section and key. To get all keys sequentially from the file, pass an empty string for `section$` and `key$`. To get all keys sequentially from a specific section, pass an empty string for `key$`.
 
 ```vb
-result$ = Ini_ReadSetting(file$, section$, key$)
+FUNCTION Ini_ReadSetting$ (file$, section$, key$)
 ```
 
-Reads settings from a file.
+### Writing and Modifying Data
 
-* result$ = the variable where the value$ obtained from the file$ will be stored.
-* file$ = the file name to be parsed. To work with a single file, you only need to pass file$ in the first read operation.
-* section$ = the [section] in the ini file where the key$ will be read from.
-* key$ = the key in the file whose value you want to read.
-
-By passing an empty section$ and an empty key$ ("") you can fetch all keys in the file sequentially. To fetch all keys in a given section, leave only the key$ parameter empty.
-
-### Deleting
+Writes a value to a specified section and key. If the key exists, it's updated. If it doesn't, it's created. New sections are created automatically.
 
 ```vb
-Ini_DeleteSection file$, section$
+SUB Ini_WriteSetting (file$, section$, key$, value$)
 ```
 
-Deletes a whole section from a file.
+Deletes an entire section and all its keys from the INI file.
 
 ```vb
-Ini_DeleteKey file$, section$, key$
+SUB Ini_DeleteSection (file$, section$)
 ```
 
-Deletes a key from the specified section in a file.
-
-### Other methods
+Deletes a specific key from a given section.
 
 ```vb
-Ini_SortSection file$, section$
+SUB Ini_DeleteKey (file$, section$, key$)
 ```
 
-Sorts keys alphabetically in the specified section.
+Moves a key from one section to another.
 
 ```vb
-Ini_MoveKey file$, section$, key$, newSection$
+SUB Ini_MoveKey (file$, section$, key$, newSection$)
 ```
 
-Moves key$ from section$ to newSection$.
+Sorts all keys within a specified section alphabetically.
 
 ```vb
-result$ = Ini_GetInfo
+SUB Ini_SortSection (file$, section$)
 ```
 
-Returns the description of the __Ini.code from the last operation. After a read or write operation,__Ini.code will be 0 if the operation is successful. When not 0, Ini_GetInfo returns a human-readable description of the error.
+### Information
+
+Returns a string describing the result or error code of the last operation. Useful for debugging.
+
+```vb
+FUNCTION Ini_GetInfo$
+```
