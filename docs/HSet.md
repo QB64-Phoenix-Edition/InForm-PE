@@ -1,6 +1,6 @@
 # HSet Library
 
-The `HSet` library provides a generic hash set implementation for QB64-PE. It supports storing various data types and automatically resizes itself as needed.
+The `HSet` library provides a generic hash set implementation. It supports storing various data types and automatically resizes itself as needed.
 
 ## Usage
 
@@ -159,19 +159,19 @@ END TYPE
 
 SUB HSet_AddStudent (set() AS HSet, v AS Student)
     DIM buffer AS STRING: buffer = SPACE$(LEN(v))
-    QBDS_CopyMemory _OFFSET(buffer), _OFFSET(v), LEN(v)
+    Memory_Copy _OFFSET(buffer), _OFFSET(v), LEN(v)
     __HSet_Add set(), buffer, QBDS_TYPE_UDT
 END SUB
 
 FUNCTION HSet_ContainsStudent%% (set() AS HSet, v AS Student)
     DIM buffer AS STRING: buffer = SPACE$(LEN(v))
-    QBDS_CopyMemory _OFFSET(buffer), _OFFSET(v), LEN(v)
+    Memory_Copy _OFFSET(buffer), _OFFSET(v), LEN(v)
     HSet_ContainsStudent = __HSet_Contains(set(), buffer)
 END FUNCTION
 
 SUB HSet_RemoveStudent (set() AS HSet, v AS Student)
     DIM buffer AS STRING: buffer = SPACE$(LEN(v))
-    QBDS_CopyMemory _OFFSET(buffer), _OFFSET(v), LEN(v)
+    Memory_Copy _OFFSET(buffer), _OFFSET(v), LEN(v)
     DIM ignored AS _BYTE: ignored = __HSet_Remove(set(), buffer)
 END SUB
 ```

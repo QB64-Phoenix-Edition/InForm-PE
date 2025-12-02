@@ -1,6 +1,6 @@
 # HMap64 Library
 
-The `HMap64` library provides a simple hash map implementation for QB64-PE, using `_UNSIGNED _INTEGER64` keys. It supports storing various data types and automatically resizes itself as needed.
+The `HMap64` library provides a simple hash map implementation, using `_UNSIGNED _INTEGER64` keys. It supports storing various data types and automatically resizes itself as needed.
 
 ## Usage
 
@@ -153,12 +153,12 @@ END TYPE
 
 SUB HMap64_SetStudent (map() AS HMap64, k AS _UNSIGNED _INTEGER64, v AS Student)
     DIM buffer AS STRING: buffer = SPACE$(LEN(v))
-    QBDS_CopyMemory _OFFSET(buffer), _OFFSET(v), LEN(v)
+    Memory_Copy _OFFSET(buffer), _OFFSET(v), LEN(v)
     __HMap64_Set map(), k, buffer, QBDS_TYPE_UDT
 END SUB
 
 SUB HMap64_GetStudent (map() AS HMap64, k AS _UNSIGNED _INTEGER64, v AS Student)
     DIM buffer AS STRING: buffer = __HMap64_Get(map(), k)
-    QBDS_CopyMemory _OFFSET(v), _OFFSET(buffer), _MIN(LEN(v), LEN(buffer))
+    Memory_Copy _OFFSET(v), _OFFSET(buffer), _MIN(LEN(v), LEN(buffer))
 END SUB
 ```

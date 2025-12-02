@@ -1,6 +1,6 @@
 # HMap Library
 
-The `HMap` library provides a generic hash map for QB64-PE. It allows you to store and retrieve values of different data types using string keys. The hash map automatically resizes itself as needed.
+The `HMap` library provides a generic hash map implementation. It allows you to store and retrieve values of different data types using string keys. The hash map automatically resizes itself as needed.
 
 ## Usage
 
@@ -154,13 +154,13 @@ END TYPE
 ' Store a Student UDT in the map
 SUB HMap_SetStudent (map() AS HMap, k AS STRING, v AS Student)
     DIM buffer AS STRING: buffer = SPACE$(LEN(v))
-    QBDS_CopyMemory _OFFSET(buffer), _OFFSET(v), LEN(v)
+    Memory_Copy _OFFSET(buffer), _OFFSET(v), LEN(v)
     __HMap_Set map(), k, buffer, QBDS_TYPE_UDT
 END SUB
 
 ' Retrieve a Student UDT from the map
 SUB HMap_GetStudent (map() AS HMap, k AS STRING, v AS Student)
     DIM buffer AS STRING: buffer = __HMap_Get(map(), k)
-    QBDS_CopyMemory _OFFSET(v), _OFFSET(buffer), _MIN(LEN(v), LEN(buffer))
+    Memory_Copy _OFFSET(v), _OFFSET(buffer), _MIN(LEN(v), LEN(buffer))
 END SUB
 ```

@@ -1,6 +1,6 @@
 # **QBDS**
 
-`QBDS` is a collection of **generic data structure libraries** for [QB64-PE](https://www.qb64phoenix.com/). It provides containers such as queues, lists, stacks, maps, and more.
+`QBDS` is a collection of **generic data structure libraries**. It provides containers such as queues, lists, stacks, maps, and more.
 
 ## Libraries
 
@@ -11,7 +11,6 @@
 * [**LList**](./LList.md): A generic doubly linked list library supporting multiple data types and resizing.
 * [**Queue**](./Queue.md): A generic queue library supporting multiple data types and resizing.
 * [**Stack**](./Stack.md): A generic stack library supporting multiple data types and resizing.
-* [**Catch**](./Catch.md): A minimalistic test framework library.
 
 ## QBDS.bi + QBDS.bm
 
@@ -35,16 +34,10 @@ These constants identify the type of data stored in a container:
 | `QBDS_TYPE_DOUBLE`    | 64-bit floating-point number            |
 | `QBDS_TYPE_UDT`       | User-defined data types (10–255)        |
 
-### Routines
+## API Reference
 
 Computes a 64-bit FNV-1a hash for the STRING `k`.
 
 ```vb
 FUNCTION QBDS_Hash~&& (k AS STRING)
-```
-
-Copies `bytes` worth of memory from `src` to `dst`.
-
-```vb
-SUB QBDS_CopyMemory (dst AS _UNSIGNED _OFFSET, src AS _UNSIGNED _OFFSET, bytes AS _UNSIGNED _OFFSET)
 ```

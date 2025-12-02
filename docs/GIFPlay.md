@@ -1,6 +1,6 @@
 # Animated GIF Player Library
 
-The `GIFPlay` library provides functionality for playing animated GIF files in QB64-PE. It can be used as a standalone library or integrated with InForm-PE.
+The `GIFPlay` library provides functionality for playing [animated GIF files](https://en.wikipedia.org/wiki/GIF#Animated_GIF). It can be used as a standalone library or integrated with InForm-PE.
 
 ## Usage
 

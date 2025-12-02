@@ -5,6 +5,8 @@
 
 $INCLUDEONCE
 
+'$INCLUDE:'Memory.bi'
+
 ' Data type constants
 CONST QBDS_TYPE_NONE~%% = 0~%% ' unused
 CONST QBDS_TYPE_RESERVED~%% = 1~%% ' metadata
@@ -19,7 +21,3 @@ CONST QBDS_TYPE_DOUBLE~%% = 9~%% ' 64-bit floating point number
 CONST QBDS_TYPE_UDT~%% = 10~%% ' user-define data types (QBDS_TYPE_UDT .. 255)
 
 CONST __QBDS_ITEMS_MIN = 16 ' must be a power of 2
-
-DECLARE CUSTOMTYPE LIBRARY
-    SUB QBDS_CopyMemory ALIAS "memcpy" (BYVAL dst AS _UNSIGNED _OFFSET, BYVAL src AS _UNSIGNED _OFFSET, BYVAL bytes AS _UNSIGNED _OFFSET)
-END DECLARE

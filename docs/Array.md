@@ -1,6 +1,6 @@
 # Array Library
 
-The `Array` library provides a generic dynamic array implementation for QB64-PE. It supports storing various data types and automatically resizes itself as needed. Array index always beings at 1.
+The `Array` library provides a generic dynamic array implementation. It supports storing various data types and automatically resizes itself as needed. Array index always beings at 1.
 
 ## Usage
 
@@ -178,23 +178,23 @@ END TYPE
 
 SUB Array_SetStudent (arr() AS Array, index AS _UNSIGNED _OFFSET, v AS Student)
     DIM buffer AS STRING: buffer = SPACE$(LEN(v))
-    QBDS_CopyMemory _OFFSET(buffer), _OFFSET(v), LEN(v)
+    Memory_Copy _OFFSET(buffer), _OFFSET(v), LEN(v)
     __Array_Set arr(), index, buffer, QBDS_TYPE_UDT
 END SUB
 
 SUB Array_GetStudent (arr() AS Array, index AS _UNSIGNED _OFFSET, v AS Student)
     DIM buffer AS STRING: buffer = __Array_Get(arr(), index)
-    QBDS_CopyMemory _OFFSET(v), _OFFSET(buffer), _MIN(LEN(v), LEN(buffer))
+    Memory_Copy _OFFSET(v), _OFFSET(buffer), _MIN(LEN(v), LEN(buffer))
 END SUB
 
 SUB Array_PushBackStudent (arr() AS Array, v AS Student)
     DIM buffer AS STRING: buffer = SPACE$(LEN(v))
-    QBDS_CopyMemory _OFFSET(buffer), _OFFSET(v), LEN(v)
+    Memory_Copy _OFFSET(buffer), _OFFSET(v), LEN(v)
     __Array_PushBack arr(), buffer, QBDS_TYPE_UDT
 END SUB
 
 SUB Array_PopBackStudent (arr() AS Array, v AS Student)
     DIM buffer AS STRING: buffer = __Array_PopBack(arr())
-    QBDS_CopyMemory _OFFSET(v), _OFFSET(buffer), _MIN(LEN(v), LEN(buffer))
+    Memory_Copy _OFFSET(v), _OFFSET(buffer), _MIN(LEN(v), LEN(buffer))
 END SUB
 ```

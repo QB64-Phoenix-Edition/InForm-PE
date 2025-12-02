@@ -17,18 +17,7 @@ InForm-PE's main goal is to generate *event-driven* QB64-PE applications. This m
 
 - [Wiki](https://github.com/QB64-Phoenix-Edition/InForm-PE/wiki)
 - [Tutorial](https://raw.githack.com/QB64-Phoenix-Edition/InForm-PE/refs/heads/master/docs/tutorial/index.html)
-- [Algo](docs/Algo.md)
-- [Array](docs/Array.md)
-- [Catch](docs/Catch.md)
-- [GIFPlay](docs/GIFPlay.md)
-- [HMap](docs/HMap.md)
-- [HMap64](docs/HMap64.md)
-- [HSet](docs/HSet.md)
-- [INI-Manager](docs/INI-Manager.md)
-- [LList](docs/LList.md)
-- [QBDS](docs/QBDS.md)
-- [Queue](docs/Queue.md)
-- [Stack](docs/Stack.md)
+- [Extensions](docs/Extensions.md)
 
 ## USAGE
 

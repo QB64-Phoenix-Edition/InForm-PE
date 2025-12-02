@@ -1,6 +1,6 @@
 # LList Library
 
-The `LList` library provides a generic doubly-linked list implementation for QB64-PE. It supports storing various data types and automatically resizes itself as needed.
+The `LList` library provides a generic doubly-linked list implementation. It supports storing various data types and automatically resizes itself as needed.
 
 ## Usage
 
@@ -300,50 +300,50 @@ END TYPE
 
 SUB LList_GetPerson (lst() AS LList, node AS _UNSIGNED _OFFSET, p AS Person)
     DIM buffer AS STRING: buffer = __LList_Get(lst(), node)
-    QBDS_CopyMemory _OFFSET(p), _OFFSET(buffer), _MIN(LEN(p), LEN(buffer))
+    Memory_Copy _OFFSET(p), _OFFSET(buffer), _MIN(LEN(p), LEN(buffer))
 END SUB
 
 SUB LList_SetPerson (lst() AS LList, node AS _UNSIGNED _OFFSET, p AS Person)
     DIM buffer AS STRING: buffer = SPACE$(LEN(p))
-    QBDS_CopyMemory _OFFSET(buffer), _OFFSET(p), LEN(p)
+    Memory_Copy _OFFSET(buffer), _OFFSET(p), LEN(p)
     __LList_Set lst(), node, buffer, QBDS_TYPE_UDT
 END SUB
 
 SUB LList_InsertBeforePerson (lst() AS LList, node AS _UNSIGNED _OFFSET, p AS Person)
     DIM buffer AS STRING: buffer = SPACE$(LEN(p))
-    QBDS_CopyMemory _OFFSET(buffer), _OFFSET(p), LEN(p)
+    Memory_Copy _OFFSET(buffer), _OFFSET(p), LEN(p)
     __LList_InsertBefore lst(), node, buffer, QBDS_TYPE_UDT
 END SUB
 
 SUB LList_InsertAfterPerson (lst() AS LList, node AS _UNSIGNED _OFFSET, p AS Person)
     DIM buffer AS STRING: buffer = SPACE$(LEN(p))
-    QBDS_CopyMemory _OFFSET(buffer), _OFFSET(p), LEN(p)
+    Memory_Copy _OFFSET(buffer), _OFFSET(p), LEN(p)
     __LList_InsertAfter lst(), node, buffer, QBDS_TYPE_UDT
 END SUB
 
 SUB LList_PushFrontPerson (lst() AS LList, p AS Person)
     DIM buffer AS STRING: buffer = SPACE$(LEN(p))
-    QBDS_CopyMemory _OFFSET(buffer), _OFFSET(p), LEN(p)
+    Memory_Copy _OFFSET(buffer), _OFFSET(p), LEN(p)
     __LList_PushFront lst(), buffer, QBDS_TYPE_UDT
 END SUB
 
 SUB LList_PushBackPerson (lst() AS LList, p AS Person)
     DIM buffer AS STRING: buffer = SPACE$(LEN(p))
-    QBDS_CopyMemory _OFFSET(buffer), _OFFSET(p), LEN(p)
+    Memory_Copy _OFFSET(buffer), _OFFSET(p), LEN(p)
     __LList_PushBack lst(), buffer, QBDS_TYPE_UDT
 END SUB
 
 SUB LList_PopFrontPerson (lst() AS LList, p AS Person)
     DIM node AS _UNSIGNED _OFFSET: node = LList_GetFrontNode(lst())
     DIM buffer AS STRING: buffer = __LList_Get(lst(), node)
-    QBDS_CopyMemory _OFFSET(p), _OFFSET(buffer), _MIN(LEN(p), LEN(buffer))
+    Memory_Copy _OFFSET(p), _OFFSET(buffer), _MIN(LEN(p), LEN(buffer))
     LList_RemoveNode lst(), node
 END SUB
 
 SUB LList_PopBackPerson (lst() AS LList, p AS Person)
     DIM node AS _UNSIGNED _OFFSET: node = LList_GetBackNode(lst())
     DIM buffer AS STRING: buffer = __LList_Get(lst(), node)
-    QBDS_CopyMemory _OFFSET(p), _OFFSET(buffer), _MIN(LEN(p), LEN(buffer))
+    Memory_Copy _OFFSET(p), _OFFSET(buffer), _MIN(LEN(p), LEN(buffer))
     LList_RemoveNode lst(), node
 END SUB
 ```

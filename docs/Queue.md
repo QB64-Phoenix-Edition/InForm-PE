@@ -1,6 +1,6 @@
 # Queue Library
 
-The `Queue` library provides a generic queue implementation for QB64-PE. It supports storing various data types and automatically resizes itself as needed.
+The `Queue` library provides a generic queue implementation. It supports storing various data types and automatically resizes itself as needed.
 
 ## Usage
 
@@ -150,17 +150,17 @@ END TYPE
 
 SUB Queue_PeekStudent (q() AS Queue, s AS Student)
     DIM buffer AS STRING: buffer = __Queue_Peek(q())
-    QBDS_CopyMemory _OFFSET(s), _OFFSET(buffer), _MIN(LEN(s), LEN(buffer))
+    Memory_Copy _OFFSET(s), _OFFSET(buffer), _MIN(LEN(s), LEN(buffer))
 END SUB
 
 SUB Queue_EnqueueStudent (q() AS Queue, s AS Student)
     DIM buffer AS STRING: buffer = SPACE$(LEN(s))
-    QBDS_CopyMemory _OFFSET(buffer), _OFFSET(s), LEN(s)
+    Memory_Copy _OFFSET(buffer), _OFFSET(s), LEN(s)
     __Queue_Enqueue q(), buffer, QBDS_TYPE_UDT
 END SUB
 
 SUB Queue_DequeueStudent (q() AS Queue, s AS Student)
     DIM buffer AS STRING: buffer = __Queue_Dequeue(q())
-    QBDS_CopyMemory _OFFSET(s), _OFFSET(buffer), _MIN(LEN(s), LEN(buffer))
+    Memory_Copy _OFFSET(s), _OFFSET(buffer), _MIN(LEN(s), LEN(buffer))
 END SUB
 ```

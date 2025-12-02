@@ -1,6 +1,6 @@
 # Stack Library
 
-The `Stack` library provides a generic stack implementation for QB64-PE. It supports storing various data types and automatically resizes itself as needed.
+The `Stack` library provides a generic stack implementation. It supports storing various data types and automatically resizes itself as needed.
 
 ## Usage
 
@@ -150,17 +150,17 @@ END TYPE
 
 SUB Stack_PeekStudent (stack() AS Stack, s AS Student)
     DIM buffer AS STRING: buffer = __Stack_Peek(stack())
-    QBDS_CopyMemory _OFFSET(s), _OFFSET(buffer), _MIN(LEN(s), LEN(buffer))
+    Memory_Copy _OFFSET(s), _OFFSET(buffer), _MIN(LEN(s), LEN(buffer))
 END SUB
 
 SUB Stack_PushStudent (stack() AS Stack, s AS Student)
     DIM buffer AS STRING: buffer = SPACE$(LEN(s))
-    QBDS_CopyMemory _OFFSET(buffer), _OFFSET(s), LEN(s)
+    Memory_Copy _OFFSET(buffer), _OFFSET(s), LEN(s)
     __Stack_Push stack(), buffer, QBDS_TYPE_UDT
 END SUB
 
 SUB Stack_PopStudent (stack() AS Stack, s AS Student)
     DIM buffer AS STRING: buffer = __Stack_Pop(stack())
-    QBDS_CopyMemory _OFFSET(s), _OFFSET(buffer), _MIN(LEN(s), LEN(buffer))
+    Memory_Copy _OFFSET(s), _OFFSET(buffer), _MIN(LEN(s), LEN(buffer))
 END SUB
 ```

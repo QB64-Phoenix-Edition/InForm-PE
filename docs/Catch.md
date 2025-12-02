@@ -1,6 +1,6 @@
 # Catch Library
 
-The `Catch` library provides a minimalistic test framework for QB64-PE, inspired by Catch2 for C++. It allows you to write test cases and assertions to verify the correctness of your code.
+The `Catch` library provides a minimalistic test framework, inspired by Catch2 for C++. It allows you to write test cases and assertions to verify the correctness of your code.
 
 ## Usage
 
