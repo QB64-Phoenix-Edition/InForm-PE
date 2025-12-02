@@ -346,5 +346,5 @@ FUNCTION FontMgr_GetSizeRange%% (filePath AS STRING, fontIndex AS _UNSIGNED LONG
     END IF
 END FUNCTION
 
-'$INCLUDE:'Pathname.bas'
-'$INCLUDE:'Algo.bas'
+'$INCLUDE:'Pathname.bm'
+'$INCLUDE:'Algo.bm'

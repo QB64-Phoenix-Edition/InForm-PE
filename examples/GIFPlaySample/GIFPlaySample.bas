@@ -20,7 +20,7 @@ DIM SHARED PlayButton AS LONG
 '$INCLUDE:'../../InForm/InForm.bi'
 '$INCLUDE:'GIFPlaySample.frm'
 '$INCLUDE:'../../InForm/InForm.ui'
-'$INCLUDE:'../../InForm/extensions/GIFPlay.bas'
+'$INCLUDE:'../../InForm/extensions/GIFPlay.bm'
 
 ': Event procedures: ---------------------------------------------------------------
 SUB __UI_BeforeInit

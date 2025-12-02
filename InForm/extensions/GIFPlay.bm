@@ -10,11 +10,9 @@ $INCLUDEONCE
 '-------------------------------------------------------------------------------------------------------------------
 ' Test code for debugging the library
 '-------------------------------------------------------------------------------------------------------------------
-'$RESIZE:SMOOTH
-'$CONSOLE
-
 'DEFLNG A-Z
 'OPTION _EXPLICIT
+'$RESIZE:SMOOTH
 
 'CONST GIF_ID = 1
 
@@ -93,7 +91,7 @@ SUB GIF_Free (Id AS LONG)
     SHARED __GIF_FirstFreeFrame AS LONG
 
     ' Nothing to do if Id is invalid
-    IF NOT HMap64_Exists(__GIFPlayHashTable(), Id) THEN EXIT SUB
+    IF NOT HMap64_Contains(__GIFPlayHashTable(), Id) THEN EXIT SUB
 
     ' Get the slot we need to free
     DIM idx AS LONG: idx = HMap64_GetLong(__GIFPlayHashTable(), Id)
@@ -134,7 +132,7 @@ SUB GIF_Free (Id AS LONG)
     __GIFPlay(idx).isUsed = _FALSE
 
     ' Remove Id from the hash table
-    HMap64_Delete __GIFPlayHashTable(), Id
+    HMap64_Remove __GIFPlayHashTable(), Id
 END SUB
 
 
@@ -143,7 +141,7 @@ FUNCTION GIF_GetWidth~& (Id AS LONG)
     SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Exists(__GIFPlayHashTable(), Id) THEN
+    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
         GIF_GetWidth = _WIDTH(__GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).image)
     END IF
 END FUNCTION
@@ -154,7 +152,7 @@ FUNCTION GIF_GetHeight~& (Id AS LONG)
     SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Exists(__GIFPlayHashTable(), Id) THEN
+    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
         GIF_GetHeight = _HEIGHT(__GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).image)
     END IF
 END FUNCTION
@@ -165,7 +163,7 @@ FUNCTION GIF_GetFrameNumber~& (Id AS LONG)
     SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Exists(__GIFPlayHashTable(), Id) THEN
+    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
         GIF_GetFrameNumber = __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).frameNumber
     END IF
 END FUNCTION
@@ -176,7 +174,7 @@ FUNCTION GIF_GetTotalFrames~& (Id AS LONG)
     SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Exists(__GIFPlayHashTable(), Id) THEN
+    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
         GIF_GetTotalFrames = __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).frameCount
     END IF
 END FUNCTION
@@ -187,7 +185,7 @@ SUB GIF_Play (Id AS LONG)
     SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Exists(__GIFPlayHashTable(), Id) THEN
+    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
         DIM idx AS LONG: idx = HMap64_GetLong(__GIFPlayHashTable(), Id)
 
         __GIFPlay(idx).isPlaying = _TRUE
@@ -201,7 +199,7 @@ SUB GIF_Pause (Id AS LONG)
     SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Exists(__GIFPlayHashTable(), Id) THEN
+    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
         __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).isPlaying = _FALSE
     END IF
 END SUB
@@ -212,7 +210,7 @@ SUB GIF_Stop (Id AS LONG)
     SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Exists(__GIFPlayHashTable(), Id) THEN
+    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
         DIM idx AS LONG: idx = HMap64_GetLong(__GIFPlayHashTable(), Id)
 
         __GIFPlay(idx).isPlaying = _FALSE
@@ -231,7 +229,7 @@ FUNCTION GIF_IsPlaying%% (Id AS LONG)
     SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Exists(__GIFPlayHashTable(), Id) THEN
+    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
         GIF_IsPlaying = __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).isPlaying
     END IF
 END FUNCTION
@@ -243,7 +241,7 @@ SUB GIF_Draw (Id AS LONG)
     SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Exists(__GIFPlayHashTable(), Id) THEN
+    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
         $IF INFORM_BI = DEFINED THEN
             BeginDraw ID
         $END IF
@@ -284,7 +282,7 @@ FUNCTION GIF_GetFrame& (Id AS LONG)
     SHARED __GIFPlayFrame() AS __GIFPlayFrameType
 
     ' Exit if Id is not valid
-    IF NOT HMap64_Exists(__GIFPlayHashTable(), Id) THEN EXIT FUNCTION
+    IF NOT HMap64_Contains(__GIFPlayHashTable(), Id) THEN EXIT FUNCTION
 
     ' Cache the GIF index because we'll be using this a lot
     DIM idx AS LONG: idx = HMap64_GetLong(__GIFPlayHashTable(), Id)
@@ -370,7 +368,7 @@ FUNCTION GIF_GetBackgroundColor~& (Id AS LONG)
     SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Exists(__GIFPlayHashTable(), Id) THEN
+    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
         GIF_GetBackgroundColor = __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).bgColor
     END IF
 END FUNCTION
@@ -381,7 +379,7 @@ FUNCTION GIF_GetTotalDuration~&& (Id AS LONG)
     SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Exists(__GIFPlayHashTable(), Id) THEN
+    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
         GIF_GetTotalDuration = __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).duration
     END IF
 END FUNCTION
@@ -393,7 +391,7 @@ FUNCTION GIF_GetFrameDuration~&& (Id AS LONG)
     SHARED __GIFPlay() AS __GIFPlayType
     SHARED __GIFPlayFrame() AS __GIFPlayFrameType
 
-    IF HMap64_Exists(__GIFPlayHashTable(), Id) THEN
+    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
         GIF_GetFrameDuration = __GIFPlayFrame(__GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).frame).duration
     END IF
 END FUNCTION
@@ -404,7 +402,7 @@ FUNCTION GIF_GetElapsedTime~&& (Id AS LONG)
     SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Exists(__GIFPlayHashTable(), Id) THEN
+    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
         GIF_GetElapsedTime = __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).elapsedTime
     END IF
 END FUNCTION
@@ -415,7 +413,7 @@ SUB GIF_SetLoop (Id AS LONG, loops AS LONG)
     SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Exists(__GIFPlayHashTable(), Id) THEN
+    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
         __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).loops = loops
     END IF
 END SUB
@@ -426,7 +424,7 @@ SUB GIF_EnableOverlay (Id AS LONG, isEnabled AS _BYTE)
     SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Exists(__GIFPlayHashTable(), Id) THEN
+    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
         __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).overlayEnabled = isEnabled
     END IF
 END SUB
@@ -438,7 +436,7 @@ FUNCTION GIF_IsLoaded%% (Id AS LONG)
     SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_IsInitialized(__GIFPlayHashTable()) _ANDALSO HMap64_Exists(__GIFPlayHashTable(), Id) THEN
+    IF HMap64_IsInitialized(__GIFPlayHashTable()) _ANDALSO HMap64_Contains(__GIFPlayHashTable(), Id) THEN
         GIF_IsLoaded = __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).isReady
     END IF
     $CHECKING:ON
@@ -945,6 +943,6 @@ FUNCTION __GIF_GetOverlayImage&
     __GIF_GetOverlayImage = overlayImage
 END FUNCTION
 
-'$INCLUDE:'HMap64.bas'
-'$INCLUDE:'StringFile.bas'
-'$INCLUDE:'Base64.bas'
+'$INCLUDE:'HMap64.bm'
+'$INCLUDE:'StringFile.bm'
+'$INCLUDE:'Base64.bm'

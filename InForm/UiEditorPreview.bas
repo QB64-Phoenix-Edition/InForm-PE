@@ -96,7 +96,7 @@ RESUME NEXT
 
 '$INCLUDE:'UiEditorPreview.frm'
 '$INCLUDE:'InForm.ui'
-'$INCLUDE:'extensions/GIFPlay.bas'
+'$INCLUDE:'extensions/GIFPlay.bm'
 
 'Event procedures: ---------------------------------------------------------------
 SUB __UI_Click (id AS LONG)

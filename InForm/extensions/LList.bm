@@ -27,7 +27,7 @@ END SUB
 ''' @brief Clear the list, but do not change the capacity.
 ''' @param lst The list to clear.
 SUB LList_Clear (lst() AS LList)
-    REDIM lst(0 TO UBOUND(lst)) AS LList
+    REDIM lst(0 TO _MAX(__QBDS_ITEMS_MIN, UBOUND(lst))) AS LList
     lst(0).V = _MK$(_UNSIGNED _OFFSET, 0) + _MK$(_UNSIGNED _OFFSET, 1) ' reset count to zero, last free index to 1
     lst(0).T = QBDS_TYPE_RESERVED ' set to reserved
 END SUB
@@ -56,9 +56,9 @@ END FUNCTION
 ''' @param lst The list to search.
 ''' @param node The node to get the data type for.
 ''' @return The data type constant (QBDS_TYPE_*) or 0 if not found.
-FUNCTION LList_GetDataType~%% (lst() AS LList, node AS _UNSIGNED _OFFSET)
+FUNCTION LList_GetNodeDataType~%% (lst() AS LList, node AS _UNSIGNED _OFFSET)
     IF node > 0 _ANDALSO node <= UBOUND(lst) _ANDALSO lst(node).T > QBDS_TYPE_DELETED THEN
-        LList_GetDataType = lst(node).T
+        LList_GetNodeDataType = lst(node).T
     END IF
 END FUNCTION
 
@@ -126,7 +126,7 @@ END FUNCTION
 ''' @param lst The list to update.
 ''' @param node The node to delete.
 ''' @return _TRUE if the node was deleted, otherwise _FALSE.
-FUNCTION LList_Delete%% (lst() AS LList, node AS _UNSIGNED _OFFSET)
+FUNCTION LList_RemoveNode%% (lst() AS LList, node AS _UNSIGNED _OFFSET)
     IF node > 0 _ANDALSO node <= UBOUND(lst) _ANDALSO lst(node).T > QBDS_TYPE_DELETED THEN
         DIM count AS _UNSIGNED _OFFSET: count = _CV(_UNSIGNED _OFFSET, LEFT$(lst(0).V, _SIZE_OF_OFFSET))
         IF count = 1 THEN
@@ -178,30 +178,30 @@ FUNCTION LList_Delete%% (lst() AS LList, node AS _UNSIGNED _OFFSET)
             MID$(lst(0).V, _SIZE_OF_OFFSET + 1, _SIZE_OF_OFFSET) = _MK$(_UNSIGNED _OFFSET, node)
         END IF
 
-        LList_Delete = _TRUE
+        LList_RemoveNode = _TRUE
     END IF
 END FUNCTION
 
 ''' @brief Deletes the specified node from the list.
 ''' @param lst The list to update.
 ''' @param node The index of the node to delete.
-SUB LList_Delete (lst() AS LList, node AS _UNSIGNED _OFFSET)
-    DIM ignored AS _BYTE: ignored = LList_Delete(lst(), node)
+SUB LList_RemoveNode (lst() AS LList, node AS _UNSIGNED _OFFSET)
+    DIM ignored AS _BYTE: ignored = LList_RemoveNode(lst(), node)
 END SUB
 
 ''' @brief Checks whether the specified node exists in the list.
 ''' @param lst The list to query.
 ''' @param node The node to check.
 ''' @return _TRUE if the node exists, otherwise _FALSE.
-FUNCTION LList_Exists%% (lst() AS LList, node AS _UNSIGNED _OFFSET)
-    LList_Exists = node > 0 _ANDALSO node <= UBOUND(lst) _ANDALSO lst(node).T > QBDS_TYPE_DELETED
+FUNCTION LList_NodeExists%% (lst() AS LList, node AS _UNSIGNED _OFFSET)
+    LList_NodeExists = node > 0 _ANDALSO node <= UBOUND(lst) _ANDALSO lst(node).T > QBDS_TYPE_DELETED
 END FUNCTION
 
 ''' @brief Swaps the values of two nodes in the list.
 ''' @param lst The list to update.
 ''' @param nodeA The first node to swap.
 ''' @param nodeB The second node to swap.
-SUB LList_Swap (lst() AS LList, nodeA AS _UNSIGNED _OFFSET, nodeB AS _UNSIGNED _OFFSET)
+SUB LList_SwapNodeValues (lst() AS LList, nodeA AS _UNSIGNED _OFFSET, nodeB AS _UNSIGNED _OFFSET)
     IF nodeA > 0 _ANDALSO nodeA <= UBOUND(lst) _ANDALSO lst(nodeA).T > QBDS_TYPE_DELETED _ANDALSO nodeB > 0 _ANDALSO nodeB <= UBOUND(lst) _ANDALSO lst(nodeB).T > QBDS_TYPE_DELETED THEN
         DIM tempV AS STRING: tempV = lst(nodeA).V
         DIM tempT AS _UNSIGNED _BYTE: tempT = lst(nodeA).T
@@ -619,15 +619,23 @@ END SUB
 ''' @brief Retrieves the value for a given node.
 ''' @param lst The list to search.
 ''' @param node The node to get the value for.
-''' @return The associated string value, or an empty string if not found.
-FUNCTION LList_GetString$ (lst() AS LList, node AS _UNSIGNED _OFFSET)
+''' @return The associated raw value string, or an empty string if not found.
+FUNCTION __LList_Get$ (lst() AS LList, node AS _UNSIGNED _OFFSET)
     IF node < 1 _ORELSE node > UBOUND(lst) _ORELSE lst(node).T <= QBDS_TYPE_DELETED THEN
         ' Throw an error if the node is not valid
         ERROR _ERR_SUBSCRIPT_OUT_OF_RANGE
         EXIT FUNCTION
     END IF
 
-    LList_GetString = lst(node).V
+    __LList_Get = lst(node).V
+END FUNCTION
+
+''' @brief Retrieves the value for a given node.
+''' @param lst The list to search.
+''' @param node The node to get the value for.
+''' @return The associated string value, or an empty string if not found.
+FUNCTION LList_GetString$ (lst() AS LList, node AS _UNSIGNED _OFFSET)
+    LList_GetString = __LList_Get(lst(), node)
 END FUNCTION
 
 ''' @brief Sets the value for a given node.
@@ -643,13 +651,7 @@ END SUB
 ''' @param node The node to get the value for.
 ''' @return The associated byte value, or 0 if not found.
 FUNCTION LList_GetByte%% (lst() AS LList, node AS _UNSIGNED _OFFSET)
-    IF node < 1 _ORELSE node > UBOUND(lst) _ORELSE lst(node).T <= QBDS_TYPE_DELETED THEN
-        ' Throw an error if the node is not valid
-        ERROR _ERR_SUBSCRIPT_OUT_OF_RANGE
-        EXIT FUNCTION
-    END IF
-
-    LList_GetByte = _CV(_BYTE, lst(node).V)
+    LList_GetByte = _CV(_BYTE, __LList_Get(lst(), node))
 END FUNCTION
 
 ''' @brief Sets the value for a given node.
@@ -665,13 +667,7 @@ END SUB
 ''' @param node The node to get the value for.
 ''' @return The associated integer value, or 0 if not found.
 FUNCTION LList_GetInteger% (lst() AS LList, node AS _UNSIGNED _OFFSET)
-    IF node < 1 _ORELSE node > UBOUND(lst) _ORELSE lst(node).T <= QBDS_TYPE_DELETED THEN
-        ' Throw an error if the node is not valid
-        ERROR _ERR_SUBSCRIPT_OUT_OF_RANGE
-        EXIT FUNCTION
-    END IF
-
-    LList_GetInteger = CVI(lst(node).V)
+    LList_GetInteger = CVI(__LList_Get(lst(), node))
 END FUNCTION
 
 ''' @brief Sets the value for a given node.
@@ -687,13 +683,7 @@ END SUB
 ''' @param node The node to get the value for.
 ''' @return The associated long value, or 0 if not found.
 FUNCTION LList_GetLong& (lst() AS LList, node AS _UNSIGNED _OFFSET)
-    IF node < 1 _ORELSE node > UBOUND(lst) _ORELSE lst(node).T <= QBDS_TYPE_DELETED THEN
-        ' Throw an error if the node is not valid
-        ERROR _ERR_SUBSCRIPT_OUT_OF_RANGE
-        EXIT FUNCTION
-    END IF
-
-    LList_GetLong = CVL(lst(node).V)
+    LList_GetLong = CVL(__LList_Get(lst(), node))
 END FUNCTION
 
 ''' @brief Sets the value for a given node.
@@ -709,13 +699,7 @@ END SUB
 ''' @param node The node to get the value for.
 ''' @return The associated integer64 value, or 0 if not found.
 FUNCTION LList_GetInteger64&& (lst() AS LList, node AS _UNSIGNED _OFFSET)
-    IF node < 1 _ORELSE node > UBOUND(lst) _ORELSE lst(node).T <= QBDS_TYPE_DELETED THEN
-        ' Throw an error if the node is not valid
-        ERROR _ERR_SUBSCRIPT_OUT_OF_RANGE
-        EXIT FUNCTION
-    END IF
-
-    LList_GetInteger64 = _CV(_INTEGER64, lst(node).V)
+    LList_GetInteger64 = _CV(_INTEGER64, __LList_Get(lst(), node))
 END FUNCTION
 
 ''' @brief Sets the value for a given node.
@@ -731,13 +715,7 @@ END SUB
 ''' @param node The node to get the value for.
 ''' @return The associated single value, or 0 if not found.
 FUNCTION LList_GetSingle! (lst() AS LList, node AS _UNSIGNED _OFFSET)
-    IF node < 1 _ORELSE node > UBOUND(lst) _ORELSE lst(node).T <= QBDS_TYPE_DELETED THEN
-        ' Throw an error if the node is not valid
-        ERROR _ERR_SUBSCRIPT_OUT_OF_RANGE
-        EXIT FUNCTION
-    END IF
-
-    LList_GetSingle = CVS(lst(node).V)
+    LList_GetSingle = CVS(__LList_Get(lst(), node))
 END FUNCTION
 
 ''' @brief Sets the value for a given node.
@@ -753,13 +731,7 @@ END SUB
 ''' @param node The node to get the value for.
 ''' @return The associated double value, or 0 if not found.
 FUNCTION LList_GetDouble# (lst() AS LList, node AS _UNSIGNED _OFFSET)
-    IF node < 1 _ORELSE node > UBOUND(lst) _ORELSE lst(node).T <= QBDS_TYPE_DELETED THEN
-        ' Throw an error if the node is not valid
-        ERROR _ERR_SUBSCRIPT_OUT_OF_RANGE
-        EXIT FUNCTION
-    END IF
-
-    LList_GetDouble = CVD(lst(node).V)
+    LList_GetDouble = CVD(__LList_Get(lst(), node))
 END FUNCTION
 
 ''' @brief Sets the value for a given node.
@@ -776,7 +748,7 @@ END SUB
 FUNCTION LList_PopFrontString$ (lst() AS LList)
     DIM node AS _UNSIGNED _OFFSET: node = LList_GetFrontNode(lst())
     LList_PopFrontString = LList_GetString(lst(), node)
-    LList_Delete lst(), node
+    LList_RemoveNode lst(), node
 END FUNCTION
 
 ''' @brief Retrieves the value from the back of the list and removes it.
@@ -785,7 +757,7 @@ END FUNCTION
 FUNCTION LList_PopBackString$ (lst() AS LList)
     DIM node AS _UNSIGNED _OFFSET: node = LList_GetBackNode(lst())
     LList_PopBackString = LList_GetString(lst(), node)
-    LList_Delete lst(), node
+    LList_RemoveNode lst(), node
 END FUNCTION
 
 ''' @brief Retrieves the value from the front of the list and removes it.
@@ -794,7 +766,7 @@ END FUNCTION
 FUNCTION LList_PopFrontByte%% (lst() AS LList)
     DIM node AS _UNSIGNED _OFFSET: node = LList_GetFrontNode(lst())
     LList_PopFrontByte = LList_GetByte(lst(), node)
-    LList_Delete lst(), node
+    LList_RemoveNode lst(), node
 END FUNCTION
 
 ''' @brief Retrieves the value from the back of the list and removes it.
@@ -803,7 +775,7 @@ END FUNCTION
 FUNCTION LList_PopBackByte%% (lst() AS LList)
     DIM node AS _UNSIGNED _OFFSET: node = LList_GetBackNode(lst())
     LList_PopBackByte = LList_GetByte(lst(), node)
-    LList_Delete lst(), node
+    LList_RemoveNode lst(), node
 END FUNCTION
 
 ''' @brief Retrieves the value from the front of the list and removes it.
@@ -812,7 +784,7 @@ END FUNCTION
 FUNCTION LList_PopFrontInteger% (lst() AS LList)
     DIM node AS _UNSIGNED _OFFSET: node = LList_GetFrontNode(lst())
     LList_PopFrontInteger = LList_GetInteger(lst(), node)
-    LList_Delete lst(), node
+    LList_RemoveNode lst(), node
 END FUNCTION
 
 ''' @brief Retrieves the value from the back of the list and removes it.
@@ -821,7 +793,7 @@ END FUNCTION
 FUNCTION LList_PopBackInteger% (lst() AS LList)
     DIM node AS _UNSIGNED _OFFSET: node = LList_GetBackNode(lst())
     LList_PopBackInteger = LList_GetInteger(lst(), node)
-    LList_Delete lst(), node
+    LList_RemoveNode lst(), node
 END FUNCTION
 
 ''' @brief Retrieves the value from the front of the list and removes it.
@@ -830,7 +802,7 @@ END FUNCTION
 FUNCTION LList_PopFrontLong& (lst() AS LList)
     DIM node AS _UNSIGNED _OFFSET: node = LList_GetFrontNode(lst())
     LList_PopFrontLong = LList_GetLong(lst(), node)
-    LList_Delete lst(), node
+    LList_RemoveNode lst(), node
 END FUNCTION
 
 ''' @brief Retrieves the value from the back of the list and removes it.
@@ -839,7 +811,7 @@ END FUNCTION
 FUNCTION LList_PopBackLong& (lst() AS LList)
     DIM node AS _UNSIGNED _OFFSET: node = LList_GetBackNode(lst())
     LList_PopBackLong = LList_GetLong(lst(), node)
-    LList_Delete lst(), node
+    LList_RemoveNode lst(), node
 END FUNCTION
 
 ''' @brief Retrieves the value from the front of the list and removes it.
@@ -848,7 +820,7 @@ END FUNCTION
 FUNCTION LList_PopFrontInteger64&& (lst() AS LList)
     DIM node AS _UNSIGNED _OFFSET: node = LList_GetFrontNode(lst())
     LList_PopFrontInteger64 = LList_GetInteger64(lst(), node)
-    LList_Delete lst(), node
+    LList_RemoveNode lst(), node
 END FUNCTION
 
 ''' @brief Retrieves the value from the back of the list and removes it.
@@ -857,7 +829,7 @@ END FUNCTION
 FUNCTION LList_PopBackInteger64&& (lst() AS LList)
     DIM node AS _UNSIGNED _OFFSET: node = LList_GetBackNode(lst())
     LList_PopBackInteger64 = LList_GetInteger64(lst(), node)
-    LList_Delete lst(), node
+    LList_RemoveNode lst(), node
 END FUNCTION
 
 ''' @brief Retrieves the value from the front of the list and removes it.
@@ -866,7 +838,7 @@ END FUNCTION
 FUNCTION LList_PopFrontSingle! (lst() AS LList)
     DIM node AS _UNSIGNED _OFFSET: node = LList_GetFrontNode(lst())
     LList_PopFrontSingle = LList_GetSingle(lst(), node)
-    LList_Delete lst(), node
+    LList_RemoveNode lst(), node
 END FUNCTION
 
 ''' @brief Retrieves the value from the back of the list and removes it.
@@ -875,7 +847,7 @@ END FUNCTION
 FUNCTION LList_PopBackSingle! (lst() AS LList)
     DIM node AS _UNSIGNED _OFFSET: node = LList_GetBackNode(lst())
     LList_PopBackSingle = LList_GetSingle(lst(), node)
-    LList_Delete lst(), node
+    LList_RemoveNode lst(), node
 END FUNCTION
 
 ''' @brief Retrieves the value from the front of the list and removes it.
@@ -884,7 +856,7 @@ END FUNCTION
 FUNCTION LList_PopFrontDouble# (lst() AS LList)
     DIM node AS _UNSIGNED _OFFSET: node = LList_GetFrontNode(lst())
     LList_PopFrontDouble = LList_GetDouble(lst(), node)
-    LList_Delete lst(), node
+    LList_RemoveNode lst(), node
 END FUNCTION
 
 ''' @brief Retrieves the value from the back of the list and removes it.
@@ -893,5 +865,5 @@ END FUNCTION
 FUNCTION LList_PopBackDouble# (lst() AS LList)
     DIM node AS _UNSIGNED _OFFSET: node = LList_GetBackNode(lst())
     LList_PopBackDouble = LList_GetDouble(lst(), node)
-    LList_Delete lst(), node
+    LList_RemoveNode lst(), node
 END FUNCTION

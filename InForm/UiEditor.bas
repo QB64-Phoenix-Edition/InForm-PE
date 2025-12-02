@@ -290,9 +290,9 @@ RESUME NEXT
 
 '$INCLUDE:'UiEditor.frm'
 '$INCLUDE:'InForm.ui'
-'$INCLUDE:'extensions/Pathname.bas'
-'$INCLUDE:'extensions/Ini.bas'
-'$INCLUDE:'extensions/FontMgr.bas'
+'$INCLUDE:'extensions/Pathname.bm'
+'$INCLUDE:'extensions/Ini.bm'
+'$INCLUDE:'extensions/FontMgr.bm'
 
 'Event procedures: ---------------------------------------------------------------
 SUB __UI_Click (id AS LONG)

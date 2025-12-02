@@ -27,7 +27,7 @@ END SUB
 ''' @brief Clear the stack, but do not change the capacity.
 ''' @param stack The stack to clear.
 SUB Stack_Clear (stack() AS Stack)
-    REDIM stack(0 TO UBOUND(stack)) AS Stack
+    REDIM stack(0 TO _MAX(__QBDS_ITEMS_MIN, UBOUND(stack))) AS Stack
     stack(0).T = QBDS_TYPE_RESERVED
     stack(0).V = _MK$(_UNSIGNED _OFFSET, 0)
 END SUB
@@ -55,11 +55,10 @@ END FUNCTION
 ''' @brief Returns the data type for the value at the top of the stack.
 ''' @param stack The stack to search.
 ''' @return The data type constant (QBDS_TYPE_*) or 0 if not found.
-FUNCTION Stack_PeekDataType~%% (stack() AS Stack)
+FUNCTION Stack_PeekElementDataType~%% (stack() AS Stack)
     DIM count AS _UNSIGNED _OFFSET: count = _CV(_UNSIGNED _OFFSET, stack(0).V)
-
     IF count THEN
-        Stack_PeekDataType = stack(count).T
+        Stack_PeekElementDataType = stack(count).T
     END IF
 END FUNCTION
 
@@ -72,7 +71,7 @@ SUB __Stack_Push (stack() AS Stack, v AS STRING, dataType AS _UNSIGNED _BYTE)
     DIM capacity AS _UNSIGNED _OFFSET: capacity = UBOUND(stack)
 
     ' Resize if necessary
-    IF count >= capacity THEN
+    IF count > capacity THEN
         REDIM _PRESERVE stack(0 TO _MAX(__QBDS_ITEMS_MIN, _SHL(capacity, 1))) AS Stack
     END IF
 
@@ -89,7 +88,6 @@ END SUB
 ''' @return The value from the top of the stack.
 FUNCTION __Stack_Pop$ (stack() AS Stack)
     DIM count AS _UNSIGNED _OFFSET: count = _CV(_UNSIGNED _OFFSET, stack(0).V)
-
     IF count THEN
         ' Save value and then purge it from the stack
         __Stack_Pop = stack(count).V
@@ -105,7 +103,6 @@ END FUNCTION
 ''' @return The associated value string, or an empty string if not found.
 FUNCTION __Stack_Peek$ (stack() AS Stack)
     DIM count AS _UNSIGNED _OFFSET: count = _CV(_UNSIGNED _OFFSET, stack(0).V)
-
     IF count THEN
         __Stack_Peek = stack(count).V
     END IF

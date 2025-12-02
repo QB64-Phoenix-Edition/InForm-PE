@@ -4,7 +4,7 @@ The `HMap` library provides a generic hash map for QB64-PE. It allows you to sto
 
 ## Usage
 
-To use the `HMap` library, include `HMap.bi` and `HMap.bas` in your project.
+To use the `HMap` library, include `HMap.bi` and `HMap.bm` in your project.
 
 ```vb
 '$INCLUDE:'HMap.bi'
@@ -25,165 +25,142 @@ PRINT HMap_GetInteger(myMap(), "age")
 ' Free the map
 HMap_Free myMap()
 
-'$INCLUDE:'HMap.bas'
+'$INCLUDE:'HMap.bm'
 ```
 
 ## API Reference
 
 ### Initialization and Management
 
-```vb
-SUB HMap_Initialize (map() AS HMap)
-```
-
 Initializes a new hash map.
 
 ```vb
-SUB HMap_Clear (map() AS HMap)
+SUB HMap_Initialize (map() AS HMap)
 ```
 
 Removes all entries from the hash map, but keeps the allocated memory.
 
 ```vb
-SUB HMap_Free (map() AS HMap)
+SUB HMap_Clear (map() AS HMap)
 ```
 
 Frees all memory associated with the map.
 
 ```vb
-FUNCTION HMap_IsInitialized%% (map() AS HMap)
+SUB HMap_Free (map() AS HMap)
 ```
 
 Returns `_TRUE` if the map has been initialized.
 
-***
+```vb
+FUNCTION HMap_IsInitialized%% (map() AS HMap)
+```
 
 ### Capacity and Size
+
+Returns the current capacity of the map.
 
 ```vb
 FUNCTION HMap_GetCapacity~%& (map() AS HMap)
 ```
 
-Returns the current capacity of the map.
+Returns the number of entries in the map.
 
 ```vb
 FUNCTION HMap_GetCount~%& (map() AS HMap)
 ```
 
-Returns the number of entries in the map.
-
-***
-
 ### Entry Management
-
-```vb
-FUNCTION HMap_Delete%% (map() AS HMap, k AS STRING)
-```
 
 Deletes a key-value pair from the map. Returns `_TRUE` if the key was found and deleted.
 
 ```vb
-SUB HMap_Delete (map() AS HMap, k AS STRING)
+FUNCTION HMap_Remove%% (map() AS HMap, k AS STRING)
 ```
 
 Deletes a key-value pair from the map (SUB version, no return value).
 
 ```vb
-FUNCTION HMap_Exists%% (map() AS HMap, k AS STRING)
+SUB HMap_Remove (map() AS HMap, k AS STRING)
 ```
 
 Checks if a key exists in the map. Returns `_TRUE` if found.
 
 ```vb
-FUNCTION HMap_GetDataType~%% (map() AS HMap, k AS STRING)
+FUNCTION HMap_Contains%% (map() AS HMap, k AS STRING)
 ```
 
 Returns the data type of the value associated with a key. See QBDS constants in `QBDS.bi`.
 
-***
+```vb
+FUNCTION HMap_GetEntryDataType~%% (map() AS HMap, k AS STRING)
+```
 
 ### Data Access
 
+Sets a value for a key.
+
 ```vb
 SUB HMap_SetString (map() AS HMap, k AS STRING, v AS STRING)
-```
-
-Sets a string value for a key.
-
-```vb
-FUNCTION HMap_GetString$ (map() AS HMap, k AS STRING)
-```
-
-Gets the string value for a key.
-
-```vb
 SUB HMap_SetByte (map() AS HMap, k AS STRING, v AS _BYTE)
-```
-
-Sets a `_BYTE` value for a key.
-
-```vb
-FUNCTION HMap_GetByte%% (map() AS HMap, k AS STRING)
-```
-
-Gets the `_BYTE` value for a key.
-
-```vb
 SUB HMap_SetInteger (map() AS HMap, k AS STRING, v AS INTEGER)
-```
-
-Sets an `INTEGER` value for a key.
-
-```vb
-FUNCTION HMap_GetInteger% (map() AS HMap, k AS STRING)
-```
-
-Gets the `INTEGER` value for a key.
-
-```vb
 SUB HMap_SetLong (map() AS HMap, k AS STRING, v AS LONG)
-```
-
-Sets a `LONG` value for a key.
-
-```vb
-FUNCTION HMap_GetLong& (map() AS HMap, k AS STRING)
-```
-
-Gets the `LONG` value for a key.
-
-```vb
 SUB HMap_SetInteger64 (map() AS HMap, k AS STRING, v AS _INTEGER64)
-```
-
-Sets an `_INTEGER64` value for a key.
-
-```vb
-FUNCTION HMap_GetInteger64&& (map() AS HMap, k AS STRING)
-```
-
-Gets the `_INTEGER64` value for a key.
-
-```vb
 SUB HMap_SetSingle (map() AS HMap, k AS STRING, v AS SINGLE)
-```
-
-Sets a `SINGLE` value for a key.
-
-```vb
-FUNCTION HMap_GetSingle! (map() AS HMap, k AS STRING)
-```
-
-Gets the `SINGLE` value for a key.
-
-```vb
 SUB HMap_SetDouble (map() AS HMap, k AS STRING, v AS DOUBLE)
 ```
 
-Sets a `DOUBLE` value for a key.
+Gets the value for a key.
 
 ```vb
+FUNCTION HMap_GetString$ (map() AS HMap, k AS STRING)
+FUNCTION HMap_GetByte%% (map() AS HMap, k AS STRING)
+FUNCTION HMap_GetInteger% (map() AS HMap, k AS STRING)
+FUNCTION HMap_GetLong& (map() AS HMap, k AS STRING)
+FUNCTION HMap_GetInteger64&& (map() AS HMap, k AS STRING)
+FUNCTION HMap_GetSingle! (map() AS HMap, k AS STRING)
 FUNCTION HMap_GetDouble# (map() AS HMap, k AS STRING)
 ```
 
-Gets the `DOUBLE` value for a key.
+## UDT Support
+
+To store and retrieve **UDTs** in the hash map, you need to write wrapper `SUB`s around the low‑level routines. These wrappers handle packing and unpacking the UDT into a raw string buffer.
+
+```vb
+''' @brief Retrieves the raw value string for a given key.
+''' @param map The hash map to search.
+''' @param k The key string to look up.
+''' @return The associated value string, or an empty string if not found.
+FUNCTION __HMap_Get$ (map() AS HMap, k AS STRING)
+
+''' @brief Insert or update a key's value.
+''' @param map The hash map to update.
+''' @param k The key string.
+''' @param v The raw value string to store (packed using MK$ helpers for numeric types).
+''' @param dataType The data type constant for the value being stored.
+SUB __HMap_Set (map() AS HMap, k AS STRING, v AS STRING, dataType AS _UNSIGNED _BYTE)
+```
+
+### Example
+
+```vb
+TYPE Student
+    id     AS LONG
+    nam    AS STRING * 50
+    atten  AS LONG
+    grade  AS LONG
+END TYPE
+
+' Store a Student UDT in the map
+SUB HMap_SetStudent (map() AS HMap, k AS STRING, v AS Student)
+    DIM buffer AS STRING: buffer = SPACE$(LEN(v))
+    QBDS_CopyMemory _OFFSET(buffer), _OFFSET(v), LEN(v)
+    __HMap_Set map(), k, buffer, QBDS_TYPE_UDT
+END SUB
+
+' Retrieve a Student UDT from the map
+SUB HMap_GetStudent (map() AS HMap, k AS STRING, v AS Student)
+    DIM buffer AS STRING: buffer = __HMap_Get(map(), k)
+    QBDS_CopyMemory _OFFSET(v), _OFFSET(buffer), _MIN(LEN(v), LEN(buffer))
+END SUB
+```

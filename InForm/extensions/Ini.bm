@@ -757,4 +757,4 @@ FUNCTION Ini_GetInfo$
     END SELECT
 END FUNCTION
 
-'$INCLUDE:'Algo.bas'
+'$INCLUDE:'Algo.bm'

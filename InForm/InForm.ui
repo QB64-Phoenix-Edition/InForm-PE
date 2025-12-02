@@ -5121,7 +5121,7 @@ FUNCTION __UI_LoadThemeImage& (id AS _UNSIGNED _BYTE)
     END IF
 
     ' If we have already loaded the image, then simply return the handle
-    IF HMap64_Exists(__UI_ThemeImages(), id) THEN
+    IF HMap64_Contains(__UI_ThemeImages(), id) THEN
         __UI_LoadThemeImage = HMap64_GetLong(__UI_ThemeImages(), id)
         EXIT FUNCTION
     END IF
@@ -8768,4 +8768,4 @@ $IF INFORM_BI = UNDEFINED THEN
 $END IF
 
 '$INCLUDE:'xp.uitheme'
-'$INCLUDE:'extensions/HMap64.bas'
+'$INCLUDE:'extensions/HMap64.bm'

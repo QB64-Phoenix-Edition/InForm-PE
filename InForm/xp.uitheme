@@ -286,4 +286,4 @@ FUNCTION __UI_ImageData$ (id AS _UNSIGNED _BYTE)
     END SELECT
 END FUNCTION
 
-'$INCLUDE:'extensions/Base64.bas'
+'$INCLUDE:'extensions/Base64.bm'

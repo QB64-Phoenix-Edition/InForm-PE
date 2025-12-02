@@ -1,36 +1,20 @@
-' ==============================================================================
+'-----------------------------------------------------------------------------------------------------------------------
 ' Minimalistic test framework library for QB64-PE
-' Copyright (c) 2025, Samuel Gomes
-' ------------------------------------------------------------------------------
-' Usage:
-'   TEST_BEGIN_ALL
-'       TEST_CASE_BEGIN "Name"
-'           ... assertions ...
-'       TEST_CASE_END
-'   TEST_END_ALL
-'
-' API:
-'   TEST_REQUIRE(cond, "message")
-'   TEST_REQUIRE2(cond)
-'   TEST_REQUIRE_FALSE(cond, "message")
-'   TEST_REQUIRE_FALSE2(cond)
-'   TEST_CHECK(cond, "message")
-'   TEST_CHECK2(cond)
-'   TEST_CHECK_FALSE(cond, "message")
-'   TEST_CHECK_FALSE2(cond)
-'   TEST_ABORTED() ' returns _TRUE when current test has been marked to abort
-'   TEST_ENABLE_COLOR(enable) ' _TRUE to enable (default), _FALSE to disable
-'   TEST_ENABLE_EXIT_ON_END(enable) ' _TRUE to enable (default), _FALSE to disable
-' ==============================================================================
+' Copyright (c) 2025 Samuel Gomes
+'-----------------------------------------------------------------------------------------------------------------------
 
 $INCLUDEONCE
-
-$CONSOLE
 
 $IF TEST_STRICT = DEFINED AND TEST_STRICT = TRUE THEN
     _DEFINE A-Z AS LONG
     OPTION _EXPLICITARRAY
     OPTION _EXPLICIT
+$END IF
+
+$IF TEST_CONSOLE_ONLY = DEFINED AND TEST_CONSOLE_ONLY = TRUE THEN
+    $CONSOLE:ONLY
+$ELSE
+    $CONSOLE
 $END IF
 
 CONST __TEST_COLOR_HEADER = 36 ' light cyan
@@ -57,6 +41,7 @@ TYPE __TestState
     errorHandlerEnabled AS _BYTE
     colorDisabled AS _BYTE
     exitOnEndDisabled AS _BYTE
+    rngSeed AS _UNSIGNED _INTEGER64
 END TYPE
 
 DIM __TestState AS __TestState

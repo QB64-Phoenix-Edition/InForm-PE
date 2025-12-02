@@ -4,11 +4,11 @@
 ' Copyright (c) 2022 Fellippe Heitor
 '-----------------------------------------------------------------------------------------------------------------------
 
-$INCLUDEONCE
-
 $IF VERSION < 4.2.0 THEN
     $ERROR 'This requires the latest version of QB64-PE from https://github.com/QB64-Phoenix-Edition/QB64pe/releases/latest'
 $END IF
+
+$INCLUDEONCE
 
 '$INCLUDE:'InFormVersion.bi'
 '$INCLUDE:'extensions/HMap64.bi'

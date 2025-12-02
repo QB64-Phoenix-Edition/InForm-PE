@@ -32,7 +32,7 @@ END SUB
 ''' @brief Clear the hash map, but do not change the capacity.
 ''' @param map The hash map to clear.
 SUB HMap64_Clear (map() AS HMap64)
-    REDIM map(0 TO UBOUND(map)) AS HMap64
+    REDIM map(0 TO _MAX(__QBDS_ITEMS_MIN, UBOUND(map))) AS HMap64
     map(0).T = QBDS_TYPE_RESERVED ' set to reserved
 END SUB
 
@@ -83,7 +83,7 @@ END SUB
 ''' @param map The hash map to modify.
 ''' @param k The key to remove.
 ''' @return _TRUE if the key was removed, otherwise _FALSE.
-FUNCTION HMap64_Delete%% (map() AS HMap64, k AS _UNSIGNED _INTEGER64)
+FUNCTION HMap64_Remove%% (map() AS HMap64, k AS _UNSIGNED _INTEGER64)
     DIM arraySize AS _UNSIGNED _OFFSET: arraySize = UBOUND(map)
     DIM idx AS _UNSIGNED _OFFSET: idx = __HMap64_Hash(k, arraySize)
 
@@ -93,7 +93,7 @@ FUNCTION HMap64_Delete%% (map() AS HMap64, k AS _UNSIGNED _INTEGER64)
 
         map(0).K = map(0).K - 1
 
-        HMap64_Delete = _TRUE
+        HMap64_Remove = _TRUE
     END IF
 END FUNCTION
 
@@ -101,29 +101,29 @@ END FUNCTION
 ''' @param map The hash map to modify.
 ''' @param k The key to remove.
 ''' @return _TRUE if removed, _FALSE if not found.
-SUB HMap64_Delete (map() AS HMap64, k AS _UNSIGNED _INTEGER64)
-    DIM ignored AS _BYTE: ignored = HMap64_Delete(map(), k)
+SUB HMap64_Remove (map() AS HMap64, k AS _UNSIGNED _INTEGER64)
+    DIM ignored AS _BYTE: ignored = HMap64_Remove(map(), k)
 END SUB
 
 ''' @brief Checks if a key exists in the map.
 ''' @param map The hash map to search.
 ''' @param k The key to check.
 ''' @return _TRUE if present, _FALSE otherwise.
-FUNCTION HMap64_Exists%% (map() AS HMap64, k AS _UNSIGNED _INTEGER64)
+FUNCTION HMap64_Contains%% (map() AS HMap64, k AS _UNSIGNED _INTEGER64)
     DIM arraySize AS _UNSIGNED _OFFSET: arraySize = UBOUND(map)
     DIM idx AS _UNSIGNED _OFFSET: idx = __HMap64_Hash(k, arraySize)
-    HMap64_Exists = idx <= arraySize _ANDALSO map(idx).T > QBDS_TYPE_DELETED _ANDALSO map(idx).K = k
+    HMap64_Contains = idx <= arraySize _ANDALSO map(idx).T > QBDS_TYPE_DELETED _ANDALSO map(idx).K = k
 END FUNCTION
 
 ''' @brief Return the stored data type for a key.
 ''' @param map The hash map to search.
 ''' @param k The key string to look up.
 ''' @return The associated data type constant (QBDS_TYPE_*), or 0 if not found.
-FUNCTION HMap64_GetDataType~%% (map() AS HMap64, k AS _UNSIGNED _INTEGER64)
+FUNCTION HMap64_GetEntryDataType~%% (map() AS HMap64, k AS _UNSIGNED _INTEGER64)
     DIM arraySize AS _UNSIGNED _OFFSET: arraySize = UBOUND(map)
     DIM idx AS _UNSIGNED _OFFSET: idx = __HMap64_Hash(k, arraySize)
     IF idx <= arraySize _ANDALSO map(idx).T > QBDS_TYPE_DELETED _ANDALSO map(idx).K = k THEN
-        HMap64_GetDataType = map(idx).T
+        HMap64_GetEntryDataType = map(idx).T
     END IF
 END FUNCTION
 
@@ -164,11 +164,19 @@ END SUB
 ''' @brief Retrieves the value for a given key.
 ''' @param map The hash map to search.
 ''' @param k The key to look up.
-''' @return The associated value string, or an empty string if not found.
-FUNCTION HMap64_GetString$ (map() AS HMap64, k AS _UNSIGNED _INTEGER64)
+''' @return The associated value, or an empty string if not found.
+FUNCTION __HMap64_Get$ (map() AS HMap64, k AS _UNSIGNED _INTEGER64)
     DIM arraySize AS _UNSIGNED _OFFSET: arraySize = UBOUND(map)
     DIM idx AS _UNSIGNED _OFFSET: idx = __HMap64_Hash(k, arraySize)
-    IF idx <= arraySize _ANDALSO map(idx).T > QBDS_TYPE_DELETED _ANDALSO map(idx).K = k THEN HMap64_GetString = map(idx).V
+    IF idx <= arraySize _ANDALSO map(idx).T > QBDS_TYPE_DELETED _ANDALSO map(idx).K = k THEN __HMap64_Get = map(idx).V
+END FUNCTION
+
+''' @brief Retrieves the value for a given key.
+''' @param map The hash map to search.
+''' @param k The key to look up.
+''' @return The associated value string, or an empty string if not found.
+FUNCTION HMap64_GetString$ (map() AS HMap64, k AS _UNSIGNED _INTEGER64)
+    HMap64_GetString = __HMap64_Get(map(), k)
 END FUNCTION
 
 ''' @brief Updates an existing key or inserts it if not present.
@@ -184,7 +192,7 @@ END SUB
 ''' @param k The key to look up.
 ''' @return The associated _BYTE value.
 FUNCTION HMap64_GetByte%% (map() AS HMap64, k AS _UNSIGNED _INTEGER64)
-    HMap64_GetByte = _CV(_BYTE, HMap64_GetString(map(), k))
+    HMap64_GetByte = _CV(_BYTE, __HMap64_Get(map(), k))
 END FUNCTION
 
 ''' @brief Updates an existing key or inserts it if not present.
@@ -200,7 +208,7 @@ END SUB
 ''' @param k The key to look up.
 ''' @return The associated INTEGER value.
 FUNCTION HMap64_GetInteger% (map() AS HMap64, k AS _UNSIGNED _INTEGER64)
-    HMap64_GetInteger = CVI(HMap64_GetString(map(), k))
+    HMap64_GetInteger = CVI(__HMap64_Get(map(), k))
 END FUNCTION
 
 ''' @brief Updates an existing key or inserts it if not present.
@@ -216,7 +224,7 @@ END SUB
 ''' @param k The key to look up.
 ''' @return The associated LONG value.
 FUNCTION HMap64_GetLong& (map() AS HMap64, k AS _UNSIGNED _INTEGER64)
-    HMap64_GetLong = CVL(HMap64_GetString(map(), k))
+    HMap64_GetLong = CVL(__HMap64_Get(map(), k))
 END FUNCTION
 
 ''' @brief Updates an existing key or inserts it if not present.
@@ -232,7 +240,7 @@ END SUB
 ''' @param k The key to look up.
 ''' @return The associated _INTEGER64 value.
 FUNCTION HMap64_GetInteger64&& (map() AS HMap64, k AS _UNSIGNED _INTEGER64)
-    HMap64_GetInteger64 = _CV(_INTEGER64, HMap64_GetString(map(), k))
+    HMap64_GetInteger64 = _CV(_INTEGER64, __HMap64_Get(map(), k))
 END FUNCTION
 
 ''' @brief Updates an existing key or inserts it if not present.
@@ -248,7 +256,7 @@ END SUB
 ''' @param k The key to look up.
 ''' @return The associated SINGLE value.
 FUNCTION HMap64_GetSingle! (map() AS HMap64, k AS _UNSIGNED _INTEGER64)
-    HMap64_GetSingle = CVS(HMap64_GetString(map(), k))
+    HMap64_GetSingle = CVS(__HMap64_Get(map(), k))
 END FUNCTION
 
 ''' @brief Updates an existing key or inserts it if not present.
@@ -264,7 +272,7 @@ END SUB
 ''' @param k The key to look up.
 ''' @return The associated DOUBLE value.
 FUNCTION HMap64_GetDouble# (map() AS HMap64, k AS _UNSIGNED _INTEGER64)
-    HMap64_GetDouble = CVD(HMap64_GetString(map(), k))
+    HMap64_GetDouble = CVD(__HMap64_Get(map(), k))
 END FUNCTION
 
 ''' @brief Updates an existing key or inserts it if not present.

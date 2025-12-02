@@ -4,7 +4,7 @@ The `Stack` library provides a generic stack implementation for QB64-PE. It supp
 
 ## Usage
 
-To use the `Stack` library, you need to include `Stack.bi` and `Stack.bas` in your project.
+To use the `Stack` library, you need to include `Stack.bi` and `Stack.bm` in your project.
 
 ```vb
 '$INCLUDE:'Stack.bi'
@@ -27,185 +27,140 @@ PRINT Stack_PopString(myStack()) ' Prints "Hello"
 ' Free the stack
 Stack_Free myStack()
 
-'$INCLUDE:'Stack.bas'
+'$INCLUDE:'Stack.bm'
 ```
 
 ## API Reference
 
 ### Initialization and Management
 
-```vb
-SUB Stack_Initialize (stack() AS Stack)
-```
-
 Initializes a new stack.
 
 ```vb
-SUB Stack_Clear (stack() AS Stack)
+SUB Stack_Initialize (stack() AS Stack)
 ```
 
 Clears all entries from the stack, but keeps its allocated capacity.
 
 ```vb
-SUB Stack_Free (stack() AS Stack)
+SUB Stack_Clear (stack() AS Stack)
 ```
 
 Frees all memory associated with the stack.
 
 ```vb
-FUNCTION Stack_IsInitialized%% (stack() AS Stack)
+SUB Stack_Free (stack() AS Stack)
 ```
 
 Returns `_TRUE` if the stack has been initialized, `_FALSE` otherwise.
 
-***
+```vb
+FUNCTION Stack_IsInitialized%% (stack() AS Stack)
+```
 
 ### Capacity and Size
+
+Returns the current maximum number of entries the stack can hold before resizing.
 
 ```vb
 FUNCTION Stack_GetCapacity~%& (stack() AS Stack)
 ```
 
-Returns the current maximum number of entries the stack can hold before resizing.
+Returns the number of entries currently in the stack.
 
 ```vb
 FUNCTION Stack_GetCount~%& (stack() AS Stack)
 ```
 
-Returns the number of entries currently in the stack.
-
-***
-
 ### Data Access
 
+Returns the data type of the value at the top of the stack. See QBDS constants in `QBDS.bi`.
+
 ```vb
-FUNCTION Stack_PeekDataType~%% (stack() AS Stack)
+FUNCTION Stack_PeekElementDataType~%% (stack() AS Stack)
 ```
 
-Returns the data type of the value at the top of the stack.
+Retrieves the value from the top of the stack without removing it.
 
 ```vb
 FUNCTION Stack_PeekString$ (stack() AS Stack)
-```
-
-Retrieves the string value from the top of the stack without removing it.
-
-```vb
-SUB Stack_PushString (stack() AS Stack, v AS STRING)
-```
-
-Pushes a string value onto the top of the stack.
-
-```vb
-FUNCTION Stack_PopString$ (stack() AS Stack)
-```
-
-Retrieves and removes the string value from the top of the stack.
-
-```vb
 FUNCTION Stack_PeekByte%% (stack() AS Stack)
-```
-
-Retrieves the `_BYTE` value from the top of the stack without removing it.
-
-```vb
-SUB Stack_PushByte (stack() AS Stack, v AS _BYTE)
-```
-
-Pushes a `_BYTE` value onto the top of the stack.
-
-```vb
-FUNCTION Stack_PopByte%% (stack() AS Stack)
-```
-
-Retrieves and removes the `_BYTE` value from the top of the stack.
-
-```vb
 FUNCTION Stack_PeekInteger% (stack() AS Stack)
-```
-
-Retrieves the `INTEGER` value from the top of the stack without removing it.
-
-```vb
-SUB Stack_PushInteger (stack() AS Stack, v AS INTEGER)
-```
-
-Pushes an `INTEGER` value onto the top of the stack.
-
-```vb
-FUNCTION Stack_PopInteger% (stack() AS Stack)
-```
-
-Retrieves and removes the `INTEGER` value from the top of the stack.
-
-```vb
 FUNCTION Stack_PeekLong& (stack() AS Stack)
-```
-
-Retrieves the `LONG` value from the top of the stack without removing it.
-
-```vb
-SUB Stack_PushLong (stack() AS Stack, v AS LONG)
-```
-
-Pushes a `LONG` value onto the top of the stack.
-
-```vb
-FUNCTION Stack_PopLong& (stack() AS Stack)
-```
-
-Retrieves and removes the `LONG` value from the top of the stack.
-
-```vb
 FUNCTION Stack_PeekInteger64&& (stack() AS Stack)
-```
-
-Retrieves the `_INTEGER64` value from the top of the stack without removing it.
-
-```vb
-SUB Stack_PushInteger64 (stack() AS Stack, v AS _INTEGER64)
-```
-
-Pushes an `_INTEGER64` value onto the top of the stack.
-
-```vb
-FUNCTION Stack_PopInteger64&& (stack() AS Stack)
-```
-
-Retrieves and removes the `_INTEGER64` value from the top of the stack.
-
-```vb
 FUNCTION Stack_PeekSingle! (stack() AS Stack)
-```
-
-Retrieves the `SINGLE` value from the top of the stack without removing it.
-
-```vb
-SUB Stack_PushSingle (stack() AS Stack, v AS SINGLE)
-```
-
-Pushes a `SINGLE` value onto the top of the stack.
-
-```vb
-FUNCTION Stack_PopSingle! (stack() AS Stack)
-```
-
-Retrieves and removes the `SINGLE` value from the top of the stack.
-
-```vb
 FUNCTION Stack_PeekDouble# (stack() AS Stack)
 ```
 
-Retrieves the `DOUBLE` value from the top of the stack without removing it.
+Pushes a value onto the top of the stack.
 
 ```vb
+SUB Stack_PushString (stack() AS Stack, v AS STRING)
+SUB Stack_PushByte (stack() AS Stack, v AS _BYTE)
+SUB Stack_PushInteger (stack() AS Stack, v AS INTEGER)
+SUB Stack_PushLong (stack() AS Stack, v AS LONG)
+SUB Stack_PushInteger64 (stack() AS Stack, v AS _INTEGER64)
+SUB Stack_PushSingle (stack() AS Stack, v AS SINGLE)
 SUB Stack_PushDouble (stack() AS Stack, v AS DOUBLE)
 ```
 
-Pushes a `DOUBLE` value onto the top of the stack.
+Retrieves and removes a value from the top of the stack.
 
 ```vb
+FUNCTION Stack_PopString$ (stack() AS Stack)
+FUNCTION Stack_PopByte%% (stack() AS Stack)
+FUNCTION Stack_PopInteger% (stack() AS Stack)
+FUNCTION Stack_PopLong& (stack() AS Stack)
+FUNCTION Stack_PopInteger64&& (stack() AS Stack)
+FUNCTION Stack_PopSingle! (stack() AS Stack)
 FUNCTION Stack_PopDouble# (stack() AS Stack)
 ```
 
-Retrieves and removes the `DOUBLE` value from the top of the stack.
+## UDT Support
+
+To store and retrieve **UDTs** in the stack, you need to write wrapper `SUB`s around the low‑level routines. These wrappers handle packing and unpacking the UDT into a raw string buffer.
+
+```vb
+''' @brief Retrieves the value from the top of the stack without removing it.
+''' @param stack The stack to search.
+''' @return The associated value string, or an empty string if not found.
+FUNCTION __Stack_Peek$ (stack() AS Stack)
+
+''' @brief Pushes a value onto the top of the stack.
+''' @param stack The stack to update.
+''' @param v The raw value string to store (packed using MK$ helpers for numeric types).
+''' @param dataType The data type constant for the value being stored.
+SUB __Stack_Push (stack() AS Stack, v AS STRING, dataType AS _UNSIGNED _BYTE)
+
+''' @brief Pops a value off the top of the stack and returns it.
+''' @param stack The stack to update.
+''' @return The value from the top of the stack.
+FUNCTION __Stack_Pop$ (stack() AS Stack)
+```
+
+### Example
+
+```vb
+TYPE Student
+    id     AS LONG
+    nam    AS STRING * 50
+    atten  AS LONG
+    grade  AS LONG
+END TYPE
+
+SUB Stack_PeekStudent (stack() AS Stack, s AS Student)
+    DIM buffer AS STRING: buffer = __Stack_Peek(stack())
+    QBDS_CopyMemory _OFFSET(s), _OFFSET(buffer), _MIN(LEN(s), LEN(buffer))
+END SUB
+
+SUB Stack_PushStudent (stack() AS Stack, s AS Student)
+    DIM buffer AS STRING: buffer = SPACE$(LEN(s))
+    QBDS_CopyMemory _OFFSET(buffer), _OFFSET(s), LEN(s)
+    __Stack_Push stack(), buffer, QBDS_TYPE_UDT
+END SUB
+
+SUB Stack_PopStudent (stack() AS Stack, s AS Student)
+    DIM buffer AS STRING: buffer = __Stack_Pop(stack())
+    QBDS_CopyMemory _OFFSET(s), _OFFSET(buffer), _MIN(LEN(s), LEN(buffer))
+END SUB
+```
