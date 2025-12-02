@@ -3898,7 +3898,7 @@ FUNCTION LoadEditorImage& (id AS _UNSIGNED _BYTE)
                 "j2maiN/rvwnPYIyhiEvmoaT1e9bvfe8XFyfYbkg72OnQn/y8/8Zz2kz90J/873nef57nX/tfGg0ZeNTfwU+s9VNc/Zal+6cyojcgA3/P/fn/c393" + _
                 "v/v7/wd5BeeEEdg="
 
-            LoadEditorImage = _LOADIMAGE(Base64_LoadResourceString(DATA_CONTEXTMENU_BMP_1146, SIZE_CONTEXTMENU_BMP_1146, COMP_CONTEXTMENU_BMP_1146), 32, "memory")
+            LoadEditorImage = _LOADIMAGE(Resource_LoadBase64String(DATA_CONTEXTMENU_BMP_1146, SIZE_CONTEXTMENU_BMP_1146, COMP_CONTEXTMENU_BMP_1146), 32, "memory")
 
         CASE ELSE
             ERROR 51
