@@ -7692,7 +7692,7 @@ SUB __UI_DrawTextBox (This AS __UI_ControlTYPE, ControlState AS _BYTE)
                 IF PrevFocusedText$ <> ThisTempText$ THEN
                     PrevFocusedText$ = ThisTempText$
                     REDIM __UI_FocusedTextBoxChars(0 TO UBOUND(__UI_ThisLineChars)) AS LONG
-                    __UI_MemCopy _OFFSET(__UI_FocusedTextBoxChars(0)), _OFFSET(__UI_ThisLineChars(0)), (1 + UBOUND(__UI_ThisLineChars)) * LEN(__UI_ThisLineChars(0))
+                    Memory_Copy _OFFSET(__UI_FocusedTextBoxChars(0)), _OFFSET(__UI_ThisLineChars(0)), (1 + UBOUND(__UI_ThisLineChars)) * LEN(__UI_ThisLineChars(0))
                 END IF
 
                 SELECT CASE MID$(Mask(This.ID), This.Cursor + 1, 1)

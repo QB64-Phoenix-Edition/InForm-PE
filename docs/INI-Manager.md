@@ -1,6 +1,6 @@
 # INI Manager Library
 
-The `INI Manager` library provides functionality for reading and writing [INI files](https://en.wikipedia.org/wiki/INI_file). [INI files](https://en.wikipedia.org/wiki/INI_file) are a simple, human-readable format for storing configuration data.
+The `INI Manager` library provides functionality for reading and writing [INI files](https://en.wikipedia.org/wiki/INI_file). INI files are a simple, human-readable format for storing configuration data.
 
 ## Usage
 
