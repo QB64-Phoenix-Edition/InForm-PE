@@ -26,9 +26,9 @@ SELECT CASE LCASE$(COMMAND$(2))
                 a$ = Ini_ReadSetting(file$, COMMAND$(3), "")
 
                 IF LEFT$(Ini_GetInfo, 6) = "ERROR:" THEN EXIT DO
-                IF __ini.code = 10 THEN EXIT DO 'No more keys
+                IF Ini_GetCode = 10 THEN EXIT DO 'No more keys
 
-                PRINT __ini.lastSection; " "; __ini.lastKey; "="; a$
+                PRINT Ini_GetLastSection; " "; Ini_GetLastKey; "="; a$
             LOOP
         END IF
     CASE "-write", "write", "-w", "w"
@@ -71,7 +71,7 @@ SELECT CASE LCASE$(COMMAND$(2))
         IF _COMMANDCOUNT = 2 THEN
             DO
                 PRINT Ini_GetNextSection(file$)
-                IF __ini.code = 24 THEN EXIT DO
+                IF Ini_GetCode = 24 THEN EXIT DO
             LOOP
         ELSE
             Usage
@@ -80,8 +80,8 @@ SELECT CASE LCASE$(COMMAND$(2))
         Usage
 END SELECT
 
-IF __ini.code > 0 THEN PRINT Ini_GetInfo
-SYSTEM __ini.code
+IF Ini_GetCode > 0 THEN PRINT Ini_GetInfo
+SYSTEM Ini_GetCode
 
 SUB Usage
     PRINT "iniman - INI manager"

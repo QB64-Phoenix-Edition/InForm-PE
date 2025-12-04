@@ -43,7 +43,7 @@ END
 
 Status:
 COLOR 7: PRINT Ini_GetInfo
-COLOR 15: PRINT __ini.lastSection; __ini.lastKey: PRINT
+COLOR 15: PRINT Ini_GetLastSection; Ini_GetLastKey: PRINT
 RETURN
 
 '$INCLUDE:'../InForm/extensions/Ini.bm'

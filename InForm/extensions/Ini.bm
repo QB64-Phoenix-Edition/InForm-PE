@@ -727,34 +727,48 @@ END FUNCTION
 
 FUNCTION Ini_GetInfo$
     SHARED __ini AS __IniType
-
     SELECT CASE __ini.code
-        CASE 0: Ini_GetInfo = "Operation successful"
-        CASE 1: Ini_GetInfo = "ERROR: File not found"
-        CASE 2: Ini_GetInfo = "Empty value"
-        CASE 3: Ini_GetInfo = "ERROR: Key not found"
-        CASE 4: Ini_GetInfo = "Key updated"
-        CASE 5: Ini_GetInfo = "Global key created"
-        CASE 7: Ini_GetInfo = "Key created in existing section"
-        CASE 8: Ini_GetInfo = "No changes applied (same value)"
-        CASE 9: Ini_GetInfo = "New section created; key created"
-        CASE 10: Ini_GetInfo = "No more keys"
-        CASE 11: Ini_GetInfo = "File created; new key added"
-        CASE 12: Ini_GetInfo = "ERROR: Invalid key"
-        CASE 13: Ini_GetInfo = "Section deleted"
-        CASE 14: Ini_GetInfo = "ERROR: Section not found"
-        CASE 15: Ini_GetInfo = "ERROR: Invalid section"
-        CASE 16: Ini_GetInfo = "New section created; existing key moved"
-        CASE 17: Ini_GetInfo = "ERROR: Empty file"
-        CASE 18: Ini_GetInfo = "ERROR: No file open"
-        CASE 19: Ini_GetInfo = "Key deleted"
-        CASE 20: Ini_GetInfo = "Key moved"
-        CASE 21: Ini_GetInfo = "ERROR: Invalid file name/path"
-        CASE 22: Ini_GetInfo = "Section sorted"
-        CASE 23: Ini_GetInfo = "No changes applied; section already sorted"
-        CASE 24: Ini_GetInfo = "No more sections"
+        CASE INI_INFO_SUCCESS: Ini_GetInfo = "Operation successful"
+        CASE INI_INFO_FILE_NOT_FOUND: Ini_GetInfo = "ERROR: File not found"
+        CASE INI_INFO_EMPTY_VALUE: Ini_GetInfo = "Empty value"
+        CASE INI_INFO_KEY_NOT_FOUND: Ini_GetInfo = "ERROR: Key not found"
+        CASE INI_INFO_KEY_UPDATED: Ini_GetInfo = "Key updated"
+        CASE INI_INFO_GLOBAL_KEY_CREATED: Ini_GetInfo = "Global key created"
+        CASE INI_INFO_KEY_CREATED_EXISTING_SECTION: Ini_GetInfo = "Key created in existing section"
+        CASE INI_INFO_NO_CHANGE_SAME_VALUE: Ini_GetInfo = "No changes applied (same value)"
+        CASE INI_INFO_NEW_SECTION_KEY_CREATED: Ini_GetInfo = "New section created; key created"
+        CASE INI_INFO_NO_MORE_KEYS: Ini_GetInfo = "No more keys"
+        CASE INI_INFO_FILE_CREATED_KEY_ADDED: Ini_GetInfo = "File created; new key added"
+        CASE INI_INFO_INVALID_KEY: Ini_GetInfo = "ERROR: Invalid key"
+        CASE INI_INFO_SECTION_DELETED: Ini_GetInfo = "Section deleted"
+        CASE INI_INFO_SECTION_NOT_FOUND: Ini_GetInfo = "ERROR: Section not found"
+        CASE INI_INFO_INVALID_SECTION: Ini_GetInfo = "ERROR: Invalid section"
+        CASE INI_INFO_NEW_SECTION_KEY_MOVED: Ini_GetInfo = "New section created; existing key moved"
+        CASE INI_INFO_EMPTY_FILE: Ini_GetInfo = "ERROR: Empty file"
+        CASE INI_INFO_NO_FILE_OPEN: Ini_GetInfo = "ERROR: No file open"
+        CASE INI_INFO_KEY_DELETED: Ini_GetInfo = "Key deleted"
+        CASE INI_INFO_KEY_MOVED: Ini_GetInfo = "Key moved"
+        CASE INI_INFO_INVALID_FILENAME: Ini_GetInfo = "ERROR: Invalid file name/path"
+        CASE INI_INFO_SECTION_SORTED: Ini_GetInfo = "Section sorted"
+        CASE INI_INFO_SECTION_ALREADY_SORTED: Ini_GetInfo = "No changes applied; section already sorted"
+        CASE INI_INFO_NO_MORE_SECTIONS: Ini_GetInfo = "No more sections"
         CASE ELSE: Ini_GetInfo = "ERROR: <invalid error code>"
     END SELECT
+END FUNCTION
+
+FUNCTION Ini_GetCode&
+    SHARED __ini AS __IniType
+    Ini_GetCode = __ini.code
+END FUNCTION
+
+FUNCTION Ini_GetLastSection$
+    SHARED __ini AS __IniType
+    Ini_GetLastSection = __ini.lastSection
+END FUNCTION
+
+FUNCTION Ini_GetLastKey$
+    SHARED __ini AS __IniType
+    Ini_GetLastKey = __ini.lastKey
 END FUNCTION
 
 '$INCLUDE:'Algo.bm'

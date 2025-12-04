@@ -44,12 +44,12 @@ DO
         DO
             a$ = Ini_ReadSetting$(file$, section$, "")
 
-            IF __ini.code = 1 OR __ini.code = 17 THEN PRINT Ini_GetInfo: EXIT DO 'IniCODE = 1 -> File not found, 17 = empty file
-            IF __ini.code = 14 OR __ini.code = 10 THEN PRINT Ini_GetInfo: EXIT DO 'IniCODE = 10 -> No more keys found
+            IF Ini_GetCode = 1 OR Ini_GetCode = 17 THEN PRINT Ini_GetInfo: EXIT DO 'IniCODE = 1 -> File not found, 17 = empty file
+            IF Ini_GetCode = 14 OR Ini_GetCode = 10 THEN PRINT Ini_GetInfo: EXIT DO 'IniCODE = 10 -> No more keys found
 
             COLOR 7
-            PRINT __ini.lastSection;
-            COLOR 15: PRINT __ini.lastKey;
+            PRINT Ini_GetLastSection;
+            COLOR 15: PRINT Ini_GetLastKey;
             COLOR 4: PRINT "=";
             COLOR 2: PRINT a$
         LOOP
@@ -57,10 +57,10 @@ DO
     ELSEIF LEN(LTRIM$(RTRIM$(key$))) > 0 THEN
         'read the key from the file
         a$ = Ini_ReadSetting(file$, section$, key$)
-        IF __ini.code THEN
+        IF Ini_GetCode THEN
             PRINT
             COLOR 15, 4
-            PRINT "RETURN CODE: "; __ini.code, Ini_GetInfo
+            PRINT "RETURN CODE: "; Ini_GetCode, Ini_GetInfo
             COLOR 7, 0
         ELSE
             PRINT " = ";
