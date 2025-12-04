@@ -254,3 +254,5 @@ END SUB
 FUNCTION Stack_PopDouble# (stack() AS Stack)
     Stack_PopDouble = CVD(__Stack_Pop(stack()))
 END FUNCTION
+
+'$INCLUDE:'QBDS.bm'

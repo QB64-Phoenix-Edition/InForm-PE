@@ -64,10 +64,6 @@ SUB TEST_END_ALL
 END SUB
 
 SUB TEST_CASE_BEGIN (testName AS STRING)
-    DECLARE LIBRARY
-        FUNCTION __Test_GetTicks~&& ALIAS "GetTicks"
-    END DECLARE
-
     SHARED __TestState AS __TestState
 
     __TestState.currentTestName = testName
@@ -76,7 +72,7 @@ SUB TEST_CASE_BEGIN (testName AS STRING)
     __TestState.abortCurrentTest = _FALSE
     __TestState.skipCurrentTest = _FALSE
     __TestState.testsRun = __TestState.testsRun + 1
-    __TestState.testStart = __Test_GetTicks
+    __TestState.testStart = Time_GetTicks
 
     IF LEN(__TestState.filter) THEN
         IF INSTR(UCASE$(testName), UCASE$(__TestState.filter)) = 0 THEN
@@ -99,7 +95,7 @@ END SUB
 SUB TEST_CASE_END
     SHARED __TestState AS __TestState
 
-    DIM durMs AS _UNSIGNED _INTEGER64: durMs = __Test_GetTicks - __TestState.testStart
+    DIM durMs AS _UNSIGNED _INTEGER64: durMs = Time_GetTicks - __TestState.testStart
 
     __TestPrint "  "
     IF __TestState.skipCurrentTest THEN
@@ -258,3 +254,5 @@ SUB __TestPrintLn (message AS STRING)
 
     __TestPutS message + _CHR_NUL
 END SUB
+
+'$INCLUDE:'Time.bm'

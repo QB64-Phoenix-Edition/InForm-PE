@@ -36,6 +36,8 @@ NEXT
 
 ### Sorting
 
+***
+
 Sorts a string array using a non-recursive QuickSort algorithm.
 
 **Parameters:**
@@ -53,6 +55,8 @@ Sorts a string array using a non-recursive QuickSort algorithm.
 FUNCTION Algo_SortStringArrayRange%% (strArr() AS STRING, l AS _INTEGER64, u AS _INTEGER64, wantsAscending AS _BYTE, caseSensitive AS _BYTE)
 ```
 
+***
+
 A convenience function that sorts the entire string array in ascending, case-sensitive order.
 
 **Parameters:**
@@ -65,6 +69,8 @@ A convenience function that sorts the entire string array in ascending, case-sen
 ```vb
 FUNCTION Algo_SortStringArray%% (strArr() AS STRING)
 ```
+
+***
 
 A convenience SUB that sorts the entire string array in ascending, case-sensitive order.
 

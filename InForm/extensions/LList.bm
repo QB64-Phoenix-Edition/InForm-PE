@@ -867,3 +867,5 @@ FUNCTION LList_PopBackDouble# (lst() AS LList)
     LList_PopBackDouble = LList_GetDouble(lst(), node)
     LList_RemoveNode lst(), node
 END FUNCTION
+
+'$INCLUDE:'QBDS.bm'

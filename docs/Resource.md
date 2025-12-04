@@ -66,6 +66,8 @@ The decoded (and optionally decompressed) binary data as a `STRING`.
 FUNCTION Resource_LoadBase64String$ (src AS STRING, ogSize AS _UNSIGNED LONG, isComp AS _BYTE)
 ```
 
+***
+
 Loads a binary file encoded with `Bin2Data` from `DATA` statements. It reads the header and data chunks automatically after a `RESTORE` statement points to the correct `DATA` label.
 
 **Returns:**

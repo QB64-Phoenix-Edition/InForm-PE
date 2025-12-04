@@ -281,3 +281,5 @@ END FUNCTION
 FUNCTION Queue_PeekDouble# (q() AS Queue)
     Queue_PeekDouble = CVD(__Queue_Peek(q()))
 END FUNCTION
+
+'$INCLUDE:'QBDS.bm'

@@ -132,14 +132,14 @@ SUB TEST_SET_RNG_SEED (rngSeed AS _UNSIGNED _INTEGER64)
 
 ### Preprocessor Variables
 
+Setting this to TRUE changes the default type to LONG and forces explicit variable declarations. This must be set before including `Catch.bi`.
+
 ```vb
 $LET TEST_STRICT = TRUE
 ```
 
-Setting this to TRUE changes the default type to LONG and forces explicit variable declarations. This must be set before including `Catch.bi`.
+Setting this to TRUE disables the QB64 graphics window. This must be set before including `Catch.bi`.
 
 ```vb
 $LET TEST_CONSOLE_ONLY = TRUE
 ```
-
-Setting this to TRUE disables the QB64 graphics window. This must be set before including `Catch.bi`.

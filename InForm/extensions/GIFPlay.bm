@@ -189,7 +189,7 @@ SUB GIF_Play (Id AS LONG)
         DIM idx AS LONG: idx = HMap64_GetLong(__GIFPlayHashTable(), Id)
 
         __GIFPlay(idx).isPlaying = _TRUE
-        __GIFPlay(idx).lastTick = __GIF_GetTicks
+        __GIFPlay(idx).lastTick = Time_GetTicks
     END IF
 END SUB
 
@@ -297,7 +297,7 @@ FUNCTION GIF_GetFrame& (Id AS LONG)
     IF __GIFPlay(idx).loops <> 0 AND (__GIFPlay(idx).loopCounter < 0 OR __GIFPlay(idx).loopCounter >= __GIFPlay(idx).loops) THEN EXIT FUNCTION
 
     ' Fetch and store the current tick
-    DIM currentTick AS _UNSIGNED _INTEGER64: currentTick = __GIF_GetTicks
+    DIM currentTick AS _UNSIGNED _INTEGER64: currentTick = Time_GetTicks
 
     ' Remember the last frame index
     DIM lastFrameRendered AS LONG: lastFrameRendered = __GIFPlay(idx).frame
@@ -943,6 +943,7 @@ FUNCTION __GIF_GetOverlayImage&
     __GIF_GetOverlayImage = overlayImage
 END FUNCTION
 
-'$INCLUDE:'HMap64.bm'
-'$INCLUDE:'StringFile.bm'
 '$INCLUDE:'Resource.bm'
+'$INCLUDE:'StringFile.bm'
+'$INCLUDE:'HMap64.bm'
+'$INCLUDE:'Time.bm'

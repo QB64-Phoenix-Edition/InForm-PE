@@ -326,3 +326,5 @@ END SUB
 FUNCTION Array_PopBackDouble# (array() AS Array)
     Array_PopBackDouble = CVD(__Array_PopBack(array()))
 END FUNCTION
+
+'$INCLUDE:'QBDS.bm'

@@ -17,6 +17,8 @@ $ELSE
     $CONSOLE
 $END IF
 
+'$INCLUDE:'Time.bi'
+
 CONST __TEST_COLOR_HEADER = 36 ' light cyan
 CONST __TEST_COLOR_PASS = 32 ' light green
 CONST __TEST_COLOR_FAIL = 31 ' light red

@@ -5,6 +5,7 @@
 
 $INCLUDEONCE
 
+'$INCLUDE:'Time.bi'
 '$INCLUDE:'HMap64.bi'
 '$INCLUDE:'StringFile.bi'
 
@@ -53,11 +54,6 @@ TYPE __GIFFrameType
     transparentColor AS INTEGER ' transparent color for this frame (< 0 means none)
     duration AS _UNSIGNED INTEGER ' raw duration data in 1/100th seconds
 END TYPE
-
-' GetTicks returns the number of "ticks" (ms) since the program started execution where 1000 "ticks" (ms) = 1 second
-DECLARE LIBRARY
-    FUNCTION __GIF_GetTicks~&& ALIAS "GetTicks"
-END DECLARE
 
 REDIM __GIFPlayHashTable(0 TO 0) AS HMap64 ' shared hash table to keep user supplied IDs (the values here points to indexes in __GIFPlay)
 REDIM __GIFPlay(0 TO 0) AS __GIFPlayType ' main GIFPlay array - each array element is for a single GIF
