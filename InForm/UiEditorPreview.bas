@@ -1769,7 +1769,7 @@ SUB __UI_OnLoad
 
     IF UiEditorPID = 0 THEN GOTO ForceQuit
 
-    b$ = "PREVIEWPID>" + MKL$(__UI_GetPID) + "<END>"
+    b$ = "PREVIEWPID>" + MKL$(System_GetProcessID) + "<END>"
     PUT #Host, , b$
 
     _ACCEPTFILEDROP

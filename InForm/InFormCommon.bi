@@ -11,6 +11,7 @@ $END IF
 $INCLUDEONCE
 
 '$INCLUDE:'InFormVersion.bi'
+'$INCLUDE:'extensions/System.bi'
 '$INCLUDE:'extensions/HMap64.bi'
 
 CONST False%% = _FALSE, True%% = _TRUE
@@ -275,10 +276,6 @@ CONST MsgBox_Retry& = 6&
 CONST MsgBox_Ignore& = 7&
 CONST MsgBox_TryAgain& = 8&
 CONST MsgBox_Continue& = 9&
-
-DECLARE LIBRARY
-    FUNCTION __UI_GetPID ALIAS getpid
-END DECLARE
 
 TYPE __UI_ControlTYPE
     ID AS LONG

@@ -2510,7 +2510,7 @@ SUB Handshake
 
     Stream$ = "" 'clear buffer
 
-    b$ = "EDITORPID>" + MKL$(__UI_GetPID) + "<END>"
+    b$ = "EDITORPID>" + MKL$(System_GetProcessID) + "<END>"
     Send Client, b$
 
     $IF WIN THEN

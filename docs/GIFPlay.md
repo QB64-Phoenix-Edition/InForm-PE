@@ -11,9 +11,45 @@ You can use the library either standalone or with InForm-PE.
 To use the `GIFPlay` library in a standalone project, you need to include `GIFPlay.bi` at the top of your code and `GIFPlay.bm` at the bottom.
 
 ```vb
+OPTION _EXPLICIT
+
 '$INCLUDE:'GIFPlay.bi'
 
-' Your code here...
+$RESIZE:SMOOTH
+
+CONST GIF_ID = 123
+
+DO
+    DIM gifFileName AS STRING: gifFileName = _OPENFILEDIALOG$("Open GIF", , "*.gif|*.GIF|*.Gif", "GIF Files")
+    IF LEN(gifFileName) = 0 THEN EXIT DO
+
+    IF GIF_LoadFromFile(GIF_ID, gifFileName) THEN
+        DIM surface AS LONG: surface = _NEWIMAGE(GIF_GetWidth(GIF_ID), GIF_GetHeight(GIF_ID), 32)
+        SCREEN surface
+        _ALLOWFULLSCREEN _SQUAREPIXELS , _SMOOTH
+
+        GIF_Play GIF_ID
+
+        DO
+            DIM k AS LONG: k = _KEYHIT
+
+            IF k = _ASC_SPACE THEN
+                IF GIF_IsPlaying(GIF_ID) THEN GIF_Pause (GIF_ID) ELSE GIF_Play (GIF_ID)
+            END IF
+
+            CLS
+            GIF_Draw GIF_ID
+            _DISPLAY
+
+            _LIMIT 30
+        LOOP UNTIL k = _KEY_ESC
+
+        SCREEN 0
+        _FREEIMAGE surface
+    END IF
+LOOP
+
+END
 
 '$INCLUDE:'GIFPlay.bm'
 ```
