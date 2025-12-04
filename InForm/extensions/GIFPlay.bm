@@ -58,7 +58,7 @@ FUNCTION GIF_LoadFromMemory%% (Id AS LONG, buffer AS STRING)
         END IF
     $END IF
 
-    DIM sf AS StringFileType
+    DIM sf AS StringFile
 
     StringFile_Create sf, buffer
 
@@ -75,7 +75,7 @@ FUNCTION GIF_LoadFromFile%% (Id AS LONG, fileName AS STRING)
         END IF
     $END IF
 
-    DIM sf AS StringFileType
+    DIM sf AS StringFile
 
     IF StringFile_Load(sf, fileName) THEN
         GIF_LoadFromFile = __GIF_Load(Id, sf)
@@ -485,7 +485,7 @@ END SUB
 
 
 ' https://commandlinefanatic.com/cgi-bin/showarticle.cgi?article=art011
-FUNCTION __GIF_ReadLZWCode& (sf AS StringFileType, buffer AS STRING, bitPos AS LONG, bitSize AS LONG)
+FUNCTION __GIF_ReadLZWCode& (sf AS StringFile, buffer AS STRING, bitPos AS LONG, bitSize AS LONG)
     DIM AS LONG code, p: p = 1
 
     DIM i AS LONG: FOR i = 1 TO bitSize
@@ -516,7 +516,7 @@ END FUNCTION
 
 
 ' https://stackoverflow.com/questions/26894809/gif-lzw-decompression
-FUNCTION __GIF_DecodeLZW%% (sf AS StringFileType, bmpMem AS _MEM)
+FUNCTION __GIF_DecodeLZW%% (sf AS StringFile, bmpMem AS _MEM)
     TYPE __LZWCodeType
         c AS LONG
         prefix AS LONG
@@ -634,7 +634,7 @@ END SUB
 
 
 ' This is an internal loading function common for both memory and file loaders
-FUNCTION __GIF_Load%% (Id AS LONG, sf AS StringFileType)
+FUNCTION __GIF_Load%% (Id AS LONG, sf AS StringFile)
     SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
     SHARED __GIFPlayFrame() AS __GIFPlayFrameType

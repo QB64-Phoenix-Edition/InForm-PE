@@ -7,18 +7,15 @@ $INCLUDEONCE
 
 '$INCLUDE:'StringFile.bi'
 
-' Creates a new StringFile object
-' StringFile APIs are a simple way of dealing with file that are completely loaded in memory
-' Since it uses a QB string as a backing buffer, no explicit memory management (i.e. freeing) is required
-SUB StringFile_Create (stringFile AS StringFileType, buffer AS STRING)
+''' @brief Initializes a StringFile object with the given buffer.
+SUB StringFile_Create (stringFile AS StringFile, buffer AS STRING)
     stringFile.buffer = buffer
     stringFile.cursor = 0
 END SUB
 
-
-' Loads a whole file from disk into a StringFile object
-' This will reset the StringFile object if it was previously being used
-FUNCTION StringFile_Load%% (stringFile AS StringFileType, fileName AS STRING)
+''' @brief Loads a file from disk into a StringFile object.
+''' @return _TRUE if the file was loaded successfully, _FALSE otherwise.
+FUNCTION StringFile_Load%% (stringFile AS StringFile, fileName AS STRING)
     IF _FILEEXISTS(fileName) THEN
         stringFile.buffer = _READFILE$(fileName)
         stringFile.cursor = 0
@@ -27,38 +24,44 @@ FUNCTION StringFile_Load%% (stringFile AS StringFileType, fileName AS STRING)
     END IF
 END FUNCTION
 
-
-' Saves a StringFile object to a file
-' This does not disturb the read / write cursor
-FUNCTION StringFile_Save%% (stringFile AS StringFileType, fileName AS STRING, overwrite AS _BYTE)
-    IF _FILEEXISTS(fileName) AND NOT overwrite THEN EXIT FUNCTION
+''' @brief Saves the contents of a StringFile object to a file on disk.
+''' @param overwrite If _FALSE and the file already exists, the function will not overwrite it.
+''' @return _TRUE if the file was saved successfully, _FALSE otherwise.
+FUNCTION StringFile_Save%% (stringFile AS StringFile, fileName AS STRING, overwrite AS _BYTE)
+    IF _FILEEXISTS(fileName) _ANDALSO NOT overwrite THEN EXIT FUNCTION
 
     _WRITEFILE fileName, stringFile.buffer
 
     StringFile_Save = _TRUE
 END FUNCTION
 
+''' @brief Saves the contents of a StringFile object to a file on disk.
+''' @param overwrite If _FALSE and the file already exists, the function will not overwrite it.
+SUB StringFile_Save (stringFile AS StringFile, fileName AS STRING, overwrite AS _BYTE)
+    DIM ignored AS _BYTE: ignored = StringFile_Save(stringFile, fileName, overwrite)
+END SUB
 
-' Returns true if EOF is reached
-FUNCTION StringFile_IsEOF%% (stringFile AS StringFileType)
+''' @brief Checks if the cursor is at the end of the file.
+''' @return _TRUE if at EOF, _FALSE otherwise.
+FUNCTION StringFile_IsEOF%% (stringFile AS StringFile)
     StringFile_IsEOF = (stringFile.cursor >= LEN(stringFile.buffer))
 END FUNCTION
 
-
-' Get the size of the file
-FUNCTION StringFile_GetSize~& (stringFile AS StringFileType)
+''' @brief Gets the size of the file in bytes.
+''' @return Size of the file in bytes.
+FUNCTION StringFile_GetSize~& (stringFile AS StringFile)
     StringFile_GetSize = LEN(stringFile.buffer)
 END FUNCTION
 
-
-' Gets the current r/w cursor position
-FUNCTION StringFile_GetPosition~& (stringFile AS StringFileType)
+''' @brief Gets the current read/write cursor position.
+''' @return Current cursor position.
+FUNCTION StringFile_GetPosition~& (stringFile AS StringFile)
     StringFile_GetPosition = stringFile.cursor
 END FUNCTION
 
-
-' Seeks to a position in the file
-SUB StringFile_Seek (stringFile AS StringFileType, position AS _UNSIGNED LONG)
+''' @brief Seeks to a position in the file.
+''' @param position Position to seek to. Must be less than or equal to the file size.
+SUB StringFile_Seek (stringFile AS StringFile, position AS _UNSIGNED LONG)
     IF position <= LEN(stringFile.buffer) THEN ' allow seeking to EOF position
         stringFile.cursor = position
     ELSE
@@ -66,9 +69,11 @@ SUB StringFile_Seek (stringFile AS StringFileType, position AS _UNSIGNED LONG)
     END IF
 END SUB
 
-
-' Resizes the file
-SUB StringFile_Resize (stringFile AS StringFileType, newSize AS _UNSIGNED LONG)
+''' @brief Resizes the file to the new size.
+''' If the new size is larger than the current size, the file is expanded and the new bytes are filled with zeroes.
+''' If the new size is smaller than the current size, the file is truncated and the cursor is repositioned to the EOF if it was beyond the new size.
+''' @param newSize New size of the file in bytes.
+SUB StringFile_Resize (stringFile AS StringFile, newSize AS _UNSIGNED LONG)
     DIM AS _UNSIGNED LONG curSize: curSize = LEN(stringFile.buffer)
 
     IF newSize > curSize THEN
@@ -79,9 +84,10 @@ SUB StringFile_Resize (stringFile AS StringFileType, newSize AS _UNSIGNED LONG)
     END IF
 END SUB
 
-
-' Reads size bytes from the file
-FUNCTION StringFile_ReadString$ (stringFile AS StringFileType, size AS _UNSIGNED LONG)
+''' @brief Reads a string of a given size from the file.
+''' @param size Number of bytes to read.
+''' @return The string read from the file.
+FUNCTION StringFile_ReadString$ (stringFile AS StringFile, size AS _UNSIGNED LONG)
     IF size > 0 THEN ' reading 0 bytes will simply do nothing
         IF stringFile.cursor < LEN(stringFile.buffer) THEN ' we'll allow partial string reads but check if we have anything to read at all
             DIM dst AS STRING: dst = MID$(stringFile.buffer, stringFile.cursor + 1, size)
@@ -95,9 +101,9 @@ FUNCTION StringFile_ReadString$ (stringFile AS StringFileType, size AS _UNSIGNED
     END IF
 END FUNCTION
 
-
-' Writes a string to the file and grows the file if needed
-SUB StringFile_WriteString (stringFile AS StringFileType, src AS STRING)
+''' @brief Writes a string to the file.
+''' @param src The string to write.
+SUB StringFile_WriteString (stringFile AS StringFile, src AS STRING)
     DIM srcSize AS _UNSIGNED LONG: srcSize = LEN(src)
 
     IF srcSize > 0 THEN ' writing 0 bytes will simply do nothing
@@ -111,9 +117,9 @@ SUB StringFile_WriteString (stringFile AS StringFileType, src AS STRING)
     END IF
 END SUB
 
-
-' Reads a byte from the file
-FUNCTION StringFile_ReadByte~%% (stringFile AS StringFileType)
+''' @brief Reads a byte from the file.
+''' @return The byte read from the file.
+FUNCTION StringFile_ReadByte~%% (stringFile AS StringFile)
     IF stringFile.cursor + _SIZE_OF_BYTE <= LEN(stringFile.buffer) THEN ' check if we really have the amount of bytes to read
         StringFile_ReadByte = ASC(stringFile.buffer, stringFile.cursor + 1) ' read the data
         stringFile.cursor = stringFile.cursor + _SIZE_OF_BYTE ' this puts the cursor right after the last position read
@@ -123,8 +129,9 @@ FUNCTION StringFile_ReadByte~%% (stringFile AS StringFileType)
 END FUNCTION
 
 
-' Write a byte to the file
-SUB StringFile_WriteByte (stringFile AS StringFileType, src AS _UNSIGNED _BYTE)
+''' @brief Writes a byte to the file.
+''' @param src The byte to write.
+SUB StringFile_WriteByte (stringFile AS StringFile, src AS _UNSIGNED _BYTE)
     DIM curSize AS _UNSIGNED LONG: curSize = LEN(stringFile.buffer)
 
     ' Grow the buffer if needed
@@ -134,9 +141,9 @@ SUB StringFile_WriteByte (stringFile AS StringFileType, src AS _UNSIGNED _BYTE)
     stringFile.cursor = stringFile.cursor + _SIZE_OF_BYTE ' this puts the cursor right after the last position written
 END SUB
 
-
-' Reads an integer from the file
-FUNCTION StringFile_ReadInteger~% (stringFile AS StringFileType)
+''' @brief Reads an integer from the file.
+''' @return The integer read from the file.
+FUNCTION StringFile_ReadInteger~% (stringFile AS StringFile)
     IF stringFile.cursor + _SIZE_OF_INTEGER <= LEN(stringFile.buffer) THEN ' check if we really have the amount of bytes to read
         StringFile_ReadInteger = CVI(MID$(stringFile.buffer, stringFile.cursor + 1, _SIZE_OF_INTEGER)) ' read the data
         stringFile.cursor = stringFile.cursor + _SIZE_OF_INTEGER ' this puts the cursor right after the last position read
@@ -146,8 +153,9 @@ FUNCTION StringFile_ReadInteger~% (stringFile AS StringFileType)
 END FUNCTION
 
 
-' Writes an integer to the file
-SUB StringFile_WriteInteger (stringFile AS StringFileType, src AS _UNSIGNED INTEGER)
+''' @brief Writes an integer to the file.
+''' @param src The integer to write.
+SUB StringFile_WriteInteger (stringFile AS StringFile, src AS _UNSIGNED INTEGER)
     DIM curSize AS _UNSIGNED LONG: curSize = LEN(stringFile.buffer)
 
     ' Grow the buffer if needed
@@ -157,9 +165,9 @@ SUB StringFile_WriteInteger (stringFile AS StringFileType, src AS _UNSIGNED INTE
     stringFile.cursor = stringFile.cursor + _SIZE_OF_INTEGER ' this puts the cursor right after the last position written
 END SUB
 
-
-' Reads a long from the file
-FUNCTION StringFile_ReadLong~& (stringFile AS StringFileType)
+''' @brief Reads a long from the file.
+''' @return The long read from the file.
+FUNCTION StringFile_ReadLong~& (stringFile AS StringFile)
     IF stringFile.cursor + _SIZE_OF_LONG <= LEN(stringFile.buffer) THEN ' check if we really have the amount of bytes to read
         StringFile_ReadLong = CVL(MID$(stringFile.buffer, stringFile.cursor + 1, _SIZE_OF_LONG)) ' read the data
         stringFile.cursor = stringFile.cursor + _SIZE_OF_LONG ' this puts the cursor right after the last position read
@@ -168,9 +176,9 @@ FUNCTION StringFile_ReadLong~& (stringFile AS StringFileType)
     END IF
 END FUNCTION
 
-
-' Writes a long to the file
-SUB StringFile_WriteLong (stringFile AS StringFileType, src AS _UNSIGNED LONG)
+''' @brief Writes a long to the file.
+''' @param src The long to write.
+SUB StringFile_WriteLong (stringFile AS StringFile, src AS _UNSIGNED LONG)
     DIM curSize AS _UNSIGNED LONG: curSize = LEN(stringFile.buffer)
 
     ' Grow the buffer if needed
@@ -180,9 +188,9 @@ SUB StringFile_WriteLong (stringFile AS StringFileType, src AS _UNSIGNED LONG)
     stringFile.cursor = stringFile.cursor + _SIZE_OF_LONG ' this puts the cursor right after the last position written
 END SUB
 
-
-' Reads a single from the file
-FUNCTION StringFile_ReadSingle! (stringFile AS StringFileType)
+''' @brief Reads a single from the file.
+''' @return The single read from the file.
+FUNCTION StringFile_ReadSingle! (stringFile AS StringFile)
     IF stringFile.cursor + _SIZE_OF_SINGLE <= LEN(stringFile.buffer) THEN ' check if we really have the amount of bytes to read
         StringFile_ReadSingle = CVS(MID$(stringFile.buffer, stringFile.cursor + 1, _SIZE_OF_SINGLE)) ' read the data
         stringFile.cursor = stringFile.cursor + _SIZE_OF_SINGLE ' this puts the cursor right after the last position read
@@ -191,9 +199,9 @@ FUNCTION StringFile_ReadSingle! (stringFile AS StringFileType)
     END IF
 END FUNCTION
 
-
-' Writes a single to the file
-SUB StringFile_WriteSingle (stringFile AS StringFileType, src AS SINGLE)
+''' @brief Writes a single to the file.
+''' @param src The single to write.
+SUB StringFile_WriteSingle (stringFile AS StringFile, src AS SINGLE)
     DIM curSize AS _UNSIGNED LONG: curSize = LEN(stringFile.buffer)
 
     ' Grow the buffer if needed
@@ -203,9 +211,9 @@ SUB StringFile_WriteSingle (stringFile AS StringFileType, src AS SINGLE)
     stringFile.cursor = stringFile.cursor + _SIZE_OF_SINGLE ' this puts the cursor right after the last position written
 END SUB
 
-
-' Reads an integer64 from the file
-FUNCTION StringFile_ReadInteger64~&& (stringFile AS StringFileType)
+''' @brief Reads an integer64 from the file.
+''' @return The integer64 read from the file.
+FUNCTION StringFile_ReadInteger64~&& (stringFile AS StringFile)
     IF stringFile.cursor + _SIZE_OF_INTEGER64 <= LEN(stringFile.buffer) THEN ' check if we really have the amount of bytes to read
         StringFile_ReadInteger64 = _CV(_UNSIGNED _INTEGER64, MID$(stringFile.buffer, stringFile.cursor + 1, _SIZE_OF_INTEGER64)) ' read the data
         stringFile.cursor = stringFile.cursor + _SIZE_OF_INTEGER64 ' this puts the cursor right after the last position read
@@ -214,9 +222,9 @@ FUNCTION StringFile_ReadInteger64~&& (stringFile AS StringFileType)
     END IF
 END FUNCTION
 
-
-' Writes an integer64 to the file
-SUB StringFile_WriteInteger64 (stringFile AS StringFileType, src AS _UNSIGNED _INTEGER64)
+''' @brief Writes an integer64 to the file.
+''' @param src The integer64 to write.
+SUB StringFile_WriteInteger64 (stringFile AS StringFile, src AS _UNSIGNED _INTEGER64)
     DIM curSize AS _UNSIGNED LONG: curSize = LEN(stringFile.buffer)
 
     ' Grow the buffer if needed
@@ -226,9 +234,9 @@ SUB StringFile_WriteInteger64 (stringFile AS StringFileType, src AS _UNSIGNED _I
     stringFile.cursor = stringFile.cursor + _SIZE_OF_INTEGER64 ' this puts the cursor right after the last position written
 END SUB
 
-
-' Reads a double from the file
-FUNCTION StringFile_ReadDouble# (stringFile AS StringFileType)
+''' @brief Reads a double from the file.
+''' @return The double read from the file.
+FUNCTION StringFile_ReadDouble# (stringFile AS StringFile)
     IF stringFile.cursor + _SIZE_OF_DOUBLE <= LEN(stringFile.buffer) THEN ' check if we really have the amount of bytes to read
         StringFile_ReadDouble = CVD(MID$(stringFile.buffer, stringFile.cursor + 1, _SIZE_OF_DOUBLE)) ' read the data
         stringFile.cursor = stringFile.cursor + _SIZE_OF_DOUBLE ' this puts the cursor right after the last position read
@@ -237,9 +245,9 @@ FUNCTION StringFile_ReadDouble# (stringFile AS StringFileType)
     END IF
 END FUNCTION
 
-
-' Writes a double to the file
-SUB StringFile_WriteDouble (stringFile AS StringFileType, src AS DOUBLE)
+''' @brief Writes a double to the file.
+''' @param src The double to write.
+SUB StringFile_WriteDouble (stringFile AS StringFile, src AS DOUBLE)
     DIM curSize AS _UNSIGNED LONG: curSize = LEN(stringFile.buffer)
 
     ' Grow the buffer if needed

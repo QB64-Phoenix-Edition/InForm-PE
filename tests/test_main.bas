@@ -1496,7 +1496,7 @@ END SUB
 SUB Test_StringFile
     TEST_CASE_BEGIN "StringFile"
 
-    DIM sf AS StringFileType
+    DIM sf AS StringFile
     StringFile_Create sf, "This_is_a_test_buffer."
     TEST_CHECK LEN(sf.buffer) = 22, "LEN(sf.buffer) = 22"
     TEST_CHECK sf.cursor = 0, "sf.cursor = 0"
