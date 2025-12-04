@@ -17,7 +17,7 @@ SUB Ini_SortSection (file$, __section$)
     IF __Ini_FormatSection$(__section$) = "[]" THEN __ini.code = 15: EXIT SUB
 
     DO
-        tempValue$ = Ini_ReadSetting(file$, __section$, "")
+        tempValue$ = Ini_ReadSetting(file$, __section$, _STR_EMPTY)
         IF LEFT$(Ini_GetInfo, 7) = "ERROR: " THEN EXIT SUB
         IF __ini.code = 10 THEN EXIT DO
 
@@ -71,7 +71,7 @@ SUB Ini_DeleteSection (file$, __section$)
     IF __ini.code THEN EXIT SUB
 
     __ini.newFile = LEFT$(__ini.wholeFile, INSTR(__ini.wholeFile, a$) - 1)
-    __ini.newFile = __ini.newFile + MID$(__ini.wholeFile, INSTR(__ini.wholeFile, a$) + LEN(a$ + __ini.LF$))
+    __ini.newFile = __ini.newFile + MID$(__ini.wholeFile, INSTR(__ini.wholeFile, a$) + LEN(a$ + __ini.LF))
 
     __Ini_Commit
     __ini.code = 13
@@ -91,7 +91,7 @@ SUB Ini_DeleteKey (file$, __section$, __key$)
     IF __ini.code THEN EXIT SUB
 
     key$ = _TRIM$(__key$)
-    IF key$ = "" THEN __ini.code = 12: EXIT SUB
+    IF LEN(key$) = 0 THEN __ini.code = 12: EXIT SUB
     __ini.lastKey = key$
 
     'Read the existing key to fill __ini.position
@@ -129,7 +129,7 @@ END SUB
 SUB __Ini_Commit
     SHARED __ini AS __IniType
 
-    IF __ini.currentFileName = "" THEN __ini.code = 18: EXIT SUB
+    IF LEN(__ini.currentFileName) = 0 THEN __ini.code = 18: EXIT SUB
 
     __ini.wholeFile = __ini.newFile
     __ini.currentFileLOF = LEN(__ini.newFile)
@@ -164,7 +164,7 @@ END SUB
 FUNCTION __Ini_GetSectionData$ (__section$)
     SHARED __ini AS __IniType
 
-    IF __ini.currentFileName = "" THEN __ini.code = 18: EXIT FUNCTION
+    IF LEN(__ini.currentFileName) = 0 THEN __ini.code = 18: EXIT FUNCTION
     IF __ini.currentFileLOF = 0 OR LEN(_TRIM$(__ini.wholeFile)) = 0 THEN __ini.code = 17: EXIT FUNCTION
 
     __ini.code = 0
@@ -278,12 +278,12 @@ FUNCTION Ini_ReadSetting$ (file$, __section$, __key$)
     __ini.position = 0
 
     key$ = _TRIM$(__key$)
-    __ini.lastKey = ""
-    IF key$ = "" THEN
+    __ini.lastKey = _STR_EMPTY
+    IF LEN(key$) = 0 THEN
         IF section$ = "[]" THEN __ini.sectionData = __ini.wholeFile
         key$ = Ini_GetNextKey
         IF __ini.code THEN EXIT FUNCTION
-        IF key$ = "" THEN
+        IF LEN(key$) = 0 THEN
             __ini.code = 10
             EXIT FUNCTION
         END IF
@@ -334,9 +334,9 @@ FUNCTION Ini_ReadSetting$ (file$, __section$, __key$)
         tempValue$ = _TRIM$(MID$(__ini.sectionData, Equal + 1, FoundLF - Equal - 1))
 
         IF LEN(tempValue$) > 0 THEN
-            IF LEFT$(tempValue$, 1) = CHR$(34) THEN
+            IF LEFT$(tempValue$, 1) = _CHR_QUOTE THEN
                 tempValue$ = MID$(tempValue$, 2)
-                Quote = INSTR(tempValue$, CHR$(34))
+                Quote = INSTR(tempValue$, _CHR_QUOTE)
                 IF Quote > 0 THEN
                     tempValue$ = LEFT$(tempValue$, Quote - 1)
                 END IF
@@ -403,13 +403,13 @@ SUB Ini_WriteSetting (file$, __section$, __key$, __value$)
     IF __ini.code THEN EXIT SUB
 
     key$ = _TRIM$(__key$)
-    IF key$ = "" THEN __ini.code = 12: EXIT SUB
+    IF LEN(key$) = 0 THEN __ini.code = 12: EXIT SUB
     __ini.lastKey = key$
 
     value$ = _TRIM$(__value$)
     IF LTRIM$(STR$(VAL(value$))) <> value$ THEN
         'if not a numeric value and value contains spaces, add quotation marks
-        IF INSTR(value$, CHR$(32)) THEN value$ = CHR$(34) + value$ + CHR$(34)
+        IF INSTR(value$, _CHR_SPACE) THEN value$ = _CHR_QUOTE + value$ + _CHR_QUOTE
     END IF
 
     'Read the existing key to fill __ini.position
@@ -420,8 +420,8 @@ SUB Ini_WriteSetting (file$, __section$, __key$, __value$)
 
     IF __ini.code = 1 OR __ini.code = 17 THEN
         'file not found or empty; create a new one
-        IF file$ = "" THEN file$ = __ini.currentFileName
-        IF file$ = "" THEN __ini.code = 21: EXIT SUB
+        IF LEN(file$) = 0 THEN file$ = __ini.currentFileName
+        IF LEN(file$) = 0 THEN __ini.code = 21: EXIT SUB
 
         __ini.currentFileName = file$
 
@@ -558,7 +558,7 @@ SUB Ini_Close
 
     DIM AS LONG findFile, fileNum
 
-    IF __ini.currentFileName = "" THEN EXIT SUB
+    IF LEN(__ini.currentFileName) = 0 THEN EXIT SUB
 
     'search __ini.loadedFiles, so we use the same file handle every time
     findFile = INSTR(__ini.loadedFiles, "@" + __ini.currentFileName + "@")
@@ -573,7 +573,7 @@ SUB Ini_Close
     __ini.disableAutoCommit = 0
     __Ini_Commit
 
-    __ini.currentFileName = ""
+    __ini.currentFileName = _STR_EMPTY
 END SUB
 
 SUB Ini_Load (file$)
@@ -585,16 +585,16 @@ SUB Ini_Load (file$)
     'Error descriptions can be fetched with function IniINFO$
     __ini.code = 0
 
-    IF file$ <> "" AND __ini.currentFileName <> file$ THEN __ini.currentFileName = ""
+    IF LEN(file$) _ANDALSO __ini.currentFileName <> file$ THEN __ini.currentFileName = _STR_EMPTY
 
     IF __ini.forceReload AND LEN(__ini.currentFileName) > 0 THEN
         file$ = __ini.currentFileName
-        __ini.currentFileName = ""
+        __ini.currentFileName = _STR_EMPTY
     END IF
 
     'Passing an empty file$ is allowed if user already
     'passed a valid file in this session.
-    IF __ini.currentFileName = "" THEN
+    IF LEN(__ini.currentFileName) = 0 THEN
         'initialization
         IF _FILEEXISTS(file$) THEN
             __ini.currentFileName = file$
@@ -616,20 +616,20 @@ SUB Ini_Load (file$)
             GET #fileNum, 1, __ini.wholeFile
 
             'Check if this ini file uses CRLF or LF
-            IF INSTR(__ini.wholeFile, CHR$(13)) THEN __ini.LF = CHR$(13) + CHR$(10) ELSE __ini.LF = CHR$(10)
+            IF INSTR(__ini.wholeFile, _CHR_CR) THEN __ini.LF = _STR_CRLF ELSE __ini.LF = _CHR_LF
         ELSE
             IniFileNotFound:
             __ini.code = 1
 
             $IF WIN THEN
-                __ini.LF = CHR$(13) + CHR$(10)
+                __ini.LF = _STR_CRLF
             $ELSE
-                __ini.LF = CHR$(10)
+                __ini.LF = _CHR_LF
             $END IF
             EXIT SUB
         END IF
     ELSEIF NOT _FILEEXISTS(__ini.currentFileName) THEN
-        __ini.currentFileName = ""
+        __ini.currentFileName = _STR_EMPTY
         GOTO IniFileNotFound
     END IF
 END SUB
@@ -639,14 +639,14 @@ FUNCTION Ini_GetNextKey$
 
     STATIC lastDataBlock$, position AS _UNSIGNED LONG, tempLF$
 
-    IF __ini.currentFileName = "" THEN __ini.code = 18: EXIT FUNCTION
+    IF LEN(__ini.currentFileName) = 0 THEN __ini.code = 18: EXIT FUNCTION
 
     IF __ini.sectionData <> lastDataBlock$ THEN
         position = 0
         lastDataBlock$ = __ini.sectionData
 
         'data blocks must end with a line feed for parsing purposes
-        IF RIGHT$(__ini.sectionData, LEN(__ini.LF)) <> __ini.LF THEN tempLF$ = __ini.LF ELSE tempLF$ = ""
+        IF RIGHT$(__ini.sectionData, LEN(__ini.LF)) <> __ini.LF THEN tempLF$ = __ini.LF ELSE tempLF$ = _STR_EMPTY
     END IF
 
     DIM Equal AS _UNSIGNED LONG, tempKey$
@@ -657,9 +657,9 @@ FUNCTION Ini_GetNextKey$
 
     tempKey$ = _TRIM$(MID$(__ini.sectionData + tempLF$, position + 1, Equal - position - 1))
 
-    IF INSTR(tempKey$, CHR$(10)) > 0 THEN
-        position = position + INSTR(tempKey$, CHR$(10)) + 1
-        tempKey$ = MID$(tempKey$, INSTR(tempKey$, CHR$(10)) + 1)
+    IF INSTR(tempKey$, _CHR_LF) > 0 THEN
+        position = position + INSTR(tempKey$, _CHR_LF) + 1
+        tempKey$ = MID$(tempKey$, INSTR(tempKey$, _CHR_LF) + 1)
     END IF
 
     DO WHILE LEFT$(tempKey$, LEN(__ini.LF)) = __ini.LF
