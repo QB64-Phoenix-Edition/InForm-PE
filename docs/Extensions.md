@@ -10,4 +10,6 @@ InForm-PE uses various libraries, all of which are available for developers to i
 * [**INI-Manager**](./INI-Manager.md): A library providing functionality for reading and writing INI files.
 * [**Memory**](./Memory.md): A library providing routines for low-level memory operations.
 * [**Pathname**](./Pathname.md): A library providing routines for parsing filenames, handling directory separators, and sanitizing path strings.
-* [**Resource**](./Resource.md): A library the provides functions to load binary data that has been encoded into Base64 strings.
+* [**Resource**](./Resource.md): A library providing functions to load binary data that has been encoded into Base64 strings.
+* [**StringFile**](./StringFile.md): A library providing a way to treat a standard STRING variable as a binary file, allowing for file I/O-like operations directly in memory.
+* [**Time**](./Time.md): A library providing a high-resolution timer and a frequency measurement tool.
