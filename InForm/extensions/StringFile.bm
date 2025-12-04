@@ -49,19 +49,19 @@ END FUNCTION
 
 ''' @brief Gets the size of the file in bytes.
 ''' @return Size of the file in bytes.
-FUNCTION StringFile_GetSize~& (stringFile AS StringFile)
+FUNCTION StringFile_GetSize~%& (stringFile AS StringFile)
     StringFile_GetSize = LEN(stringFile.buffer)
 END FUNCTION
 
 ''' @brief Gets the current read/write cursor position.
 ''' @return Current cursor position.
-FUNCTION StringFile_GetPosition~& (stringFile AS StringFile)
+FUNCTION StringFile_GetPosition~%& (stringFile AS StringFile)
     StringFile_GetPosition = stringFile.cursor
 END FUNCTION
 
 ''' @brief Seeks to a position in the file.
 ''' @param position Position to seek to. Must be less than or equal to the file size.
-SUB StringFile_Seek (stringFile AS StringFile, position AS _UNSIGNED LONG)
+SUB StringFile_Seek (stringFile AS StringFile, position AS _UNSIGNED _OFFSET)
     IF position <= LEN(stringFile.buffer) THEN ' allow seeking to EOF position
         stringFile.cursor = position
     ELSE
@@ -73,8 +73,8 @@ END SUB
 ''' If the new size is larger than the current size, the file is expanded and the new bytes are filled with zeroes.
 ''' If the new size is smaller than the current size, the file is truncated and the cursor is repositioned to the EOF if it was beyond the new size.
 ''' @param newSize New size of the file in bytes.
-SUB StringFile_Resize (stringFile AS StringFile, newSize AS _UNSIGNED LONG)
-    DIM AS _UNSIGNED LONG curSize: curSize = LEN(stringFile.buffer)
+SUB StringFile_Resize (stringFile AS StringFile, newSize AS _UNSIGNED _OFFSET)
+    DIM AS _UNSIGNED _OFFSET curSize: curSize = LEN(stringFile.buffer)
 
     IF newSize > curSize THEN
         stringFile.buffer = stringFile.buffer + STRING$(newSize - curSize, _ASC_NUL)
@@ -87,7 +87,7 @@ END SUB
 ''' @brief Reads a string of a given size from the file.
 ''' @param size Number of bytes to read.
 ''' @return The string read from the file.
-FUNCTION StringFile_ReadString$ (stringFile AS StringFile, size AS _UNSIGNED LONG)
+FUNCTION StringFile_ReadString$ (stringFile AS StringFile, size AS _UNSIGNED _OFFSET)
     IF size > 0 THEN ' reading 0 bytes will simply do nothing
         IF stringFile.cursor < LEN(stringFile.buffer) THEN ' we'll allow partial string reads but check if we have anything to read at all
             DIM dst AS STRING: dst = MID$(stringFile.buffer, stringFile.cursor + 1, size)
@@ -104,10 +104,10 @@ END FUNCTION
 ''' @brief Writes a string to the file.
 ''' @param src The string to write.
 SUB StringFile_WriteString (stringFile AS StringFile, src AS STRING)
-    DIM srcSize AS _UNSIGNED LONG: srcSize = LEN(src)
+    DIM srcSize AS _UNSIGNED _OFFSET: srcSize = LEN(src)
 
     IF srcSize > 0 THEN ' writing 0 bytes will simply do nothing
-        DIM curSize AS _UNSIGNED LONG: curSize = LEN(stringFile.buffer)
+        DIM curSize AS _UNSIGNED _OFFSET: curSize = LEN(stringFile.buffer)
 
         ' Grow the buffer if needed
         IF stringFile.cursor + srcSize >= curSize THEN stringFile.buffer = stringFile.buffer + STRING$(stringFile.cursor + srcSize - curSize, _ASC_NUL)
@@ -128,11 +128,10 @@ FUNCTION StringFile_ReadByte~%% (stringFile AS StringFile)
     END IF
 END FUNCTION
 
-
 ''' @brief Writes a byte to the file.
 ''' @param src The byte to write.
 SUB StringFile_WriteByte (stringFile AS StringFile, src AS _UNSIGNED _BYTE)
-    DIM curSize AS _UNSIGNED LONG: curSize = LEN(stringFile.buffer)
+    DIM curSize AS _UNSIGNED _OFFSET: curSize = LEN(stringFile.buffer)
 
     ' Grow the buffer if needed
     IF stringFile.cursor + _SIZE_OF_BYTE >= curSize THEN stringFile.buffer = stringFile.buffer + STRING$(stringFile.cursor + _SIZE_OF_BYTE - curSize, _ASC_NUL)
@@ -152,11 +151,10 @@ FUNCTION StringFile_ReadInteger~% (stringFile AS StringFile)
     END IF
 END FUNCTION
 
-
 ''' @brief Writes an integer to the file.
 ''' @param src The integer to write.
 SUB StringFile_WriteInteger (stringFile AS StringFile, src AS _UNSIGNED INTEGER)
-    DIM curSize AS _UNSIGNED LONG: curSize = LEN(stringFile.buffer)
+    DIM curSize AS _UNSIGNED _OFFSET: curSize = LEN(stringFile.buffer)
 
     ' Grow the buffer if needed
     IF stringFile.cursor + _SIZE_OF_INTEGER >= curSize THEN stringFile.buffer = stringFile.buffer + STRING$(stringFile.cursor + _SIZE_OF_INTEGER - curSize, _ASC_NUL)
@@ -179,7 +177,7 @@ END FUNCTION
 ''' @brief Writes a long to the file.
 ''' @param src The long to write.
 SUB StringFile_WriteLong (stringFile AS StringFile, src AS _UNSIGNED LONG)
-    DIM curSize AS _UNSIGNED LONG: curSize = LEN(stringFile.buffer)
+    DIM curSize AS _UNSIGNED _OFFSET: curSize = LEN(stringFile.buffer)
 
     ' Grow the buffer if needed
     IF stringFile.cursor + _SIZE_OF_LONG >= curSize THEN stringFile.buffer = stringFile.buffer + STRING$(stringFile.cursor + _SIZE_OF_LONG - curSize, _ASC_NUL)
@@ -202,7 +200,7 @@ END FUNCTION
 ''' @brief Writes a single to the file.
 ''' @param src The single to write.
 SUB StringFile_WriteSingle (stringFile AS StringFile, src AS SINGLE)
-    DIM curSize AS _UNSIGNED LONG: curSize = LEN(stringFile.buffer)
+    DIM curSize AS _UNSIGNED _OFFSET: curSize = LEN(stringFile.buffer)
 
     ' Grow the buffer if needed
     IF stringFile.cursor + _SIZE_OF_SINGLE >= curSize THEN stringFile.buffer = stringFile.buffer + STRING$(stringFile.cursor + _SIZE_OF_SINGLE - curSize, _ASC_NUL)
@@ -225,7 +223,7 @@ END FUNCTION
 ''' @brief Writes an integer64 to the file.
 ''' @param src The integer64 to write.
 SUB StringFile_WriteInteger64 (stringFile AS StringFile, src AS _UNSIGNED _INTEGER64)
-    DIM curSize AS _UNSIGNED LONG: curSize = LEN(stringFile.buffer)
+    DIM curSize AS _UNSIGNED _OFFSET: curSize = LEN(stringFile.buffer)
 
     ' Grow the buffer if needed
     IF stringFile.cursor + _SIZE_OF_INTEGER64 >= curSize THEN stringFile.buffer = stringFile.buffer + STRING$(stringFile.cursor + _SIZE_OF_INTEGER64 - curSize, _ASC_NUL)
@@ -248,7 +246,7 @@ END FUNCTION
 ''' @brief Writes a double to the file.
 ''' @param src The double to write.
 SUB StringFile_WriteDouble (stringFile AS StringFile, src AS DOUBLE)
-    DIM curSize AS _UNSIGNED LONG: curSize = LEN(stringFile.buffer)
+    DIM curSize AS _UNSIGNED _OFFSET: curSize = LEN(stringFile.buffer)
 
     ' Grow the buffer if needed
     IF stringFile.cursor + _SIZE_OF_DOUBLE >= curSize THEN stringFile.buffer = stringFile.buffer + STRING$(stringFile.cursor + _SIZE_OF_DOUBLE - curSize, _ASC_NUL)

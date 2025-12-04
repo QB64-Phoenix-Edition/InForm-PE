@@ -12,5 +12,5 @@ $INCLUDEONCE
 ' Since it uses a STRING as a backing buffer, no explicit memory management (i.e. freeing) is required.
 TYPE StringFile
     buffer AS STRING
-    cursor AS _UNSIGNED LONG
+    cursor AS _UNSIGNED _OFFSET
 END TYPE
