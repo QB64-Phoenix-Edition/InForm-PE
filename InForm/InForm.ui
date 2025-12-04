@@ -329,28 +329,15 @@ END SUB
 'Internal procedures: ------------------------------------------------------------
 '---------------------------------------------------------------------------------
 FUNCTION __UI_GetProperMouseButton%% (Which%%)
-    $IF WIN THEN
-        IF GetSystemMetrics(__UI_SM_SWAPBUTTON) = 0 THEN
-            __UI_GetProperMouseButton%% = _MOUSEBUTTON(Which%%)
-        ELSE
-            IF Which%% = 1 THEN
-                __UI_GetProperMouseButton%% = _MOUSEBUTTON(2)
-            ELSEIF Which%% = 2 THEN
-                __UI_GetProperMouseButton%% = _MOUSEBUTTON(1)
-            END IF
+    IF __UI_MouseButtonsSwap THEN
+        IF Which%% = 1 THEN
+            __UI_GetProperMouseButton%% = _MOUSEBUTTON(2)
+        ELSEIF Which%% = 2 THEN
+            __UI_GetProperMouseButton%% = _MOUSEBUTTON(1)
         END IF
-        __UI_MouseButtonsSwap = False
-    $ELSE
-        IF __UI_MouseButtonsSwap THEN
-            IF Which%% = 1 THEN
-                __UI_GetProperMouseButton%% = _MOUSEBUTTON(2)
-            ELSEIF Which%% = 2 THEN
-                __UI_GetProperMouseButton%% = _MOUSEBUTTON(1)
-            END IF
-        ELSE
-            __UI_GetProperMouseButton%% = _MOUSEBUTTON(Which%%)
-        END IF
-    $END IF
+    ELSE
+        __UI_GetProperMouseButton%% = _MOUSEBUTTON(Which%%)
+    END IF
 END FUNCTION
 
 SUB __UI_ProcessInput

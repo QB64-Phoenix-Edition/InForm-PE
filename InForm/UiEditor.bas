@@ -2491,11 +2491,8 @@ SUB SaveSettings
     IF ShowFontList THEN value$ = "True" ELSE value$ = "False"
     Ini_WriteSetting "InForm/InForm.ini", "InForm Settings", "Show font list", value$
 
-    $IF WIN THEN
-    $ELSE
-        IF __UI_MouseButtonsSwap THEN value$ = "True" ELSE value$ = "False"
-        Ini_WriteSetting "InForm/InForm.ini", "InForm Settings", "Swap mouse buttons", value$
-    $END IF
+    IF __UI_MouseButtonsSwap THEN value$ = "True" ELSE value$ = "False"
+    Ini_WriteSetting "InForm/InForm.ini", "InForm Settings", "Swap mouse buttons", value$
 END SUB
 
 SUB __UI_BeforeInit
@@ -2671,12 +2668,9 @@ SUB __UI_OnLoad
         ShowFontList = True
     END IF
 
-    $IF WIN THEN
-    $ELSE
-        value$ = Ini_ReadSetting("InForm/InForm.ini", "InForm Settings", "Swap mouse buttons")
-        __UI_MouseButtonsSwap = (value$ = "True")
-        Control(OptionsMenuSwapButtons).Value = __UI_MouseButtonsSwap
-    $END IF
+    value$ = Ini_ReadSetting("InForm/InForm.ini", "InForm Settings", "Swap mouse buttons")
+    __UI_MouseButtonsSwap = (value$ = "True")
+    Control(OptionsMenuSwapButtons).Value = __UI_MouseButtonsSwap
 
     Control(ViewMenuPreviewDetach).Value = PreviewAttached
     Control(OptionsMenuAutoName).Value = AutoNameControls

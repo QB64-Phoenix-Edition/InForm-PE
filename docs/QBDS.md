@@ -4,13 +4,13 @@
 
 ## Libraries
 
-* [**Array**](./Array.md): A generic dynamic array supporting multiple data types and resizing.
-* [**HMap**](./HMap.md): A generic hash map library supporting multiple data types and resizing.
-* [**HMap64**](./HMap64.md): A hash map library optimized for 64-bit integer keys, supporting multiple data types and resizing.
-* [**HSet**](./HSet.md): A generic hash set library supporting multiple data types and resizing.
-* [**LList**](./LList.md): A generic doubly linked list library supporting multiple data types and resizing.
-* [**Queue**](./Queue.md): A generic queue library supporting multiple data types and resizing.
-* [**Stack**](./Stack.md): A generic stack library supporting multiple data types and resizing.
+* [**Array**](./Array.md): Dynamic array with resizing.
+* [**HMap**](./HMap.md): Generic hash map.
+* [**HMap64**](./HMap64.md): Hash map optimized for 64-bit keys.
+* [**HSet**](./HSet.md): Generic hash set.
+* [**LList**](./LList.md): Doubly linked list.
+* [**Queue**](./Queue.md): FIFO queue.
+* [**Stack**](./Stack.md): LIFO stack.
 
 ## QBDS.bi + QBDS.bm
 

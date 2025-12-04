@@ -3827,9 +3827,7 @@ SUB READ_KEYWORDS
     DATA _GLUPERSPECTIVE,_HARDWARE,_HARDWARE1,_KEEPBACKGROUND,_NONE,_OFF,_ONLY,_ONLYBACKGROUND
     DATA _ONTOP,_SEAMLESS,_SMOOTH,_SMOOTHSHRUNK,_SMOOTHSTRETCHED,_SOFTWARE,_SQUAREPIXELS
     DATA _STRETCH
-    DATA uprint_extra,uprint,uprintwidth,uheight&,uheight,falcon_uspacing&
-    DATA falcon_uspacing,uascension&,uascension,GetSystemMetrics&
-    DATA GetSystemMetrics,uspacing&,uspacing,SetFrameRate,SetFocus
+    DATA uspacing&,uspacing,SetFrameRate,SetFocus
     DATA AutoSizeLabel,Darken~&,Darken,IsNumber%%,IsNumber,RawText$,RawText
     DATA SetFont&,SetFont,SetCaption,BeginDraw,EndDraw,LoadImage
     DATA SetRadioButtonValue,Replace$,Replace,AddItem,RemoveItem,ResetList
