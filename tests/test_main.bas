@@ -9,6 +9,7 @@ $LET TEST_CONSOLE_ONLY = TRUE
 '$INCLUDE:'../InForm/extensions/HMap.bi'
 '$INCLUDE:'../InForm/extensions/HMap64.bi'
 '$INCLUDE:'../InForm/extensions/HSet.bi'
+'$INCLUDE:'../InForm/extensions/Ini.bi'
 '$INCLUDE:'../InForm/extensions/LList.bi'
 '$INCLUDE:'../InForm/extensions/Pathname.bi'
 '$INCLUDE:'../InForm/extensions/Queue.bi'
@@ -33,6 +34,7 @@ SUB __UI_BeforeInit
     Test_Queue
     Test_Stack
     Test_StringFile
+    Test_INI_Manager
     Test_InFormUIUtils
     Test_InFormUIHelpers
     Test_InFormUIUnicodeUtils
@@ -1865,6 +1867,65 @@ SUB Test_InFormUIUnicodeUtils
     TEST_CASE_END
 END SUB
 
+SUB Test_INI_Manager
+    TEST_CASE_BEGIN "INI-Manager"
+
+    DIM i AS LONG: i = FREEFILE
+    OPEN "test.ini" FOR OUTPUT AS #i
+    PRINT #i, "[Section1]"
+    PRINT #i, "Key1=Value1"
+    PRINT #i, "Key2=Value2"
+    PRINT #i,
+    PRINT #i, "[Section2]"
+    PRINT #i, "Key3=Value3";
+    CLOSE #i
+
+    Ini_WriteSetting "test.ini", "Section1", "Key1", "NewValue1"
+    TEST_CHECK Ini_GetCode = INI_INFO_KEY_UPDATED, "Ini_WriteSetting should update an existing key"
+    TEST_CHECK Ini_ReadSetting("", "Section1", "Key1") = "NewValue1", "Ini_ReadSetting should return the new value"
+
+    Ini_WriteSetting "", "Section1", "NewKey", "NewValue"
+    TEST_CHECK Ini_GetCode = INI_INFO_KEY_CREATED_EXISTING_SECTION, "Ini_WriteSetting should create a new key in an existing section"
+    TEST_CHECK Ini_ReadSetting("", "Section1", "NewKey") = "NewValue", "Ini_ReadSetting should return the new value"
+
+    Ini_WriteSetting "", "NewSection", "NewKey", "NewValue"
+    TEST_CHECK Ini_GetCode = INI_INFO_NEW_SECTION_KEY_CREATED, "Ini_WriteSetting should create a new section and key"
+    TEST_CHECK Ini_ReadSetting("", "NewSection", "NewKey") = "NewValue", "Ini_ReadSetting should return the new value"
+
+    TEST_CHECK Ini_ReadSetting("", "Section1", "Key2") = "Value2", "Ini_ReadSetting should return the correct value"
+    TEST_CHECK Ini_GetCode = INI_INFO_SUCCESS, "Ini_GetCode should be success"
+    TEST_CHECK Ini_ReadSetting("", "Section2", "Key3") = "Value3", "Ini_ReadSetting should return the correct value"
+
+    DIM value AS STRING
+    Ini_DeleteKey "", "Section1", "NewKey"
+    TEST_CHECK Ini_GetCode = INI_INFO_KEY_DELETED, "Ini_DeleteKey should delete a key"
+    value = Ini_ReadSetting("", "Section1", "NewKey")
+    TEST_CHECK Ini_GetCode = INI_INFO_KEY_NOT_FOUND, "Ini_ReadSetting should not find the deleted key"
+
+    Ini_DeleteSection "", "NewSection"
+    TEST_CHECK Ini_GetCode = INI_INFO_SECTION_DELETED, "Ini_DeleteSection should delete a section"
+    value = Ini_ReadSetting("", "NewSection", "NewKey")
+    TEST_CHECK Ini_GetCode = INI_INFO_SECTION_NOT_FOUND, "Ini_ReadSetting should not find the deleted section"
+
+    Ini_WriteSetting "", "Section2", "A_Key", "A_Value"
+    Ini_SortSection "", "Section2"
+    TEST_CHECK Ini_GetCode = INI_INFO_SECTION_SORTED, "Ini_SortSection should sort the section"
+    value = Ini_ReadSetting("", "Section2", "")
+    TEST_CHECK Ini_GetLastKey = "A_Key", "First key in sorted section should be A_Key"
+    value = Ini_ReadSetting("", "Section2", "")
+    TEST_CHECK Ini_GetLastKey = "Key3", "Second key in sorted section should be Key3"
+
+    Ini_MoveKey "", "Section2", "A_Key", "Section1"
+    TEST_CHECK Ini_GetCode = INI_INFO_KEY_MOVED, "Ini_MoveKey should move the key"
+    value = Ini_ReadSetting("", "Section2", "A_Key")
+    TEST_CHECK Ini_GetCode = INI_INFO_KEY_NOT_FOUND, "Ini_ReadSetting should not find the moved key in the old section"
+    TEST_CHECK Ini_ReadSetting("", "Section1", "A_Key") = "A_Value", "Ini_ReadSetting should find the moved key in the new section"
+
+    KILL "test.ini"
+
+    TEST_CASE_END
+END SUB
+
 SUB __UI_LoadForm: END SUB
 SUB __UI_AssignIDs: END SUB
 SUB __UI_OnLoad: END SUB
@@ -1889,6 +1950,7 @@ SUB __UI_Click (id AS LONG): id = id: END SUB
 '$INCLUDE:'../InForm/extensions/Queue.bm'
 '$INCLUDE:'../InForm/extensions/Pathname.bm'
 '$INCLUDE:'../InForm/extensions/LList.bm'
+'$INCLUDE:'../InForm/extensions/Ini.bm'
 '$INCLUDE:'../InForm/extensions/HSet.bm'
 '$INCLUDE:'../InForm/extensions/HMap64.bm'
 '$INCLUDE:'../InForm/extensions/HMap.bm'
