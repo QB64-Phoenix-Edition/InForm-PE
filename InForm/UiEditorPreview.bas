@@ -3633,8 +3633,8 @@ FUNCTION Alpha%% (ch AS _UNSIGNED _BYTE)
     Alpha = ch = _ASC_UNDERSCORE _ORELSE Asc_IsAlphabetic(ch)
 END FUNCTION
 
-FUNCTION AlphaNumeric%% (ch AS _UNSIGNED _BYTE)
-    AlphaNumeric = ch = _ASC_UNDERSCORE _ORELSE Asc_IsAlphaNumeric(ch)
+FUNCTION Alphanumeric%% (ch AS _UNSIGNED _BYTE)
+    Alphanumeric = ch = _ASC_UNDERSCORE _ORELSE Asc_IsAlphanumeric(ch)
 END FUNCTION
 
 FUNCTION AdaptName$ (tName$, TargetID AS LONG)
@@ -3659,7 +3659,7 @@ FUNCTION AdaptName$ (tName$, TargetID AS LONG)
 
         'Other valid characters must be alphanumeric:
         FOR i = 1 TO LEN(Name$)
-            IF AlphaNumeric(ASC(Name$, i)) THEN
+            IF Alphanumeric(ASC(Name$, i)) THEN
                 IF NextIsCapital THEN
                     NewName$ = NewName$ + UCASE$(MID$(Name$, i, 1))
                     IF ASC(RIGHT$(NewName$, 1)) >= 65 AND ASC(RIGHT$(NewName$, 1)) <= 90 THEN NextIsCapital = False

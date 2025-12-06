@@ -10,22 +10,22 @@ $INCLUDEONCE
 ''' @brief Converts a character to lowercase.
 ''' @param c The ASCII code of the character to convert.
 ''' @return The ASCII code of the lowercase character.
-FUNCTION Asc_ToLowerCase~%% (c AS _UNSIGNED _BYTE)
-    Asc_ToLowerCase = _IIF(c >= __ASC_UPPER_A _ANDALSO c <= __ASC_UPPER_Z, c + 32, c)
+FUNCTION Asc_ToLowercase~%% (c AS _UNSIGNED _BYTE)
+    Asc_ToLowercase = _IIF(c >= __ASC_UPPER_A _ANDALSO c <= __ASC_UPPER_Z, c + 32, c)
 END FUNCTION
 
 ''' @brief Converts a character to uppercase.
 ''' @param c The ASCII code of the character to convert.
 ''' @return The ASCII code of the uppercase character.
-FUNCTION Asc_ToUpperCase~%% (c AS _UNSIGNED _BYTE)
-    Asc_ToUpperCase = _IIF(c >= __ASC_LOWER_A _ANDALSO c <= __ASC_LOWER_Z, c - 32, c)
+FUNCTION Asc_ToUppercase~%% (c AS _UNSIGNED _BYTE)
+    Asc_ToUppercase = _IIF(c >= __ASC_LOWER_A _ANDALSO c <= __ASC_LOWER_Z, c - 32, c)
 END FUNCTION
 
 ''' @brief Checks if a character is alphanumeric.
 ''' @param c The ASCII code of the character to check.
 ''' @return _TRUE if the character is alphanumeric, _FALSE otherwise.
-FUNCTION Asc_IsAlphaNumeric%% (c AS _UNSIGNED _BYTE)
-    Asc_IsAlphaNumeric = (c >= __ASC_0 _ANDALSO c <= __ASC_9) _ORELSE (c >= __ASC_UPPER_A _ANDALSO c <= __ASC_UPPER_Z) _ORELSE (c >= __ASC_LOWER_A _ANDALSO c <= __ASC_LOWER_Z)
+FUNCTION Asc_IsAlphanumeric%% (c AS _UNSIGNED _BYTE)
+    Asc_IsAlphanumeric = (c >= __ASC_0 _ANDALSO c <= __ASC_9) _ORELSE (c >= __ASC_UPPER_A _ANDALSO c <= __ASC_UPPER_Z) _ORELSE (c >= __ASC_LOWER_A _ANDALSO c <= __ASC_LOWER_Z)
 END FUNCTION
 
 ''' @brief Checks if a character is alphabetic.
@@ -38,15 +38,15 @@ END FUNCTION
 ''' @brief Checks if a character is lowercase.
 ''' @param c The ASCII code of the character to check.
 ''' @return _TRUE if the character is lowercase, _FALSE otherwise.
-FUNCTION Asc_IsLowerCase%% (c AS _UNSIGNED _BYTE)
-    Asc_IsLowerCase = c >= __ASC_LOWER_A _ANDALSO c <= __ASC_LOWER_Z
+FUNCTION Asc_IsLowercase%% (c AS _UNSIGNED _BYTE)
+    Asc_IsLowercase = c >= __ASC_LOWER_A _ANDALSO c <= __ASC_LOWER_Z
 END FUNCTION
 
 ''' @brief Checks if a character is uppercase.
 ''' @param c The ASCII code of the character to check.
 ''' @return _TRUE if the character is uppercase, _FALSE otherwise.
-FUNCTION Asc_IsUpperCase%% (c AS _UNSIGNED _BYTE)
-    Asc_IsUpperCase = c >= __ASC_UPPER_A _ANDALSO c <= __ASC_UPPER_Z
+FUNCTION Asc_IsUppercase%% (c AS _UNSIGNED _BYTE)
+    Asc_IsUppercase = c >= __ASC_UPPER_A _ANDALSO c <= __ASC_UPPER_Z
 END FUNCTION
 
 ''' @brief Checks if a character is a decimal digit.
