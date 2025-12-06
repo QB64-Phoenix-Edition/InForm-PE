@@ -14,6 +14,7 @@ $LET TEST_CONSOLE_ONLY = TRUE
 '$INCLUDE:'../InForm/extensions/Pathname.bi'
 '$INCLUDE:'../InForm/extensions/Queue.bi'
 '$INCLUDE:'../InForm/extensions/Stack.bi'
+'$INCLUDE:'../InForm/extensions/String.bi'
 '$INCLUDE:'../InForm/extensions/StringFile.bi'
 
 '$INCLUDE:'../InForm/extensions/CatchError.bi'
@@ -33,6 +34,7 @@ SUB __UI_BeforeInit
     Test_Pathname
     Test_Queue
     Test_Stack
+    Test_String
     Test_StringFile
     Test_INI_Manager
     Test_InFormUIUtils
@@ -167,6 +169,24 @@ SUB Test_Algo
     TEST_CHECK sortedRangeArr(1) = "b", "Array should remain unchanged"
     TEST_CHECK sortedRangeArr(2) = "c", "Array should remain unchanged"
     TEST_CHECK sortedRangeArr(3) = "d", "Array should remain unchanged"
+    TEST_CASE_END
+
+    CONST ALGO_PERF_COUNT = 1000000
+    DIM numArr(0 TO ALGO_PERF_COUNT - 1) AS STRING
+    DIM i AS LONG
+
+    FOR i = 0 TO ALGO_PERF_COUNT - 1
+        numArr(i) = RIGHT$("0000000" + _TOSTR$(ALGO_PERF_COUNT - i), 7)
+    NEXT i
+
+    TEST_CASE_BEGIN "Algo: Performance Sort (" + _TOSTR$(ALGO_PERF_COUNT) + " numbers)"
+    TEST_CHECK Algo_SortStringArray(numArr()), "Algo_SortStringArray should return TRUE for a reverse-sorted array"
+    TEST_CASE_END
+
+    TEST_CASE_BEGIN "Algo: Performance Sort Verification (" + _TOSTR$(ALGO_PERF_COUNT) + " numbers)"
+    FOR i = 0 TO ALGO_PERF_COUNT - 1
+        TEST_CHECK VAL(numArr(i)) = i + 1, "Sorted array element " + _TOSTR$(i) + " should be '" + _TOSTR$(i + 1) + "'"
+    NEXT i
     TEST_CASE_END
 END SUB
 
@@ -1428,6 +1448,93 @@ SUB Test_Stack
     Stack_Free s()
 END SUB
 
+SUB Test_String
+    TEST_CASE_BEGIN "String: Case Conversion"
+
+    TEST_CHECK Asc_ToLowercase(__ASC_UPPER_A) = __ASC_LOWER_A, "Asc_ToLowercase('A') should be 'a'"
+    TEST_CHECK Asc_ToLowercase(__ASC_LOWER_A) = __ASC_LOWER_A, "Asc_ToLowercase('a') should be 'a'"
+    TEST_CHECK Asc_ToLowercase(__ASC_0) = __ASC_0, "Asc_ToLowercase('0') should be '0'"
+
+    TEST_CHECK Asc_ToUppercase(__ASC_LOWER_B) = __ASC_UPPER_B, "Asc_ToUppercase('b') should be 'B'"
+    TEST_CHECK Asc_ToUppercase(__ASC_UPPER_B) = __ASC_UPPER_B, "Asc_ToUppercase('B') should be 'B'"
+    TEST_CHECK Asc_ToUppercase(__ASC_1) = __ASC_1, "Asc_ToUppercase('1') should be '1'"
+
+    TEST_CASE_END
+
+    TEST_CASE_BEGIN "String: Character Checks"
+
+    TEST_CHECK Asc_IsAlphanumeric(__ASC_UPPER_C), "Asc_IsAlphanumeric('C')"
+    TEST_CHECK Asc_IsAlphanumeric(__ASC_LOWER_D), "Asc_IsAlphanumeric('d')"
+    TEST_CHECK Asc_IsAlphanumeric(__ASC_2), "Asc_IsAlphanumeric('2')"
+    TEST_CHECK_FALSE Asc_IsAlphanumeric(ASC("!")), "NOT Asc_IsAlphanumeric('!')"
+
+    TEST_CHECK Asc_IsAlphabetic(__ASC_UPPER_E), "Asc_IsAlphabetic('E')"
+    TEST_CHECK Asc_IsAlphabetic(__ASC_LOWER_F), "Asc_IsAlphabetic('f')"
+    TEST_CHECK_FALSE Asc_IsAlphabetic(__ASC_3), "NOT Asc_IsAlphabetic('3')"
+
+    TEST_CHECK Asc_IsLowercase(__ASC_LOWER_G), "Asc_IsLowercase('g')"
+    TEST_CHECK_FALSE Asc_IsLowercase(__ASC_UPPER_H), "NOT Asc_IsLowercase('H')"
+    TEST_CHECK_FALSE Asc_IsLowercase(__ASC_4), "NOT Asc_IsLowercase('4')"
+
+    TEST_CHECK Asc_IsUppercase(__ASC_UPPER_I), "Asc_IsUppercase('I')"
+    TEST_CHECK_FALSE Asc_IsUppercase(__ASC_LOWER_J), "NOT Asc_IsUppercase('j')"
+    TEST_CHECK_FALSE Asc_IsUppercase(__ASC_5), "NOT Asc_IsUppercase('5')"
+
+    TEST_CHECK Asc_IsDecimalDigit(__ASC_6), "Asc_IsDecimalDigit('6')"
+    TEST_CHECK_FALSE Asc_IsDecimalDigit(__ASC_UPPER_A), "NOT Asc_IsDecimalDigit('A')"
+
+    TEST_CHECK Asc_IsHexadecimalDigit(__ASC_7), "Asc_IsHexadecimalDigit('7')"
+    TEST_CHECK Asc_IsHexadecimalDigit(__ASC_UPPER_F), "Asc_IsHexadecimalDigit('F')"
+    TEST_CHECK Asc_IsHexadecimalDigit(__ASC_LOWER_A), "Asc_IsHexadecimalDigit('a')"
+    TEST_CHECK_FALSE Asc_IsHexadecimalDigit(__ASC_UPPER_G), "NOT Asc_IsHexadecimalDigit('G')"
+
+    TEST_CHECK Asc_IsOctalDigit(__ASC_7), "Asc_IsOctalDigit('7')"
+    TEST_CHECK_FALSE Asc_IsOctalDigit(__ASC_8), "NOT Asc_IsOctalDigit('8')"
+
+    TEST_CHECK Asc_IsBinaryDigit(__ASC_0), "Asc_IsBinaryDigit('0')"
+    TEST_CHECK Asc_IsBinaryDigit(__ASC_1), "Asc_IsBinaryDigit('1')"
+    TEST_CHECK_FALSE Asc_IsBinaryDigit(__ASC_2), "NOT Asc_IsBinaryDigit('2')"
+
+    TEST_CHECK Asc_IsControlCharacter(ASC(_CHR_NUL)), "Asc_IsControlCharacter(NUL)"
+    TEST_CHECK Asc_IsControlCharacter(ASC(_CHR_DEL)), "Asc_IsControlCharacter(DEL)"
+    TEST_CHECK_FALSE Asc_IsControlCharacter(ASC(" ")), "NOT Asc_IsControlCharacter(' ')"
+
+    TEST_CHECK Asc_IsWhitespace(ASC(" ")), "Asc_IsWhitespace(' ')"
+    TEST_CHECK Asc_IsWhitespace(ASC(_CHR_HT)), "Asc_IsWhitespace(HT)"
+    TEST_CHECK Asc_IsWhitespace(ASC(_CHR_LF)), "Asc_IsWhitespace(LF)"
+    TEST_CHECK_FALSE Asc_IsWhitespace(ASC("a")), "NOT Asc_IsWhitespace('a')"
+
+    TEST_CHECK Asc_IsBlank(ASC(" ")), "Asc_IsBlank(' ')"
+    TEST_CHECK Asc_IsBlank(ASC(_CHR_HT)), "Asc_IsBlank(HT)"
+    TEST_CHECK_FALSE Asc_IsBlank(ASC(_CHR_LF)), "NOT Asc_IsBlank(LF)"
+
+    TEST_CHECK Asc_IsPunctuation(ASC("!")), "Asc_IsPunctuation('!')"
+    TEST_CHECK Asc_IsPunctuation(ASC(".")), "Asc_IsPunctuation('.')"
+    TEST_CHECK Asc_IsPunctuation(ASC("?")), "Asc_IsPunctuation('?')"
+    TEST_CHECK_FALSE Asc_IsPunctuation(ASC("a")), "NOT Asc_IsPunctuation('a')"
+    TEST_CHECK_FALSE Asc_IsPunctuation(ASC("1")), "NOT Asc_IsPunctuation('1')"
+
+    TEST_CASE_END
+
+    TEST_CASE_BEGIN "String: C-String Conversion"
+
+    TEST_CHECK String_ToBStr("Hello" + _CHR_NUL + "World") = "Hello", "String_ToBStr should truncate at NUL"
+    TEST_CHECK String_ToBStr("NoNulHere") = "NoNulHere", "String_ToBStr should handle strings without NUL"
+    TEST_CHECK String_ToCStr("Hello") = "Hello" + _CHR_NUL, "String_ToCStr should append NUL"
+
+    TEST_CASE_END
+
+    TEST_CASE_BEGIN "String: Formatting"
+
+    TEST_CHECK String_FormatString("s='%s'", "test") = "s='test'", "String_FormatString"
+    TEST_CHECK String_FormatLong("d=%d", 123) = "d=123", "String_FormatLong"
+    TEST_CHECK String_FormatInteger64("i64=%lld", -123456789012345~&&) = "i64=-123456789012345", "String_FormatInteger64"
+    TEST_CHECK String_FormatSingle("f=%.2f", 3.14159) = "f=3.14", "String_FormatSingle"
+    TEST_CHECK String_FormatDouble("d=%.5f", 2.718281828) = "d=2.71828", "String_FormatDouble"
+
+    TEST_CASE_END
+END SUB
+
 SUB Test_Pathname
     TEST_CASE_BEGIN "Pathname"
 
@@ -1946,6 +2053,7 @@ SUB __UI_Click (id AS LONG): id = id: END SUB
 '$INCLUDE:'../InForm/InForm.ui'
 
 '$INCLUDE:'../InForm/extensions/StringFile.bm'
+'$INCLUDE:'../InForm/extensions/String.bm'
 '$INCLUDE:'../InForm/extensions/Stack.bm'
 '$INCLUDE:'../InForm/extensions/Queue.bm'
 '$INCLUDE:'../InForm/extensions/Pathname.bm'
