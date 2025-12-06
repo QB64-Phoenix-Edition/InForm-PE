@@ -8756,3 +8756,4 @@ $END IF
 
 '$INCLUDE:'xp.uitheme'
 '$INCLUDE:'extensions/HMap64.bm'
+'$INCLUDE:'extensions/String.bm'

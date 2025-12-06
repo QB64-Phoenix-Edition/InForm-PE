@@ -63,10 +63,6 @@ CONST ToEditor = 3
 CONST ToUndoBuffer = 4
 CONST FromEditor = 5
 
-DECLARE LIBRARY
-    FUNCTION Numeric& ALIAS isdigit (BYVAL ch AS LONG)
-END DECLARE
-
 $IF WIN THEN
     DECLARE DYNAMIC LIBRARY "kernel32"
         FUNCTION OpenProcess& (BYVAL dwDesiredAccess AS LONG, BYVAL bInheritHandle AS LONG, BYVAL dwProcessId AS LONG)
@@ -3634,19 +3630,11 @@ SUB SendSignal (Value AS INTEGER)
 END SUB
 
 FUNCTION Alpha%% (ch AS _UNSIGNED _BYTE)
-    DECLARE LIBRARY
-        FUNCTION __Alpha& ALIAS isalpha (BYVAL ch AS LONG)
-    END DECLARE
-
-    Alpha = __Alpha(ch) <> 0 OR ch = 95
+    Alpha = ch = _ASC_UNDERSCORE _ORELSE Asc_IsAlphabetic(ch)
 END FUNCTION
 
 FUNCTION AlphaNumeric%% (ch AS _UNSIGNED _BYTE)
-    DECLARE LIBRARY
-        FUNCTION __AlphaNumeric& ALIAS isalnum (BYVAL ch AS LONG)
-    END DECLARE
-
-    AlphaNumeric = __AlphaNumeric(ch) <> 0 OR ch = 95
+    AlphaNumeric = ch = _ASC_UNDERSCORE _ORELSE Asc_IsAlphaNumeric(ch)
 END FUNCTION
 
 FUNCTION AdaptName$ (tName$, TargetID AS LONG)
