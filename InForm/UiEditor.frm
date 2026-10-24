@@ -189,8 +189,11 @@ SUB __UI_LoadForm
     Control(__UI_NewID).BulletStyle = __UI_Bullet
 
     __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "ViewMenuThemeFile", 160, 18, 0, 140, __UI_GetID("ViewMenu"))
-    SetCaption __UI_NewID, "Theme from &file..."
+    SetCaption __UI_NewID, "Theme from &file...-"
     Control(__UI_NewID).BulletStyle = __UI_Bullet
+
+    __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "ViewMenuThemeEdit", 160, 18, 0, 158, __UI_GetID("ViewMenu"))
+    SetCaption __UI_NewID, "&Edit themes..."
 
     __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "InsertMenuMenuBar", 96, 18, 0, 4, __UI_GetID("InsertMenu"))
     SetCaption __UI_NewID, "Menu &Bar"
@@ -827,6 +830,7 @@ SUB __UI_AssignIDs
     ViewMenuThemeLight = __UI_GetID("ViewMenuThemeLight")
     ViewMenuThemeDark = __UI_GetID("ViewMenuThemeDark")
     ViewMenuThemeFile = __UI_GetID("ViewMenuThemeFile")
+    ViewMenuThemeEdit = __UI_GetID("ViewMenuThemeEdit")
     InsertMenuMenuBar = __UI_GetID("InsertMenuMenuBar")
     InsertMenuContextMenu = __UI_GetID("InsertMenuContextMenu")
     InsertMenuMenuItem = __UI_GetID("InsertMenuMenuItem")

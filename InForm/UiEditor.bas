@@ -64,6 +64,7 @@ DIM SHARED ViewMenuShowPositionAndSize AS LONG
 DIM SHARED ViewMenuShowInvisibleControls AS LONG
 DIM SHARED ViewMenuPreview AS LONG, ViewMenuLoadedFonts AS LONG
 DIM SHARED ViewMenuThemeXP AS LONG, ViewMenuThemeLight AS LONG, ViewMenuThemeDark AS LONG, ViewMenuThemeFile AS LONG
+DIM SHARED ViewMenuThemeEdit AS LONG
 DIM SHARED PreviewTheme AS STRING ' theme of the form being edited ("" = default XP)
 
 DIM SHARED InsertMenuMenuBar AS LONG, InsertMenuContextMenu AS LONG
@@ -765,6 +766,8 @@ SUB __UI_Click (id AS LONG)
             SetPreviewTheme "light"
         CASE ViewMenuThemeDark
             SetPreviewTheme "dark"
+        CASE ViewMenuThemeEdit
+            OpenThemeEditor
         CASE ViewMenuThemeFile
             DIM ThemeFile$
             ThemeFile$ = _OPENFILEDIALOG$(UiEditorTitle$ + ": Open theme", CurrentPath$, "*.ini|*.INI", "InForm theme files")
@@ -4499,4 +4502,27 @@ SUB UpdateThemeMenu
     Control(ViewMenuThemeLight).Value = (t = "light")
     Control(ViewMenuThemeDark).Value = (t = "dark")
     Control(ViewMenuThemeFile).Value = NOT (t = "" OR t = "xp" OR t = "light" OR t = "dark")
+END SUB
+
+''' @brief Opens the Theme Editor, with the form's theme file when it uses one.
+SUB OpenThemeEditor
+    DIM exe AS STRING, args AS STRING, t AS STRING
+
+    $IF WIN THEN
+        exe = "ThemeEditor.exe"
+    $ELSE
+        exe = "./ThemeEditor"
+    $END IF
+
+    IF NOT _FILEEXISTS(exe) THEN
+        MessageBox "The Theme Editor was not found. Build it with the setup script for your OS (it is built together with the UiEditor).", UiEditorTitle$, MsgBox_OkOnly + MsgBox_Exclamation
+        EXIT SUB
+    END IF
+
+    t = LCASE$(PreviewTheme)
+    IF LEN(PreviewTheme) > 0 AND t <> "xp" AND t <> "light" AND t <> "dark" THEN
+        IF _FILEEXISTS(PreviewTheme) THEN args = " " + CHR$(34) + PreviewTheme + CHR$(34)
+    END IF
+
+    SHELL _DONTWAIT exe + args
 END SUB
