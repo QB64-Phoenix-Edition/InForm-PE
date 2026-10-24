@@ -6843,10 +6843,12 @@ SUB __UI_DrawButton (This AS __UI_ControlTYPE, ControlState AS _BYTE)
 
         'Back surface
         IF __UI_Theme.Style = __UI_ThemeStyle_Flat THEN
-            DIM FlatFace AS _UNSIGNED LONG
+            DIM FlatFace AS _UNSIGNED LONG, FlatPrimary AS _BYTE
             FlatFace = __UI_ThemeColor(__UI_ThemeColor_ButtonFace)
             IF This.BackColor <> __UI_DefaultColor(__UI_Type_Button, 2) THEN FlatFace = This.BackColor
-            __UI_FlatButtonSurface 0, 0, This.Width, This.Height, TempControlState, FlatFace, This.BorderColor
+            'The default button is drawn with the accent color, unless it has custom colors
+            FlatPrimary = (This.ID = __UI_DefaultButtonID) AND (FlatFace = __UI_ThemeColor(__UI_ThemeColor_ButtonFace)) AND (This.ForeColor = __UI_DefaultColor(__UI_Type_Button, 1)) AND NOT This.Disabled
+            __UI_FlatButtonSurface 0, 0, This.Width, This.Height, TempControlState, FlatFace, This.BorderColor, FlatPrimary
         ELSE
             _PUTIMAGE (0, 3)-(This.Width - 1, This.Height - 4), ControlImage, , (3, TempControlState * ButtonHeight - ButtonHeight + 3)-STEP(11, ButtonHeight - 7)
         END IF
@@ -6889,7 +6891,9 @@ SUB __UI_DrawButton (This AS __UI_ControlTYPE, ControlState AS _BYTE)
         END IF
 
         'Caption:
-        IF NOT This.Disabled THEN
+        IF __UI_Theme.Style = __UI_ThemeStyle_Flat AND FlatPrimary THEN
+            COLOR __UI_ThemeColor(__UI_ThemeColor_AccentText)
+        ELSEIF NOT This.Disabled THEN
             COLOR This.ForeColor
         ELSE
             COLOR __UI_DisabledColor
@@ -6903,7 +6907,11 @@ SUB __UI_DrawButton (This AS __UI_ControlTYPE, ControlState AS _BYTE)
 
         'Focus outline:
         IF __UI_Focus = This.ID AND __UI_KeyboardFocus THEN
-            LINE (2, 2)-STEP(This.Width - 5, This.Height - 5), __UI_ThemeColor(__UI_ThemeColor_FocusRing), B , 21845
+            IF __UI_Theme.Style = __UI_ThemeStyle_Flat THEN
+                __UI_FlatFocusRing 0, 0, This.Width, This.Height, __UI_Theme.CornerRadius
+            ELSE
+                LINE (2, 2)-STEP(This.Width - 5, This.Height - 5), __UI_ThemeColor(__UI_ThemeColor_FocusRing), B , 21845
+            END IF
         END IF
 
         __UI_MakeHardwareImageFromCanvas This
@@ -7157,7 +7165,11 @@ SUB __UI_DrawToggleSwitch (This AS __UI_ControlTYPE, ControlState AS _BYTE)
 
         'Focus outline
         IF __UI_Focus = This.ID AND __UI_KeyboardFocus THEN
-            LINE (1, 1)-STEP(This.Width - 2, This.Height - 2), __UI_ThemeColor(__UI_ThemeColor_FocusRing), B , 21845
+            IF __UI_Theme.Style = __UI_ThemeStyle_Flat THEN
+                __UI_FlatFocusRing 0, 0, This.Width, This.Height, This.Height / 2
+            ELSE
+                LINE (1, 1)-STEP(This.Width - 2, This.Height - 2), __UI_ThemeColor(__UI_ThemeColor_FocusRing), B , 21845
+            END IF
         END IF
         '------
 
@@ -7239,7 +7251,11 @@ SUB __UI_DrawRadioButton (This AS __UI_ControlTYPE, ControlState AS _BYTE)
 
         'Focus outline
         IF __UI_Focus = This.ID AND __UI_KeyboardFocus THEN
-            LINE (CaptionIndent - 1, 0)-STEP(This.Width - CaptionIndent - 1, This.Height - 1), __UI_ThemeColor(__UI_ThemeColor_FocusRing), B , 21845
+            IF __UI_Theme.Style = __UI_ThemeStyle_Flat THEN
+                __UI_FlatFocusRing CaptionIndent - 4, 0, This.Width - CaptionIndent + 4, This.Height, 3
+            ELSE
+                LINE (CaptionIndent - 1, 0)-STEP(This.Width - CaptionIndent - 1, This.Height - 1), __UI_ThemeColor(__UI_ThemeColor_FocusRing), B , 21845
+            END IF
         END IF
 
         '------
@@ -7322,7 +7338,11 @@ SUB __UI_DrawCheckBox (This AS __UI_ControlTYPE, ControlState AS _BYTE)
 
         'Focus outline
         IF __UI_Focus = This.ID AND __UI_KeyboardFocus THEN
-            LINE (CaptionIndent - 1, 0)-STEP(This.Width - CaptionIndent - 1, This.Height - 1), __UI_ThemeColor(__UI_ThemeColor_FocusRing), B , 21845
+            IF __UI_Theme.Style = __UI_ThemeStyle_Flat THEN
+                __UI_FlatFocusRing CaptionIndent - 4, 0, This.Width - CaptionIndent + 4, This.Height, 3
+            ELSE
+                LINE (CaptionIndent - 1, 0)-STEP(This.Width - CaptionIndent - 1, This.Height - 1), __UI_ThemeColor(__UI_ThemeColor_FocusRing), B , 21845
+            END IF
         END IF
         '------
 
@@ -7398,63 +7418,88 @@ SUB __UI_DrawProgressBar (This AS __UI_ControlTYPE, ControlState AS _BYTE)
             END IF
 
         END IF
-        IF This.ShowPercentage THEN
-            DIM ProgressString$
-            ProgressString$ = LTRIM$(STR$(FIX((This.Value / This.Max) * 100))) + "%"
-            IF LEN(Caption(This.ID)) THEN
-                TempCaption$ = Replace$(Caption(This.ID), "\#", ProgressString$, 0, 0)
-            ELSE
-                TempCaption$ = ProgressString$
+        'Caption. Flat themes draw it twice: the part over the filled bar uses the accent text color.
+        DIM FlatPass AS LONG, FlatPasses AS LONG, FlatTextCanvas AS LONG, FlatFillW AS LONG
+        FlatPasses = 1
+        IF __UI_Theme.Style = __UI_ThemeStyle_Flat AND This.ShowPercentage AND This.Max > 0 AND NOT This.Disabled THEN
+            FlatFillW = This.Width * (This.Value / This.Max)
+            IF FlatFillW > This.Width THEN FlatFillW = This.Width
+            IF FlatFillW > 0 THEN
+                FlatPasses = 2
+                FlatTextCanvas = _COPYIMAGE(This.Canvas, 32)
             END IF
-
-            IF NOT This.Disabled THEN
-                COLOR This.ForeColor
-            ELSE
-                COLOR Darken(Control(__UI_FormID).BackColor, 70)
+        END IF
+        FOR FlatPass = 1 TO FlatPasses
+            IF FlatPass = 2 THEN
+                _DEST FlatTextCanvas
+                _FONT This.Font
             END IF
+            IF This.ShowPercentage THEN
+                DIM ProgressString$
+                ProgressString$ = LTRIM$(STR$(FIX((This.Value / This.Max) * 100))) + "%"
+                IF LEN(Caption(This.ID)) THEN
+                    TempCaption$ = Replace$(Caption(This.ID), "\#", ProgressString$, 0, 0)
+                ELSE
+                    TempCaption$ = ProgressString$
+                END IF
 
-            'Caption:
-            DIM CaptionLeft AS INTEGER, FindLF&, FindSep&, ThisLine%
-            DIM CaptionLeftFirstLine AS INTEGER, CaptionTopFirstLine AS INTEGER, TextTop%
-            DIM TotalLines AS INTEGER
-            IF INSTR(TempCaption$, _CHR_LF) > 0 THEN
-                TempCaption$ = __UI_TrimAt0$(__UI_WordWrap(TempCaption$, This.Width - ((__UI_DefaultCaptionIndent) * 2), 0, TotalLines))
-                DO WHILE LEN(TempCaption$)
-                    ThisLine% = ThisLine% + 1
+                IF FlatPass = 2 THEN
+                    COLOR __UI_ThemeColor(__UI_ThemeColor_AccentText)
+                ELSEIF NOT This.Disabled THEN
+                    COLOR This.ForeColor
+                ELSE
+                    COLOR Darken(Control(__UI_FormID).BackColor, 70)
+                END IF
 
-                    IF TotalLines < This.Height \ uspacing& THEN
-                        'Center vertically if less lines than fits the box
-                        TextTop% = (This.Height \ 2) - ((TotalLines * uspacing& - uspacing&) \ 2) - uspacing& \ 2 + (((ThisLine%) * uspacing& - uspacing&))
-                    ELSE
-                        'Snap to top of the label's boundaries
-                        'if there are more lines than meet the eye
-                        TextTop% = __UI_DefaultCaptionIndent + ThisLine% * uspacing& - uspacing&
-                    END IF
+                'Caption:
+                DIM CaptionLeft AS INTEGER, FindLF&, FindSep&, ThisLine%
+                DIM CaptionLeftFirstLine AS INTEGER, CaptionTopFirstLine AS INTEGER, TextTop%
+                DIM TotalLines AS INTEGER
+                ThisLine% = 0
+                IF INSTR(TempCaption$, _CHR_LF) > 0 THEN
+                    TempCaption$ = __UI_TrimAt0$(__UI_WordWrap(TempCaption$, This.Width - ((__UI_DefaultCaptionIndent) * 2), 0, TotalLines))
+                    DO WHILE LEN(TempCaption$)
+                        ThisLine% = ThisLine% + 1
 
-                    FindSep& = INSTR(TempCaption$, _CHR_SOH) 'Search for soft breaks
-                    FindLF& = INSTR(TempCaption$, _CHR_LF) 'Search for hard breaks
-                    IF (FindSep& > 0 AND FindLF& > 0 AND FindSep& < FindLF&) OR (FindSep& > 0 AND FindLF& = 0) THEN
-                        TempLine$ = LEFT$(TempCaption$, FindSep& - 1)
-                        TempCaption$ = MID$(TempCaption$, FindSep& + 1)
-                    ELSEIF FindSep& = 0 THEN
-                        IF FindLF& > 0 THEN
-                            TempLine$ = LEFT$(TempCaption$, FindLF& - 1)
-                            TempCaption$ = MID$(TempCaption$, FindLF& + 1)
+                        IF TotalLines < This.Height \ uspacing& THEN
+                            'Center vertically if less lines than fits the box
+                            TextTop% = (This.Height \ 2) - ((TotalLines * uspacing& - uspacing&) \ 2) - uspacing& \ 2 + (((ThisLine%) * uspacing& - uspacing&))
                         ELSE
-                            TempLine$ = TempCaption$
-                            TempCaption$ = _STR_EMPTY
+                            'Snap to top of the label's boundaries
+                            'if there are more lines than meet the eye
+                            TextTop% = __UI_DefaultCaptionIndent + ThisLine% * uspacing& - uspacing&
                         END IF
-                    END IF
 
-                    CaptionLeft = (This.Width \ 2 - __UI_PrintWidth(TempLine$) \ 2)
-                    __UI_PrintString CaptionLeft, TextTop%, TempLine$
+                        FindSep& = INSTR(TempCaption$, _CHR_SOH) 'Search for soft breaks
+                        FindLF& = INSTR(TempCaption$, _CHR_LF) 'Search for hard breaks
+                        IF (FindSep& > 0 AND FindLF& > 0 AND FindSep& < FindLF&) OR (FindSep& > 0 AND FindLF& = 0) THEN
+                            TempLine$ = LEFT$(TempCaption$, FindSep& - 1)
+                            TempCaption$ = MID$(TempCaption$, FindSep& + 1)
+                        ELSEIF FindSep& = 0 THEN
+                            IF FindLF& > 0 THEN
+                                TempLine$ = LEFT$(TempCaption$, FindLF& - 1)
+                                TempCaption$ = MID$(TempCaption$, FindLF& + 1)
+                            ELSE
+                                TempLine$ = TempCaption$
+                                TempCaption$ = _STR_EMPTY
+                            END IF
+                        END IF
 
-                    IF ThisLine% = 1 THEN CaptionLeftFirstLine = CaptionLeft: CaptionTopFirstLine = TextTop%
-                LOOP
-            ELSE
-                Temp& = __UI_PrintWidth(TempCaption$)
-                __UI_PrintString This.Width \ 2 - Temp& \ 2, This.Height \ 2 - uspacing& \ 2 + 1, TempCaption$
+                        CaptionLeft = (This.Width \ 2 - __UI_PrintWidth(TempLine$) \ 2)
+                        __UI_PrintString CaptionLeft, TextTop%, TempLine$
+
+                        IF ThisLine% = 1 THEN CaptionLeftFirstLine = CaptionLeft: CaptionTopFirstLine = TextTop%
+                    LOOP
+                ELSE
+                    Temp& = __UI_PrintWidth(TempCaption$)
+                    __UI_PrintString This.Width \ 2 - Temp& \ 2, This.Height \ 2 - uspacing& \ 2 + 1, TempCaption$
+                END IF
             END IF
+        NEXT
+        IF FlatPasses = 2 THEN
+            _PUTIMAGE (0, 0)-(FlatFillW - 1, This.Height - 1), FlatTextCanvas, This.Canvas, (0, 0)-(FlatFillW - 1, This.Height - 1)
+            _FREEIMAGE FlatTextCanvas
+            _DEST This.Canvas
         END IF
         '------
 
@@ -7518,8 +7563,8 @@ SUB __UI_DrawTrackBar (This AS __UI_ControlTYPE, ControlState AS _BYTE)
             FlatThumbX = __UI_MAP(This.Value, This.Min, This.Max, 0, This.Width - SliderWidth)
             FlatAccent = __UI_ThemeColor(__UI_ThemeColor_Accent)
             IF This.Disabled THEN FlatAccent = __UI_FlatMix(FlatAccent, __UI_ThemeColor(__UI_ThemeColor_WindowBack), .6)
-            __UI_FlatRoundFill 3, 10, This.Width - 6, 5, 2, __UI_ThemeColor(__UI_ThemeColor_TrackBack)
-            __UI_FlatRoundFill 3, 10, FlatThumbX + SliderWidth \ 2 - 2, 5, 2, FlatAccent
+            __UI_FlatRoundFill 3, 10, This.Width - 6, 4, 2, __UI_ThemeColor(__UI_ThemeColor_TrackBack)
+            __UI_FlatRoundFill 3, 10, FlatThumbX + SliderWidth / 2 - 3, 4, 2, FlatAccent
         ELSE
             _PUTIMAGE (3, 10), ControlImage_Track, , (0, 0)-STEP(1, 4)
             _PUTIMAGE (5, 10)-STEP(This.Width - 10, 5), ControlImage_Track, , (2, 0)-STEP(0, 4)
@@ -7551,14 +7596,18 @@ SUB __UI_DrawTrackBar (This AS __UI_ControlTYPE, ControlState AS _BYTE)
 
         'Draw slider
         IF __UI_Theme.Style = __UI_ThemeStyle_Flat THEN
-            __UI_FlatSliderThumb FlatThumbX, 2, SliderWidth, SliderHeight - 1, TempControlState, This.BorderColor
+            __UI_FlatSliderThumb FlatThumbX + SliderWidth / 2, 12, 8, TempControlState, This.BorderColor
         ELSE
             _PUTIMAGE (__UI_MAP(This.Value, This.Min, This.Max, 0, This.Width - SliderWidth), 2), ControlImage_Slider, , (0, TempControlState * SliderHeight - SliderHeight)-STEP(SliderWidth - 1, SliderHeight - 1)
         END IF
 
         'Focus outline
         IF __UI_Focus = This.ID AND __UI_KeyboardFocus THEN
-            LINE (0, 0)-STEP(This.Width - 1, This.Height - 1), __UI_ThemeColor(__UI_ThemeColor_FocusRing), B , 21845
+            IF __UI_Theme.Style = __UI_ThemeStyle_Flat THEN
+                __UI_FlatFocusRing 0, 0, This.Width, This.Height, 4
+            ELSE
+                LINE (0, 0)-STEP(This.Width - 1, This.Height - 1), __UI_ThemeColor(__UI_ThemeColor_FocusRing), B , 21845
+            END IF
         END IF
         '------
 
@@ -7823,9 +7872,13 @@ SUB __UI_DrawTextBox (This AS __UI_ControlTYPE, ControlState AS _BYTE)
         END IF
 
         IF This.HasBorder THEN
-            FOR i = 0 TO This.BorderSize - 1
-                LINE (i, i)-STEP(This.Width - 1 - i * 2, This.Height - 1 - i * 2), This.BorderColor, B
-            NEXT
+            IF __UI_Theme.Style = __UI_ThemeStyle_Flat THEN
+                __UI_FlatInputBorder This, NOT This.Multiline
+            ELSE
+                FOR i = 0 TO This.BorderSize - 1
+                    LINE (i, i)-STEP(This.Width - 1 - i * 2, This.Height - 1 - i * 2), This.BorderColor, B
+                NEXT
+            END IF
         END IF
         '------
 
@@ -7951,9 +8004,13 @@ SUB __UI_DrawListBox (This AS __UI_ControlTYPE, ControlState AS _BYTE)
         END IF
 
         IF This.HasBorder THEN
-            FOR i = 0 TO This.BorderSize - 1
-                LINE (i, i)-STEP(This.Width - 1 - i * 2, This.Height - 1 - i * 2), This.BorderColor, B
-            NEXT
+            IF __UI_Theme.Style = __UI_ThemeStyle_Flat THEN
+                __UI_FlatInputBorder This, False
+            ELSE
+                FOR i = 0 TO This.BorderSize - 1
+                    LINE (i, i)-STEP(This.Width - 1 - i * 2, This.Height - 1 - i * 2), This.BorderColor, B
+                NEXT
+            END IF
         END IF
         '------
 
@@ -8016,8 +8073,9 @@ SUB __UI_DrawVScrollBar (TempThis AS __UI_ControlTYPE, ControlState AS _BYTE)
     IF __UI_Theme.Style = __UI_ThemeStyle_Flat THEN
         DIM FlatTrack AS _UNSIGNED LONG, FlatThumb AS _UNSIGNED LONG, FlatArrowC AS _UNSIGNED LONG
         DIM FlatButton2Top AS INTEGER
-        FlatTrack = __UI_ThemeColor(__UI_ThemeColor_TrackBack)
-        FlatArrowC = __UI_ThemeColor(__UI_ThemeColor_WindowText)
+        'The track blends with the control; only the thin thumb stands out
+        FlatTrack = This.BackColor
+        FlatArrowC = __UI_FlatMix(This.ForeColor, This.BackColor, .4)
         IF ControlState = 4 THEN
             FlatTrack = __UI_FlatMix(FlatTrack, __UI_ThemeColor(__UI_ThemeColor_WindowBack), .5)
             FlatArrowC = __UI_DisabledColor
@@ -8033,18 +8091,21 @@ SUB __UI_DrawVScrollBar (TempThis AS __UI_ControlTYPE, ControlState AS _BYTE)
                 LINE (This.Left, FlatButton2Top)-STEP(This.Width - 1, __UI_ScrollbarButtonHeight - 1), __UI_FlatShade(FlatTrack, _IIF(__UI_MouseDownOnID = This.ID, .2, .1)), BF
             END IF
         END IF
-        __UI_FlatArrow This.Left + This.Width / 2, This.Top + __UI_ScrollbarButtonHeight / 2, 7, 1, FlatArrowC
-        __UI_FlatArrow This.Left + This.Width / 2, FlatButton2Top + __UI_ScrollbarButtonHeight / 2, 7, 2, FlatArrowC
+        __UI_FlatArrow This.Left + This.Width / 2, This.Top + __UI_ScrollbarButtonHeight / 2, 6, 1, FlatArrowC
+        __UI_FlatArrow This.Left + This.Width / 2, FlatButton2Top + __UI_ScrollbarButtonHeight / 2, 6, 2, FlatArrowC
 
         'Thumb
         IF ControlState <> 4 THEN
-            FlatThumb = __UI_FlatShade(FlatTrack, .25)
+            FlatThumb = __UI_FlatShade(FlatTrack, .35)
             IF __UI_DraggingThumb = True THEN
-                FlatThumb = __UI_FlatShade(FlatTrack, .45)
+                FlatThumb = __UI_FlatShade(FlatTrack, .6)
             ELSEIF This.HoveringVScrollbarButton = 3 THEN
-                FlatThumb = __UI_FlatShade(FlatTrack, .35)
+                FlatThumb = __UI_FlatShade(FlatTrack, .5)
             END IF
-            __UI_FlatRoundFill This.Left + 3, ThumbTop + __UI_ScrollbarButtonHeight, This.Width - 6, ThumbHeight, (This.Width - 6) \ 2, FlatThumb
+            DIM FlatThumbW AS SINGLE
+            FlatThumbW = This.Width / 3
+            IF __UI_DraggingThumb = True OR This.HoveringVScrollbarButton > 0 THEN FlatThumbW = This.Width / 2
+            __UI_FlatRoundFill This.Left + (This.Width - FlatThumbW) / 2, ThumbTop + __UI_ScrollbarButtonHeight + 1, FlatThumbW, ThumbHeight - 2, FlatThumbW / 2, FlatThumb
         END IF
     ELSE
         'Draw the bar
@@ -8170,9 +8231,13 @@ SUB __UI_DrawDropdownList (This AS __UI_ControlTYPE, ControlState AS _BYTE)
             END IF
             CaptionIndent = __UI_DefaultCaptionIndent + This.BorderSize
 
-            FOR i = 0 TO This.BorderSize - 1
-                LINE (i, i)-STEP(This.Width - 1 - i * 2, This.Height - 1 - i * 2), This.BorderColor, B
-            NEXT
+            IF __UI_Theme.Style = __UI_ThemeStyle_Flat THEN
+                __UI_FlatInputBorder This, True
+            ELSE
+                FOR i = 0 TO This.BorderSize - 1
+                    LINE (i, i)-STEP(This.Width - 1 - i * 2, This.Height - 1 - i * 2), This.BorderColor, B
+                NEXT
+            END IF
         END IF
 
         DIM TempText$, ThisItem%, FindLF&, ThisItemTop%
@@ -8237,7 +8302,7 @@ SUB __UI_DrawDropdownList (This AS __UI_ControlTYPE, ControlState AS _BYTE)
             DIM FlatBtnLeft AS INTEGER, FlatArrowColor AS _UNSIGNED LONG
             FlatBtnLeft = This.Width - (__UI_ScrollbarWidth + 2)
             IF DropdownState = 2 OR DropdownState = 3 THEN
-                LINE (FlatBtnLeft, This.BorderSize)-(This.Width - 1 - This.BorderSize, This.Height - 1 - This.BorderSize), __UI_FlatShade(This.BackColor, _IIF(DropdownState = 3, .14, .06)), BF
+                __UI_FlatRoundFill FlatBtnLeft + 2, 3, This.Width - FlatBtnLeft - 5, This.Height - 6, __UI_Theme.CornerRadius - 1, __UI_FlatShade(This.BackColor, _IIF(DropdownState = 3, .14, .06))
             END IF
             FlatArrowColor = This.ForeColor
             IF This.Disabled THEN FlatArrowColor = __UI_DisabledColor

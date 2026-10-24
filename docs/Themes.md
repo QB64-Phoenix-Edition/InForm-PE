@@ -5,7 +5,7 @@ InForm-PE draws every control using the current **theme**: a palette of colors, 
 There are two drawing styles:
 
 - **Bitmap**: controls are drawn from small images. This is the classic Windows XP look and the default.
-- **Flat**: controls are drawn from the palette, with rounded corners. Any color can be changed, so this style supports dark themes and custom accent colors.
+- **Flat**: controls are drawn from the palette, with antialiased rounded corners. Any color can be changed, so this style supports dark themes and custom accent colors. The default button is filled with the accent color, text fields show an accent bar when focused, and tabs use a minimal style with an accent marker under the active tab.
 
 ## Built-in themes
 

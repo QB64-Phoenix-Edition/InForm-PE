@@ -190,55 +190,80 @@ SUB __UI_DrawTabControl (This AS __UI_ControlTYPE)
         CLS , _RGBA32(0, 0, 0, 0)
 
         IF This.Hidden = False THEN
-            ' Tabs (drawn first; the body covers their lower edge)
-            FOR i = 1 TO This.Max
-                __UI_TabMetrics This.ID, i, tabX, tabW
-                IF i = This.Value THEN
-                    activeX = tabX: activeW = tabW
-                    tabTop = 0
-                    face = This.BackColor
-                ELSE
-                    tabTop = 3
-                    face = __UI_FlatShade(This.BackColor, .05)
-                    IF i = hoverTab THEN face = __UI_FlatShade(This.BackColor, .12)
-                END IF
+            IF __UI_Theme.Style = __UI_ThemeStyle_Flat THEN
+                ' Body: a rounded panel below the tab strip
+                __UI_FlatRoundFill 0, bodyTop, This.Width, This.Height - bodyTop, r, This.BackColor
+                _PUTIMAGE (1, strip)-(This.Width - 2, This.Height - 2), This.Canvas, TempCanvas, (1, strip)-(This.Width - 2, This.Height - 2)
+                __UI_FlatRoundOutline 0, bodyTop, This.Width, This.Height - bodyTop, r, This.BorderColor
 
-                IF __UI_Theme.Style = __UI_ThemeStyle_Flat THEN
-                    __UI_FlatRoundBox tabX, tabTop, tabW, strip - tabTop + r + 1, r, face, This.BorderColor
-                ELSE
+                ' Tabs: plain captions; hover gets a soft background, the active tab an accent bar
+                FOR i = 1 TO This.Max
+                    __UI_TabMetrics This.ID, i, tabX, tabW
+                    IF i = hoverTab _ANDALSO i <> This.Value THEN
+                        __UI_FlatRoundFill tabX, 1, tabW, strip - 5, r, __UI_FlatShade(This.BackColor, .07)
+                    END IF
+
+                    IF This.Disabled THEN
+                        COLOR __UI_DisabledColor
+                    ELSEIF i = This.Value THEN
+                        COLOR This.ForeColor
+                    ELSE
+                        COLOR __UI_FlatMix(This.ForeColor, This.BackColor, .35)
+                    END IF
+                    TempCaption$ = GetItem$(This.ID, i)
+                    __UI_PrintString tabX + 10, (strip - 4) \ 2 - _UFONTHEIGHT \ 2 + 1, TempCaption$
+
+                    IF i = This.Value THEN
+                        activeX = tabX: activeW = tabW
+                        IF NOT This.Disabled THEN
+                            __UI_FlatRoundFill tabX + 10, strip - 5, tabW - 20, 3, 1.5, __UI_ThemeColor(__UI_ThemeColor_Accent)
+                        END IF
+                    END IF
+                NEXT
+
+                IF activeW > 0 _ANDALSO __UI_Focus = This.ID _ANDALSO __UI_KeyboardFocus THEN
+                    __UI_FlatFocusRing activeX, 0, activeW, strip - 3, r
+                END IF
+            ELSE
+                ' Tabs (drawn first; the body covers their lower edge)
+                FOR i = 1 TO This.Max
+                    __UI_TabMetrics This.ID, i, tabX, tabW
+                    IF i = This.Value THEN
+                        activeX = tabX: activeW = tabW
+                        tabTop = 0
+                        face = This.BackColor
+                    ELSE
+                        tabTop = 3
+                        face = __UI_FlatShade(This.BackColor, .05)
+                        IF i = hoverTab THEN face = __UI_FlatShade(This.BackColor, .12)
+                    END IF
+
                     LINE (tabX, tabTop)-STEP(tabW - 1, strip - tabTop), face, BF
                     LINE (tabX, tabTop)-STEP(tabW - 1, strip - tabTop), This.BorderColor, B
-                END IF
 
-                TempCaption$ = GetItem$(This.ID, i)
-                IF This.Disabled THEN
-                    COLOR __UI_DisabledColor
-                ELSE
-                    COLOR This.ForeColor
-                END IF
-                __UI_PrintString tabX + 10, tabTop + (strip - tabTop) \ 2 - _UFONTHEIGHT \ 2, TempCaption$
-            NEXT
+                    TempCaption$ = GetItem$(This.ID, i)
+                    IF This.Disabled THEN
+                        COLOR __UI_DisabledColor
+                    ELSE
+                        COLOR This.ForeColor
+                    END IF
+                    __UI_PrintString tabX + 10, tabTop + (strip - tabTop) \ 2 - _UFONTHEIGHT \ 2, TempCaption$
+                NEXT
 
-            ' Body and children
-            LINE (0, bodyTop)-(This.Width - 1, This.Height - 1), This.BackColor, BF
-            _PUTIMAGE (1, strip)-(This.Width - 2, This.Height - 2), This.Canvas, TempCanvas, (1, strip)-(This.Width - 2, This.Height - 2)
+                ' Body and children
+                LINE (0, bodyTop)-(This.Width - 1, This.Height - 1), This.BackColor, BF
+                _PUTIMAGE (1, strip)-(This.Width - 2, This.Height - 2), This.Canvas, TempCanvas, (1, strip)-(This.Width - 2, This.Height - 2)
 
-            IF __UI_Theme.Style = __UI_ThemeStyle_Flat THEN
-                __UI_FlatRoundOutline 0, bodyTop, This.Width, This.Height - bodyTop, r, This.BorderColor
-            ELSE
                 LINE (0, bodyTop)-(This.Width - 1, This.Height - 1), This.BorderColor, B
-            END IF
 
-            ' Join the active tab with the body
-            IF activeW > 0 THEN
-                LINE (activeX + 1, bodyTop)-(activeX + activeW - 2, bodyTop), This.BackColor
-                IF __UI_Theme.Style = __UI_ThemeStyle_Flat THEN
-                    LINE (activeX + r, 1)-(activeX + activeW - 1 - r, 2), __UI_ThemeColor(__UI_ThemeColor_Accent), BF
-                END IF
+                ' Join the active tab with the body
+                IF activeW > 0 THEN
+                    LINE (activeX + 1, bodyTop)-(activeX + activeW - 2, bodyTop), This.BackColor
 
-                ' Focus outline around the active tab's caption
-                IF __UI_Focus = This.ID AND __UI_KeyboardFocus THEN
-                    LINE (activeX + 4, 4)-(activeX + activeW - 5, strip - 3), __UI_ThemeColor(__UI_ThemeColor_FocusRing), B , 21845
+                    ' Focus outline around the active tab's caption
+                    IF __UI_Focus = This.ID AND __UI_KeyboardFocus THEN
+                        LINE (activeX + 4, 4)-(activeX + activeW - 5, strip - 3), __UI_ThemeColor(__UI_ThemeColor_FocusRing), B , 21845
+                    END IF
                 END IF
             END IF
         END IF
