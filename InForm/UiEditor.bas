@@ -1300,30 +1300,21 @@ SUB __UI_BeforeUpdateDisplay
     'bytesIn~&& = bytesIn~&& + LEN(incomingData$)
     'Caption(StatusBar) = "Received:" + STR$(bytesIn~&&) + " bytes | Sent:" + STR$(totalBytesSent) + " bytes"
 
-    $IF WIN THEN
-        IF PreviewAttached THEN
-            IF prevScreenX <> _SCREENX OR prevScreenY <> _SCREENY THEN
-                prevScreenX = _SCREENX
-                prevScreenY = _SCREENY
-                b$ = "WINDOWPOSITION>" + MKI$(_SCREENX) + MKI$(_SCREENY) + "<END>"
-                Send Client, b$
-            END IF
-        ELSE
-            IF prevScreenX <> -32001 OR prevScreenY <> -32001 THEN
-                prevScreenX = -32001
-                prevScreenY = -32001
-                b$ = "WINDOWPOSITION>" + MKI$(-32001) + MKI$(-32001) + "<END>"
-                Send Client, b$
-            END IF
+    IF PreviewAttached THEN
+        IF prevScreenX <> _SCREENX OR prevScreenY <> _SCREENY THEN
+            prevScreenX = _SCREENX
+            prevScreenY = _SCREENY
+            b$ = "WINDOWPOSITION>" + MKI$(_SCREENX) + MKI$(_SCREENY) + "<END>"
+            Send Client, b$
         END IF
-    $ELSE
-        IF PreviewAttached = True THEN
-            PreviewAttached = False
-            SaveSettings
+    ELSE
+        IF prevScreenX <> -32001 OR prevScreenY <> -32001 THEN
+            prevScreenX = -32001
+            prevScreenY = -32001
+            b$ = "WINDOWPOSITION>" + MKI$(-32001) + MKI$(-32001) + "<END>"
+            Send Client, b$
         END IF
-        Control(ViewMenuPreviewDetach).Disabled = True
-        Control(ViewMenuPreviewDetach).Value = False
-    $END IF
+    END IF
 
     STATIC prevAutoName AS _BYTE, prevMouseSwap AS _BYTE
     STATIC prevShowPos AS _BYTE, prevSnapLines AS _BYTE

@@ -440,11 +440,9 @@ SUB __UI_BeforeUpdateDisplay
         IF i = _TOTALDROPPEDFILES THEN _FINISHDROP
     NEXT
 
-    $IF WIN THEN
-        IF NewWindowLeft <> -32001 AND NewWindowTop <> -32001 AND (NewWindowLeft <> _SCREENX OR NewWindowTop <> _SCREENY) THEN
-            _SCREENMOVE NewWindowLeft + 612, NewWindowTop
-        END IF
-    $END IF
+    IF NewWindowLeft <> -32001 AND NewWindowTop <> -32001 AND (NewWindowLeft <> _SCREENX OR NewWindowTop <> _SCREENY) THEN
+        _SCREENMOVE NewWindowLeft + 612, NewWindowTop
+    END IF
 
     'Check if the editor is still alive
     $IF WIN THEN
