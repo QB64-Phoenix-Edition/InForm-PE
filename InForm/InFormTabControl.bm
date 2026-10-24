@@ -1,6 +1,6 @@
 '-----------------------------------------------------------------------------------------------------------------------
 ' InForm-PE TabControl
-' Copyright (c) 2026 QB64 Phoenix Edition Team
+' Copyright (c) 2026 Fellippe Heitor
 '
 ' A TabControl is a container (like a Frame) with a strip of tabs at the top.
 '   - Tab captions live in Text(id), one per line (the same storage used by ListBox items).

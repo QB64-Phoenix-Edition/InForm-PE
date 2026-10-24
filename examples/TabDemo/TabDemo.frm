@@ -10,7 +10,7 @@ SUB __UI_LoadForm
     __UI_RegisterResult = 0
     SetTheme "light"
     SetCaption __UI_NewID, "Tabs and themes"
-    Control(__UI_NewID).Font = SetFont(__INFORM_DEFAULT_FONTS, 12)
+    Control(__UI_NewID).Font = SetFont("segoeui.ttf?arial.ttf?Arial.ttf?Helvetica.ttc?Geneva.ttf?truetype/liberation/LiberationSans-Regular.ttf?TTF/arial.ttf?InForm/resources/NotoMono-Regular.ttf?cour.ttf?Courier.ttc", 12)
     Control(__UI_NewID).CenteredWindow = True
 
     __UI_NewID = __UI_NewControl(__UI_Type_TabControl, "MainTabs", 420, 250, 20, 20, 0)

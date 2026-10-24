@@ -109,8 +109,9 @@ InForm/extensions/*.*
 | R2P | bobalooie |
 | RockPaperScissorsSpockLizard | TempodiBasic |
 | Stopwatch | Fellippe Heitor |
-| TabDemo | QB64 Phoenix Edition Team |
+| TabDemo | Fellippe Heitor |
 | TextFetch | B+ |
+| ThemeGallery | Fellippe Heitor |
 | ThemePreview | Fellippe Heitor |
 | TicTacToe | Fellippe Heitor |
 | TicTacToe2 | Fellippe Heitor |
