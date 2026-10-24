@@ -4504,7 +4504,7 @@ SUB UpdateThemeMenu
     Control(ViewMenuThemeFile).Value = NOT (t = "" OR t = "xp" OR t = "light" OR t = "dark")
 END SUB
 
-''' @brief Opens the Theme Editor, with the form's theme file when it uses one.
+''' @brief Opens the Theme Editor (with the form's theme file when it uses one) and waits for it to close.
 SUB OpenThemeEditor
     DIM exe AS STRING, args AS STRING, t AS STRING
 
@@ -4524,5 +4524,11 @@ SUB OpenThemeEditor
         IF _FILEEXISTS(PreviewTheme) THEN args = " " + CHR$(34) + PreviewTheme + CHR$(34)
     END IF
 
-    SHELL _DONTWAIT exe + args
+    'Wait for the Theme Editor to close; meanwhile the preview reloads the theme file whenever it is saved
+    DIM b$
+    b$ = "WATCHTHEME>" + MKI$(-1) + "<END>"
+    Send Client, b$
+    SHELL _HIDE exe + args
+    b$ = "WATCHTHEME>" + MKI$(0) + "<END>"
+    Send Client, b$
 END SUB

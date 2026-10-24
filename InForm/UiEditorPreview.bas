@@ -7,6 +7,7 @@
 
 OPTION _EXPLICIT
 
+DIM SHARED WatchThemeFile AS _BYTE ' _TRUE while the Theme Editor is open
 DIM SHARED UiEditorPID AS LONG, ExeIcon AS LONG
 DIM SHARED AutoNameControls AS _BYTE
 DIM SHARED UndoPointer AS INTEGER, TotalUndoImages AS INTEGER
@@ -164,32 +165,22 @@ SUB SelectNewControl (id AS LONG)
     __UI_ForceRedraw = True
 END SUB
 
-''' @brief When the form uses a theme file, reloads it after it changes on disk
-''' (for example, when it is saved in the Theme Editor). Checks once per second.
-SUB ReloadThemeIfChanged
-    STATIC lastCheck AS DOUBLE, watchedFile AS STRING, lastContent AS STRING
-    DIM themeFile AS STRING, content AS STRING, f AS LONG
-
-    IF ABS(TIMER(.001) - lastCheck) < 1 THEN EXIT SUB
-    lastCheck = TIMER(.001)
+''' @brief Reloads the form's theme file if it changed on disk (for example, saved in the Theme Editor).
+''' Only runs while the UiEditor waits for the Theme Editor (see the WATCHTHEME command).
+''' @param startWatching _TRUE to remember the file's current contents as the starting point.
+SUB ReloadThemeIfChanged (startWatching AS _BYTE)
+    STATIC lastContent AS STRING
+    DIM themeFile AS STRING, content AS STRING
 
     themeFile = GetTheme$
     SELECT CASE LCASE$(themeFile)
         CASE "xp", "classic", "light", "flat", "dark"
-            watchedFile = ""
             EXIT SUB
     END SELECT
     IF NOT _FILEEXISTS(themeFile) THEN EXIT SUB
 
-    f = FREEFILE
-    OPEN themeFile FOR BINARY AS #f
-    content = SPACE$(LOF(f))
-    GET #f, , content
-    CLOSE #f
-
-    IF themeFile <> watchedFile THEN
-        'Started watching a new file
-        watchedFile = themeFile
+    content = __UI_Theme_ReadFile(themeFile)
+    IF startWatching THEN
         lastContent = content
     ELSEIF content <> lastContent THEN
         lastContent = content
@@ -208,7 +199,7 @@ SUB __UI_BeforeUpdateDisplay
 
     IF __UI_TotalSelectedControls < 0 THEN __UI_TotalSelectedControls = 0
 
-    ReloadThemeIfChanged
+    IF WatchThemeFile THEN ReloadThemeIfChanged False
 
     SavePreview ToEditor
 
@@ -309,6 +300,15 @@ SUB __UI_BeforeUpdateDisplay
                 __UI_ShowPositionAndSize = CVI(thisData$)
             CASE "SHOWINVISIBLECONTROLS"
                 __UI_ShowInvisibleControls = CVI(thisData$)
+            CASE "WATCHTHEME"
+                'Sent by the UiEditor while it waits for the Theme Editor to close
+                IF CVI(thisData$) THEN
+                    WatchThemeFile = True
+                    ReloadThemeIfChanged True
+                ELSE
+                    ReloadThemeIfChanged False 'last check, for changes saved just before closing
+                    WatchThemeFile = False
+                END IF
             CASE "SETTHEME"
                 SaveUndoImage
                 SetTheme thisData$
