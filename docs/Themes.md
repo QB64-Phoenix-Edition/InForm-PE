@@ -41,6 +41,17 @@ Controls whose colors you never changed follow the new theme. Colors you set you
 
 If a theme can't be loaded (for example, a missing file), the current theme stays active.
 
+## Theme Editor
+
+`ThemeEditor` (built next to `UiEditor` by the setup scripts) creates and edits theme files with a live preview:
+
+- Pick a base theme and style, then select a color role and change it with the R/G/B sliders or a hex value.
+- Adjust the corner radius and the scroll bar width.
+- The whole window, including a panel with every control type, shows the theme as you edit it.
+- **Save** writes only the values that differ from the base theme, so the file keeps inheriting the rest.
+
+You can also open a theme directly: `ThemeEditor my-theme.uitheme.ini`.
+
 ## Theme files
 
 A theme file is an INI file. Every value is optional: anything left out is inherited from the built-in theme named by `Base`.
