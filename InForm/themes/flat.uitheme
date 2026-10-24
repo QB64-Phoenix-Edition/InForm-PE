@@ -1,0 +1,287 @@
+'-----------------------------------------------------------------------------------------------------------------------
+' InForm-PE flat GUI themes (light and dark)
+' Copyright (c) 2026 QB64 Phoenix Edition Team
+'-----------------------------------------------------------------------------------------------------------------------
+
+$INCLUDEONCE
+
+'$INCLUDE:'../InFormCommon.bi'
+
+''' @brief Sets the metrics shared by the flat themes.
+SUB __UI_Theme_SetFlatMetrics
+    __UI_Theme.Style = __UI_ThemeStyle_Flat
+    __UI_Theme.ScrollbarWidth = 14
+    __UI_Theme.ScrollbarButtonHeight = 14
+    __UI_Theme.MenuBarOffset = 8
+    __UI_Theme.MenuItemOffset = 22
+    __UI_Theme.DefaultCaptionIndent = 5
+    __UI_Theme.CornerRadius = 4
+END SUB
+
+''' @brief Loads the flat light theme.
+SUB __UI_Theme_SetLight
+    __UI_Theme.Name = "Light"
+    __UI_Theme_SetFlatMetrics
+
+    __UI_ThemeColor(__UI_ThemeColor_WindowBack) = _RGB32(243, 243, 243)
+    __UI_ThemeColor(__UI_ThemeColor_WindowText) = _RGB32(31, 31, 31)
+    __UI_ThemeColor(__UI_ThemeColor_InputBack) = _RGB32(255, 255, 255)
+    __UI_ThemeColor(__UI_ThemeColor_InputText) = _RGB32(31, 31, 31)
+    __UI_ThemeColor(__UI_ThemeColor_ButtonFace) = _RGB32(253, 253, 253)
+    __UI_ThemeColor(__UI_ThemeColor_ButtonText) = _RGB32(31, 31, 31)
+    __UI_ThemeColor(__UI_ThemeColor_SelectedBack) = _RGB32(0, 103, 192)
+    __UI_ThemeColor(__UI_ThemeColor_SelectedText) = _RGB32(255, 255, 255)
+    __UI_ThemeColor(__UI_ThemeColor_Border) = _RGB32(200, 200, 200)
+    __UI_ThemeColor(__UI_ThemeColor_Accent) = _RGB32(0, 103, 192)
+    __UI_ThemeColor(__UI_ThemeColor_AccentText) = _RGB32(255, 255, 255)
+    __UI_ThemeColor(__UI_ThemeColor_FocusRing) = _RGB32(0, 103, 192)
+    __UI_ThemeColor(__UI_ThemeColor_Caret) = _RGB32(31, 31, 31)
+    __UI_ThemeColor(__UI_ThemeColor_DisabledText) = _RGB32(160, 160, 160)
+    __UI_ThemeColor(__UI_ThemeColor_TipBack) = _RGB32(255, 255, 255)
+    __UI_ThemeColor(__UI_ThemeColor_TipText) = _RGB32(31, 31, 31)
+    __UI_ThemeColor(__UI_ThemeColor_MenuBack) = _RGB32(255, 255, 255)
+    __UI_ThemeColor(__UI_ThemeColor_TrackBack) = _RGB32(224, 224, 224)
+END SUB
+
+''' @brief Loads the flat dark theme.
+SUB __UI_Theme_SetDark
+    __UI_Theme.Name = "Dark"
+    __UI_Theme_SetFlatMetrics
+
+    __UI_ThemeColor(__UI_ThemeColor_WindowBack) = _RGB32(32, 32, 32)
+    __UI_ThemeColor(__UI_ThemeColor_WindowText) = _RGB32(240, 240, 240)
+    __UI_ThemeColor(__UI_ThemeColor_InputBack) = _RGB32(43, 43, 43)
+    __UI_ThemeColor(__UI_ThemeColor_InputText) = _RGB32(240, 240, 240)
+    __UI_ThemeColor(__UI_ThemeColor_ButtonFace) = _RGB32(55, 55, 55)
+    __UI_ThemeColor(__UI_ThemeColor_ButtonText) = _RGB32(240, 240, 240)
+    __UI_ThemeColor(__UI_ThemeColor_SelectedBack) = _RGB32(0, 120, 212)
+    __UI_ThemeColor(__UI_ThemeColor_SelectedText) = _RGB32(255, 255, 255)
+    __UI_ThemeColor(__UI_ThemeColor_Border) = _RGB32(85, 85, 85)
+    __UI_ThemeColor(__UI_ThemeColor_Accent) = _RGB32(0, 120, 212)
+    __UI_ThemeColor(__UI_ThemeColor_AccentText) = _RGB32(255, 255, 255)
+    __UI_ThemeColor(__UI_ThemeColor_FocusRing) = _RGB32(96, 205, 255)
+    __UI_ThemeColor(__UI_ThemeColor_Caret) = _RGB32(240, 240, 240)
+    __UI_ThemeColor(__UI_ThemeColor_DisabledText) = _RGB32(110, 110, 110)
+    __UI_ThemeColor(__UI_ThemeColor_TipBack) = _RGB32(43, 43, 43)
+    __UI_ThemeColor(__UI_ThemeColor_TipText) = _RGB32(240, 240, 240)
+    __UI_ThemeColor(__UI_ThemeColor_MenuBack) = _RGB32(44, 44, 44)
+    __UI_ThemeColor(__UI_ThemeColor_TrackBack) = _RGB32(58, 58, 58)
+END SUB
+
+'-----------------------------------------------------------------------------------------------------------------------
+' Flat drawing primitives. They draw on the current _DEST using the theme palette.
+' States follow the engine convention: 1 = normal, 2 = hover, 3 = pressed, 4 = disabled, 5 = default/focused.
+'-----------------------------------------------------------------------------------------------------------------------
+
+''' @brief Linear blend between two colors (t = 0 gives a, t = 1 gives b).
+FUNCTION __UI_FlatMix~& (a AS _UNSIGNED LONG, b AS _UNSIGNED LONG, t AS SINGLE)
+    __UI_FlatMix = _RGBA32(_RED32(a) + (_RED32(b) - _RED32(a)) * t, _
+                           _GREEN32(a) + (_GREEN32(b) - _GREEN32(a)) * t, _
+                           _BLUE32(a) + (_BLUE32(b) - _BLUE32(a)) * t, _
+                           _ALPHA32(a) + (_ALPHA32(b) - _ALPHA32(a)) * t)
+END FUNCTION
+
+''' @brief _TRUE if a color is closer to white than to black.
+FUNCTION __UI_FlatIsLight%% (c AS _UNSIGNED LONG)
+    __UI_FlatIsLight = (_RED32(c) * 299 + _GREEN32(c) * 587 + _BLUE32(c) * 114) / 1000 >= 128
+END FUNCTION
+
+''' @brief Moves a color towards more contrast (darker on light colors, lighter on dark ones).
+FUNCTION __UI_FlatShade~& (c AS _UNSIGNED LONG, t AS SINGLE)
+    IF __UI_FlatIsLight(c) THEN
+        __UI_FlatShade = __UI_FlatMix(c, _RGB32(0, 0, 0), t)
+    ELSE
+        __UI_FlatShade = __UI_FlatMix(c, _RGB32(255, 255, 255), t)
+    END IF
+END FUNCTION
+
+''' @brief Horizontal inset of a rounded corner at a given row.
+FUNCTION __UI_FlatCornerInset% (row AS INTEGER, h AS INTEGER, r AS INTEGER)
+    DIM d AS SINGLE
+    IF row < r THEN
+        d = r - row - .5
+    ELSEIF row >= h - r THEN
+        d = row - (h - r) + .5
+    ELSE
+        EXIT FUNCTION
+    END IF
+    __UI_FlatCornerInset = r - SQR(r * r - d * d) + .5
+END FUNCTION
+
+''' @brief Fills a rounded rectangle.
+SUB __UI_FlatRoundFill (x AS INTEGER, y AS INTEGER, w AS INTEGER, h AS INTEGER, radius AS INTEGER, c AS _UNSIGNED LONG)
+    DIM r AS INTEGER, row AS INTEGER, inset AS INTEGER
+    IF w <= 0 _ORELSE h <= 0 THEN EXIT SUB
+    r = radius
+    IF r > w \ 2 THEN r = w \ 2
+    IF r > h \ 2 THEN r = h \ 2
+    IF r < 0 THEN r = 0
+    FOR row = 0 TO h - 1
+        inset = __UI_FlatCornerInset(row, h, r)
+        LINE (x + inset, y + row)-(x + w - 1 - inset, y + row), c
+    NEXT
+END SUB
+
+''' @brief Draws a filled rounded rectangle with a 1-pixel border.
+SUB __UI_FlatRoundBox (x AS INTEGER, y AS INTEGER, w AS INTEGER, h AS INTEGER, radius AS INTEGER, fillColor AS _UNSIGNED LONG, borderColor AS _UNSIGNED LONG)
+    __UI_FlatRoundFill x, y, w, h, radius, borderColor
+    __UI_FlatRoundFill x + 1, y + 1, w - 2, h - 2, radius - 1, fillColor
+END SUB
+
+''' @brief Draws only the 1-pixel outline of a rounded rectangle (the inside is left untouched).
+SUB __UI_FlatRoundOutline (x AS INTEGER, y AS INTEGER, w AS INTEGER, h AS INTEGER, radius AS INTEGER, c AS _UNSIGNED LONG)
+    DIM r AS INTEGER, row AS INTEGER, inset AS INTEGER, nextInset AS INTEGER
+    IF w <= 0 _ORELSE h <= 0 THEN EXIT SUB
+    r = radius
+    IF r > w \ 2 THEN r = w \ 2
+    IF r > h \ 2 THEN r = h \ 2
+    IF r < 0 THEN r = 0
+
+    LINE (x + r, y)-(x + w - 1 - r, y), c
+    LINE (x + r, y + h - 1)-(x + w - 1 - r, y + h - 1), c
+    FOR row = 0 TO h - 1
+        inset = __UI_FlatCornerInset(row, h, r)
+        ' Span from this row's edge to the next row's edge so the curve has no gaps
+        IF row < r THEN
+            nextInset = __UI_FlatCornerInset(row + 1, h, r)
+        ELSEIF row > 0 _ANDALSO row >= h - r THEN
+            nextInset = __UI_FlatCornerInset(row - 1, h, r)
+        ELSE
+            nextInset = inset
+        END IF
+        IF nextInset < inset THEN SWAP nextInset, inset
+        IF nextInset > inset THEN nextInset = nextInset - 1
+        LINE (x + inset, y + row)-(x + nextInset, y + row), c
+        LINE (x + w - 1 - nextInset, y + row)-(x + w - 1 - inset, y + row), c
+    NEXT
+END SUB
+
+''' @brief Fills a circle using horizontal spans (no PAINT, so it is safe over existing pixels).
+SUB __UI_FlatCircleFill (cx AS SINGLE, cy AS SINGLE, radius AS SINGLE, c AS _UNSIGNED LONG)
+    DIM row AS INTEGER, dy AS SINGLE, dx AS SINGLE
+    ' Walk whole pixel rows so fractional centers don't leave gaps
+    FOR row = INT(cy - radius + .5) TO INT(cy + radius - .5)
+        dy = row + .5 - cy
+        IF ABS(dy) <= radius THEN
+            dx = SQR(radius * radius - dy * dy)
+            LINE (INT(cx - dx + .5), row)-(INT(cx + dx - .5), row), c
+        END IF
+    NEXT
+END SUB
+
+''' @brief Draws a filled triangular arrow centered on (cx, cy).
+''' @param direction 1 = up, 2 = down, 3 = left, 4 = right.
+SUB __UI_FlatArrow (cx AS SINGLE, cy AS SINGLE, size AS INTEGER, direction AS _BYTE, c AS _UNSIGNED LONG)
+    DIM half AS INTEGER, k AS INTEGER, x AS INTEGER, y AS INTEGER
+    half = size \ 2
+    x = INT(cx): y = INT(cy) ' whole pixels so rows don't round unevenly
+    FOR k = 0 TO half
+        SELECT CASE direction
+            CASE 1: LINE (x - k, y - half \ 2 + k)-(x + k, y - half \ 2 + k), c
+            CASE 2: LINE (x - (half - k), y - half \ 2 + k)-(x + (half - k), y - half \ 2 + k), c
+            CASE 3: LINE (x - half \ 2 + k, y - k)-(x - half \ 2 + k, y + k), c
+            CASE 4: LINE (x - half \ 2 + k, y - (half - k))-(x - half \ 2 + k, y + (half - k)), c
+        END SELECT
+    NEXT
+END SUB
+
+''' @brief Draws a 2-pixel thick check mark inside a size x size box at (x, y).
+SUB __UI_FlatCheckGlyph (x AS SINGLE, y AS SINGLE, size AS SINGLE, c AS _UNSIGNED LONG)
+    DIM k AS INTEGER
+    FOR k = 0 TO 1
+        LINE (x + size * .22, y + size * .5 + k)-(x + size * .42, y + size * .7 + k), c
+        LINE -(x + size * .78, y + size * .3 + k), c
+    NEXT
+END SUB
+
+''' @brief Draws a push-button surface.
+''' @param face Base face color; the state shades it.
+SUB __UI_FlatButtonSurface (x AS INTEGER, y AS INTEGER, w AS INTEGER, h AS INTEGER, state AS _BYTE, face AS _UNSIGNED LONG, border AS _UNSIGNED LONG)
+    DIM f AS _UNSIGNED LONG, b AS _UNSIGNED LONG
+    f = face: b = border
+    SELECT CASE state
+        CASE 2: f = __UI_FlatShade(face, .06)
+        CASE 3: f = __UI_FlatShade(face, .14)
+        CASE 4: f = __UI_FlatMix(face, __UI_ThemeColor(__UI_ThemeColor_WindowBack), .5): b = __UI_FlatMix(border, __UI_ThemeColor(__UI_ThemeColor_WindowBack), .5)
+        CASE 5: b = __UI_ThemeColor(__UI_ThemeColor_Accent)
+    END SELECT
+    __UI_FlatRoundBox x, y, w, h, __UI_Theme.CornerRadius, f, b
+    IF state = 5 THEN __UI_FlatRoundOutline x + 1, y + 1, w - 2, h - 2, __UI_Theme.CornerRadius - 1, b
+END SUB
+
+''' @brief Draws a check box glyph.
+''' @param state 1-4 as usual, plus 4 when checked (5-8).
+SUB __UI_FlatCheckBox (x AS INTEGER, y AS INTEGER, size AS INTEGER, state AS _BYTE, accent AS _UNSIGNED LONG, accentText AS _UNSIGNED LONG, border AS _UNSIGNED LONG)
+    DIM checked AS _BYTE, s AS _BYTE, f AS _UNSIGNED LONG, b AS _UNSIGNED LONG, g AS _UNSIGNED LONG
+    checked = state > 4: s = state: IF checked THEN s = state - 4
+
+    IF checked THEN
+        f = accent: b = accent: g = accentText
+        IF s = 2 THEN f = __UI_FlatShade(accent, .12): b = f
+        IF s = 3 THEN f = __UI_FlatShade(accent, .25): b = f
+    ELSE
+        f = __UI_ThemeColor(__UI_ThemeColor_InputBack): b = border
+        IF s = 2 THEN b = accent
+        IF s = 3 THEN f = __UI_FlatShade(f, .1): b = accent
+    END IF
+    IF s = 4 THEN
+        f = __UI_FlatMix(f, __UI_ThemeColor(__UI_ThemeColor_WindowBack), .6)
+        b = __UI_FlatMix(b, __UI_ThemeColor(__UI_ThemeColor_WindowBack), .6)
+        g = __UI_DisabledColor
+    END IF
+
+    __UI_FlatRoundBox x, y, size, size, 3, f, b
+    IF checked THEN __UI_FlatCheckGlyph x, y, size, g
+END SUB
+
+''' @brief Draws a radio button glyph (states as in __UI_FlatCheckBox).
+SUB __UI_FlatRadioButton (x AS INTEGER, y AS INTEGER, size AS INTEGER, state AS _BYTE, accent AS _UNSIGNED LONG, accentText AS _UNSIGNED LONG, border AS _UNSIGNED LONG)
+    DIM checked AS _BYTE, s AS _BYTE, f AS _UNSIGNED LONG, b AS _UNSIGNED LONG, g AS _UNSIGNED LONG
+    DIM r AS SINGLE, cx AS SINGLE, cy AS SINGLE
+    checked = state > 4: s = state: IF checked THEN s = state - 4
+    r = (size - 1) / 2: cx = x + r: cy = y + r
+
+    IF checked THEN
+        f = accent: b = accent: g = accentText
+        IF s = 2 THEN f = __UI_FlatShade(accent, .12): b = f
+        IF s = 3 THEN f = __UI_FlatShade(accent, .25): b = f
+    ELSE
+        f = __UI_ThemeColor(__UI_ThemeColor_InputBack): b = border
+        IF s = 2 THEN b = accent
+        IF s = 3 THEN f = __UI_FlatShade(f, .1): b = accent
+    END IF
+    IF s = 4 THEN
+        f = __UI_FlatMix(f, __UI_ThemeColor(__UI_ThemeColor_WindowBack), .6)
+        b = __UI_FlatMix(b, __UI_ThemeColor(__UI_ThemeColor_WindowBack), .6)
+        g = __UI_DisabledColor
+    END IF
+
+    __UI_FlatCircleFill cx, cy, r, b
+    __UI_FlatCircleFill cx, cy, r - 1, f
+    IF checked THEN __UI_FlatCircleFill cx, cy, r * .4, g
+END SUB
+
+''' @brief Draws a progress bar track and its filled part.
+SUB __UI_FlatProgressBar (w AS INTEGER, h AS INTEGER, fraction AS SINGLE, disabled AS _BYTE, accent AS _UNSIGNED LONG, border AS _UNSIGNED LONG)
+    DIM fillW AS INTEGER, a AS _UNSIGNED LONG
+    a = accent
+    IF disabled THEN a = __UI_FlatMix(accent, __UI_ThemeColor(__UI_ThemeColor_WindowBack), .6)
+    __UI_FlatRoundBox 0, 0, w, h, __UI_Theme.CornerRadius, __UI_ThemeColor(__UI_ThemeColor_TrackBack), border
+    IF fraction > 1 THEN fraction = 1
+    IF fraction > 0 THEN
+        fillW = (w - 2) * fraction
+        IF fillW > 0 THEN __UI_FlatRoundFill 1, 1, fillW, h - 2, __UI_Theme.CornerRadius - 1, a
+    END IF
+END SUB
+
+''' @brief Draws a slider thumb (state 5 = disabled, as used by the track bar).
+SUB __UI_FlatSliderThumb (x AS INTEGER, y AS INTEGER, w AS INTEGER, h AS INTEGER, state AS _BYTE, border AS _UNSIGNED LONG)
+    DIM f AS _UNSIGNED LONG, b AS _UNSIGNED LONG
+    f = __UI_ThemeColor(__UI_ThemeColor_ButtonFace): b = border
+    SELECT CASE state
+        CASE 2: b = __UI_ThemeColor(__UI_ThemeColor_Accent)
+        CASE 3: f = __UI_FlatShade(f, .12): b = __UI_ThemeColor(__UI_ThemeColor_Accent)
+        CASE 5: f = __UI_FlatMix(f, __UI_ThemeColor(__UI_ThemeColor_WindowBack), .6): b = __UI_FlatMix(b, __UI_ThemeColor(__UI_ThemeColor_WindowBack), .6)
+    END SELECT
+    __UI_FlatRoundBox x, y, w, h, w \ 2, f, b
+END SUB

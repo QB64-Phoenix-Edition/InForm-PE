@@ -12,12 +12,16 @@ InForm-PE's main goal is to generate *event-driven* QB64-PE applications. This m
 - Event-driven application design
 - Works on Windows, Linux & macOS
 - Everything is statically linked (no shared library dependencies)
+- Themes: classic XP, flat light and flat dark built in, or your own theme files ([Themes](docs/Themes.md))
+- Tab control for multi-page forms ([TabControl](docs/TabControl.md))
 
 ## DOCUMENTATION
 
 - [Wiki](https://github.com/QB64-Phoenix-Edition/InForm-PE/wiki)
 - [Tutorial](https://raw.githack.com/QB64-Phoenix-Edition/InForm-PE/refs/heads/master/docs/tutorial/index.html)
 - [Extensions](docs/Extensions.md)
+- [Themes](docs/Themes.md)
+- [TabControl](docs/TabControl.md)
 
 ## USAGE
 
@@ -68,7 +72,10 @@ InForm/InForm.bi
 InForm/InForm.ui
 InForm/InFormCommon.bi
 InForm/InFormVersion.bi
+InForm/InFormTheme.bm
+InForm/InFormTabControl.bm
 InForm/xp.uitheme
+InForm/themes/*.*
 InForm/extensions/*.*
 ```
 
@@ -102,6 +109,7 @@ InForm/extensions/*.*
 | R2P | bobalooie |
 | RockPaperScissorsSpockLizard | TempodiBasic |
 | Stopwatch | Fellippe Heitor |
+| TabDemo | QB64 Phoenix Edition Team |
 | TextFetch | B+ |
 | ThemePreview | Fellippe Heitor |
 | TicTacToe | Fellippe Heitor |
