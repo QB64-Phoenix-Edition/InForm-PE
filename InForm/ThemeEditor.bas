@@ -70,6 +70,7 @@ DIM SHARED CurrentFile AS STRING ' theme file being edited ("" = not saved yet)
 DIM SHARED CurrentBase AS STRING ' built-in theme the file inherits from (xp, light or dark)
 DIM SHARED CurrentRole AS LONG ' palette role selected in the list
 DIM SHARED Modified AS _BYTE
+DIM SHARED FileOnDisk AS STRING ' contents of CurrentFile when it was last opened or saved
 
 ': External modules: ---------------------------------------------------------------
 '$INCLUDE:'InForm.bi'
@@ -202,6 +203,7 @@ SUB NewTheme (baseName AS STRING)
     SetTheme baseName
     CurrentBase = baseName
     CurrentFile = ""
+    FileOnDisk = ""
     __UI_Theme.Name = "My theme"
     Modified = False
     RefreshAll
@@ -215,11 +217,13 @@ SUB OpenThemeFile (fileName AS STRING)
         EXIT SUB
     END IF
     b = LCASE$(_TRIM$(Ini_ReadSetting(fileName, "Theme", "Base")))
+    Ini_Release fileName
     IF LEN(b) = 0 THEN
         IF __UI_Theme.Style = __UI_ThemeStyle_Flat THEN b = "light" ELSE b = "xp"
     END IF
     CurrentBase = b
     CurrentFile = fileName
+    FileOnDisk = __UI_Theme_ReadFile(fileName)
     Modified = False
     RefreshAll
 END SUB
@@ -277,6 +281,7 @@ SUB SaveThemeFile (fileName AS STRING)
     CLOSE #f
 
     CurrentFile = fileName
+    FileOnDisk = __UI_Theme_ReadFile(fileName)
     __UI_Theme.Source = fileName
     Modified = False
     UpdateTitle
@@ -302,6 +307,28 @@ FUNCTION ConfirmDiscard%%
     END IF
 END FUNCTION
 
+''' @brief Reloads the open theme file when another program changes it (checked once per second).
+''' Asks first when there are unsaved changes.
+SUB CheckFileOnDisk
+    STATIC lastCheck AS DOUBLE
+    DIM content AS STRING, answer AS LONG
+
+    IF LEN(CurrentFile) = 0 THEN EXIT SUB
+    IF ABS(TIMER(.001) - lastCheck) < 1 THEN EXIT SUB
+    lastCheck = TIMER(.001)
+    IF NOT _FILEEXISTS(CurrentFile) THEN EXIT SUB
+
+    content = __UI_Theme_ReadFile(CurrentFile)
+    IF content = FileOnDisk THEN EXIT SUB
+    FileOnDisk = content ' don't ask again for this version
+
+    IF Modified THEN
+        answer = MessageBox("The theme file was changed by another program.\n\nReload it and lose your changes?", "Theme Editor", MsgBox_YesNo + MsgBox_Question)
+        IF answer <> MsgBox_Yes THEN EXIT SUB
+    END IF
+    OpenThemeFile CurrentFile
+END SUB
+
 ': Event procedures: ---------------------------------------------------------------
 SUB __UI_BeforeInit
 END SUB
@@ -324,6 +351,7 @@ SUB __UI_OnLoad
 END SUB
 
 SUB __UI_BeforeUpdateDisplay
+    CheckFileOnDisk
 END SUB
 
 SUB __UI_BeforeUnload

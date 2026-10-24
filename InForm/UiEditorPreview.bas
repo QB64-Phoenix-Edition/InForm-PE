@@ -164,6 +164,39 @@ SUB SelectNewControl (id AS LONG)
     __UI_ForceRedraw = True
 END SUB
 
+''' @brief When the form uses a theme file, reloads it after it changes on disk
+''' (for example, when it is saved in the Theme Editor). Checks once per second.
+SUB ReloadThemeIfChanged
+    STATIC lastCheck AS DOUBLE, watchedFile AS STRING, lastContent AS STRING
+    DIM themeFile AS STRING, content AS STRING, f AS LONG
+
+    IF ABS(TIMER(.001) - lastCheck) < 1 THEN EXIT SUB
+    lastCheck = TIMER(.001)
+
+    themeFile = GetTheme$
+    SELECT CASE LCASE$(themeFile)
+        CASE "xp", "classic", "light", "flat", "dark"
+            watchedFile = ""
+            EXIT SUB
+    END SELECT
+    IF NOT _FILEEXISTS(themeFile) THEN EXIT SUB
+
+    f = FREEFILE
+    OPEN themeFile FOR BINARY AS #f
+    content = SPACE$(LOF(f))
+    GET #f, , content
+    CLOSE #f
+
+    IF themeFile <> watchedFile THEN
+        'Started watching a new file
+        watchedFile = themeFile
+        lastContent = content
+    ELSEIF content <> lastContent THEN
+        lastContent = content
+        SetTheme themeFile
+    END IF
+END SUB
+
 SUB __UI_BeforeUpdateDisplay
     DIM a$, b$, TempValue AS LONG, i AS LONG, j AS LONG
     DIM FileNameToLoad$
@@ -174,6 +207,8 @@ SUB __UI_BeforeUpdateDisplay
     STATIC NewWindowTop AS INTEGER, NewWindowLeft AS INTEGER
 
     IF __UI_TotalSelectedControls < 0 THEN __UI_TotalSelectedControls = 0
+
+    ReloadThemeIfChanged
 
     SavePreview ToEditor
 

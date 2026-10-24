@@ -104,6 +104,18 @@ FUNCTION __UI_Theme_ItemAt$ (items AS STRING, n AS LONG)
     IF p THEN __UI_Theme_ItemAt = LEFT$(s, p - 1)
 END FUNCTION
 
+''' @brief Reads a whole text file (the file is closed right away).
+FUNCTION __UI_Theme_ReadFile$ (fileName AS STRING)
+    DIM f AS LONG, content AS STRING
+    IF NOT _FILEEXISTS(fileName) THEN EXIT FUNCTION
+    f = FREEFILE
+    OPEN fileName FOR BINARY AS #f
+    content = SPACE$(LOF(f))
+    GET #f, , content
+    CLOSE #f
+    __UI_Theme_ReadFile = content
+END FUNCTION
+
 ''' @brief Loads a theme from an INI file. Missing values are inherited from the built-in theme named by [Theme] Base.
 ''' @param fileName Theme file path.
 ''' @return _TRUE if the file was found and its base theme exists.
@@ -112,14 +124,14 @@ FUNCTION __UI_Theme_LoadFile%% (fileName AS STRING)
 
     DIM v AS STRING, i AS LONG, c AS _UNSIGNED LONG, styleName AS STRING, baseName AS STRING
 
-    Ini_SetForceReload _TRUE
+    Ini_SetForceReload _TRUE ' the file may have changed since it was last read
     styleName = LCASE$(_TRIM$(Ini_ReadSetting(fileName, "Theme", "Style")))
     Ini_SetForceReload _FALSE
     baseName = _TRIM$(Ini_ReadSetting(fileName, "Theme", "Base"))
     IF LEN(baseName) = 0 THEN
         IF styleName = "flat" THEN baseName = "light" ELSE baseName = "xp"
     END IF
-    IF NOT __UI_Theme_LoadBuiltin(baseName) THEN EXIT FUNCTION
+    IF NOT __UI_Theme_LoadBuiltin(baseName) THEN Ini_Release fileName: EXIT FUNCTION
 
     v = _TRIM$(Ini_ReadSetting(fileName, "Theme", "Name"))
     IF LEN(v) THEN __UI_Theme.Name = v
@@ -160,6 +172,9 @@ FUNCTION __UI_Theme_LoadFile%% (fileName AS STRING)
             END IF
         END IF
     NEXT i
+
+    ' Don't keep the file open: other programs (like the Theme Editor) may write to it
+    Ini_Release fileName
 
     __UI_Theme_LoadFile = _TRUE
 END FUNCTION

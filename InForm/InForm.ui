@@ -615,41 +615,45 @@ SUB __UI_ProcessInput
     'Resize event:
     '(Triggered either programmatically or by directly resizing the form):
     DIM CheckResize AS _BYTE
-    CheckResize = _RESIZE
-    IF (CheckResize AND Control(__UI_FormID).CanResize) OR (CheckResize AND __UI_DesignMode) OR __UI_CurrentBackColor <> Control(__UI_FormID).BackColor OR Control(__UI_FormID).Width <> _WIDTH(0) OR Control(__UI_FormID).Height <> _HEIGHT(0) THEN
-        _DELAY .1
-        IF CheckResize THEN
-            Control(__UI_FormID).Width = _RESIZEWIDTH
-            Control(__UI_FormID).Height = _RESIZEHEIGHT
-        END IF
-        IF Control(__UI_FormID).Width > 0 AND Control(__UI_FormID).Height > 0 THEN
-            __UI_CurrentBackColor = Control(__UI_FormID).BackColor
-
-            __UI_HasResized = 2 'Indicate this process is in the middle
-
-            OldScreen& = _DISPLAY
-            SCREEN _NEWIMAGE(Control(__UI_FormID).Width, Control(__UI_FormID).Height, 32)
-            _FREEIMAGE OldScreen&
-            'Recreate the main form's canvas
-            _DEST __UI_ResetCanvas(Control(__UI_FormID))
-            COLOR Control(__UI_FormID).ForeColor, Control(__UI_FormID).BackColor
-            CLS
-            IF __UI_HasMenuBar = True THEN
-                'Add menubar div to main form's canvas
-                _FONT Control(__UI_FormID).Font
-                __UI_MenuBarOffsetV = _ULINESPACING + (((_FONT = 8) * -1) * __UI_Font8Offset + ((_FONT = 16) * -1) * __UI_Font16Offset) + 5 + 2
-                LINE (0, __UI_MenuBarOffsetV - 1)-STEP(Control(__UI_FormID).Width - 1, 0), __UI_DisabledColor
-                LINE (0, __UI_MenuBarOffsetV)-STEP(Control(__UI_FormID).Width - 1, 0), Darken(Control(__UI_FormID).BackColor, 120)
-                __UI_RefreshMenuBar
-            ELSE
-                __UI_MenuBarOffsetV = 0
+    'Replacing the screen while __UI_UpdateDisplay is drawing would free the image it is drawing to,
+    'so this waits for the next tick (the resize flag is only read when it can be handled)
+    IF NOT __UI_IsDrawing THEN
+        CheckResize = _RESIZE
+        IF (CheckResize AND Control(__UI_FormID).CanResize) OR (CheckResize AND __UI_DesignMode) OR __UI_CurrentBackColor <> Control(__UI_FormID).BackColor OR Control(__UI_FormID).Width <> _WIDTH(0) OR Control(__UI_FormID).Height <> _HEIGHT(0) THEN
+            _DELAY .1
+            IF CheckResize THEN
+                Control(__UI_FormID).Width = _RESIZEWIDTH
+                Control(__UI_FormID).Height = _RESIZEHEIGHT
             END IF
-            _DEST 0
+            IF Control(__UI_FormID).Width > 0 AND Control(__UI_FormID).Height > 0 THEN
+                __UI_CurrentBackColor = Control(__UI_FormID).BackColor
 
-            IF LEN(__UI_CurrentTitle) THEN _TITLE __UI_CurrentTitle
+                __UI_HasResized = 2 'Indicate this process is in the middle
 
-            __UI_HasResized = True
-            __UI_HasInput = True
+                OldScreen& = _DISPLAY
+                SCREEN _NEWIMAGE(Control(__UI_FormID).Width, Control(__UI_FormID).Height, 32)
+                _FREEIMAGE OldScreen&
+                'Recreate the main form's canvas
+                _DEST __UI_ResetCanvas(Control(__UI_FormID))
+                COLOR Control(__UI_FormID).ForeColor, Control(__UI_FormID).BackColor
+                CLS
+                IF __UI_HasMenuBar = True THEN
+                    'Add menubar div to main form's canvas
+                    _FONT Control(__UI_FormID).Font
+                    __UI_MenuBarOffsetV = _ULINESPACING + (((_FONT = 8) * -1) * __UI_Font8Offset + ((_FONT = 16) * -1) * __UI_Font16Offset) + 5 + 2
+                    LINE (0, __UI_MenuBarOffsetV - 1)-STEP(Control(__UI_FormID).Width - 1, 0), __UI_DisabledColor
+                    LINE (0, __UI_MenuBarOffsetV)-STEP(Control(__UI_FormID).Width - 1, 0), Darken(Control(__UI_FormID).BackColor, 120)
+                    __UI_RefreshMenuBar
+                ELSE
+                    __UI_MenuBarOffsetV = 0
+                END IF
+                _DEST 0
+
+                IF LEN(__UI_CurrentTitle) THEN _TITLE __UI_CurrentTitle
+
+                __UI_HasResized = True
+                __UI_HasInput = True
+            END IF
         END IF
     END IF
 
@@ -673,10 +677,14 @@ SUB __UI_UpdateDisplay
 
     IF __UI_AutoRefresh = False THEN EXIT SUB
 
+    'The input timer must not replace the screen while controls are being drawn (see __UI_ProcessInput)
+    __UI_IsDrawing = True
+
     __UI_BeforeUpdateDisplay
 
     IF _SCREENX = -32000 _ANDALSO _SCREENY = -32000 THEN
         'Window was minimized
+        __UI_IsDrawing = False
         EXIT SUB
     END IF
 
@@ -1342,6 +1350,8 @@ SUB __UI_UpdateDisplay
         IF ControlDrawOrder(UBOUND(ControlDrawOrder)) = 0 THEN __UI_ExpandControlDrawOrder -1
     NEXT i 'run that a couple times for good measure
     _DISPLAY
+
+    __UI_IsDrawing = False
 END SUB
 
 '---------------------------------------------------------------------------------

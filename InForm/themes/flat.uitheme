@@ -214,11 +214,13 @@ END SUB
 ''' Used by boxed controls (text boxes, lists) that first fill their whole rectangle.
 SUB __UI_FlatClipCorners (radius AS SINGLE)
     DIM w AS LONG, h AS LONG, r AS SINGLE, band AS LONG, row AS LONG, col AS LONG, k AS LONG
-    DIM px AS LONG, py AS LONG, cov AS SINGLE, c AS _UNSIGNED LONG
+    DIM px AS LONG, py AS LONG, cov AS SINGLE, c AS _UNSIGNED LONG, prevSource AS LONG
     w = _WIDTH: h = _HEIGHT
     r = __UI_FlatFitRadius(w, h, radius)
     IF r < .5 THEN EXIT SUB
     band = -INT(-r)
+    prevSource = _SOURCE
+    _SOURCE _DEST ' POINT reads from _SOURCE
     _DONTBLEND
     FOR row = 0 TO band - 1
         FOR col = 0 TO band - 1
@@ -238,6 +240,7 @@ SUB __UI_FlatClipCorners (radius AS SINGLE)
         NEXT
     NEXT
     _BLEND
+    _SOURCE prevSource
 END SUB
 
 ''' @brief Fills an antialiased circle.

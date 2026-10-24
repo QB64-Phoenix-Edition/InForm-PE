@@ -2033,6 +2033,31 @@ SUB Test_INI_Manager
     KILL "test.ini"
 
     TEST_CASE_END
+
+    TEST_CASE_BEGIN "INI_Manager: Ini_Release"
+
+    DIM releaseFile AS LONG
+    releaseFile = FREEFILE
+    OPEN "release.ini" FOR OUTPUT AS #releaseFile
+    PRINT #releaseFile, "[S]"
+    PRINT #releaseFile, "K=first"
+    CLOSE #releaseFile
+
+    TEST_CHECK Ini_ReadSetting("release.ini", "S", "K") = "first", "Value is read"
+    Ini_Release "release.ini"
+    Ini_Release "release.ini" ' releasing twice is harmless
+
+    releaseFile = FREEFILE
+    OPEN "release.ini" FOR OUTPUT AS #releaseFile
+    PRINT #releaseFile, "[S]"
+    PRINT #releaseFile, "K=second"
+    CLOSE #releaseFile
+
+    TEST_CHECK Ini_ReadSetting("release.ini", "S", "K") = "second", "Released file is read from disk again"
+    Ini_Release "release.ini"
+    KILL "release.ini"
+
+    TEST_CASE_END
 END SUB
 
 SUB Test_Theme
@@ -2090,6 +2115,8 @@ SUB Test_Theme
     PRINT #f, "Accent=112233"
     PRINT #f, "Border=" + CHR$(34) + "#445566" + CHR$(34)
     PRINT #f, "Caret=not a color"
+    PRINT #f, "FocusRing=0A0B0C   ; inline comment"
+    PRINT #f, "; Accent=FFFFFF (commented out)"
     PRINT #f, "[Metrics]"
     PRINT #f, "CornerRadius=7"
     CLOSE #f
@@ -2101,8 +2128,20 @@ SUB Test_Theme
     TEST_CHECK GetThemeColor(__UI_ThemeColor_Accent) = _RGB32(17, 34, 51), "Color without #"
     TEST_CHECK GetThemeColor(__UI_ThemeColor_Border) = _RGB32(68, 85, 102), "Quoted color with #"
     TEST_CHECK GetThemeColor(__UI_ThemeColor_Caret) = _RGB32(240, 240, 240), "Invalid color keeps the base value"
+    TEST_CHECK GetThemeColor(__UI_ThemeColor_FocusRing) = _RGB32(10, 11, 12), "Color with a comment"
     TEST_CHECK GetThemeColor(__UI_ThemeColor_WindowBack) = _RGB32(32, 32, 32), "Missing color is inherited"
     TEST_CHECK __UI_Theme.CornerRadius = 7, "Metric is read"
+
+    ' The file is not kept open, and changes are picked up when the theme is set again
+    f = FREEFILE
+    OPEN "theme_test.ini" FOR OUTPUT AS #f
+    PRINT #f, "[Theme]"
+    PRINT #f, "Base=dark"
+    PRINT #f, "[Colors]"
+    PRINT #f, "Accent=AABBCC"
+    CLOSE #f
+    SetTheme "theme_test.ini"
+    TEST_CHECK GetThemeColor(__UI_ThemeColor_Accent) = _RGB32(170, 187, 204), "Changed file is read again"
 
     KILL "theme_test.ini"
     SetTheme "xp"
