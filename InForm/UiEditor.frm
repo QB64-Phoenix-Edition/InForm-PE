@@ -8,6 +8,7 @@ SUB __UI_LoadForm
     DIM __UI_NewID AS LONG
 
     __UI_NewID = __UI_NewControl(__UI_Type_Form, "UiEditor", 600, 601, 0, 0, 0)
+    SetTheme "light"
     SetCaption __UI_NewID, UiEditorTitle$
     Control(__UI_NewID).Font = SetFont(__INFORM_DEFAULT_FONTS, 12)
 
