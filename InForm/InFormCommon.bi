@@ -318,13 +318,13 @@ TYPE __UI_ControlTYPE
     PreviousFieldArea AS LONG
     TextIsSelected AS _BYTE
     BypassSelectOnFocus AS _BYTE
-    Multiline AS _BYTE
+    Multiline AS _BYTE ' textbox takes several lines of text (Enter adds a line break; long lines wrap)
     NumericOnly AS _BYTE
-    FirstVisibleLine AS LONG
+    FirstVisibleLine AS LONG ' multiline textbox: topmost visual line shown (1-based)
     PrevFirstVisibleLine AS LONG
-    CurrentLine AS LONG
+    CurrentLine AS LONG ' multiline textbox: visual line the cursor is on (1-based)
     PrevCurrentLine AS LONG
-    VisibleCursor AS LONG
+    VisibleCursor AS LONG ' textbox: cursor x position in pixels
     PrevVisibleCursor AS LONG
     ControlIsSelected AS _BYTE
     LeftOffsetFromFirstSelected AS INTEGER
@@ -470,6 +470,20 @@ DIM SHARED __UI_KeepScreenHidden AS _BYTE, __UI_MaxBorderSize AS INTEGER
 DIM SHARED __UI_InternalContextMenus AS LONG, __UI_DidClick AS _BYTE
 DIM SHARED __UI_ContextMenuSourceID AS LONG
 DIM SHARED __UI_FKey(1 TO 12) AS LONG
+
+' Multiline textbox layout (see __UI_TBLayout). Holds the visual lines of one
+' textbox at a time; offsets are 0-based positions into Text(id).
+REDIM SHARED __UI_TBLineStart(1 TO 100) AS LONG ' where each visual line starts
+REDIM SHARED __UI_TBLineLen(1 TO 100) AS LONG ' characters on the line, not counting a line break
+DIM SHARED __UI_TBLineCount AS LONG
+DIM SHARED __UI_TBNeedsScrollbar AS _BYTE
+DIM SHARED __UI_TBLayoutID AS LONG, __UI_TBLayoutText AS STRING
+DIM SHARED __UI_TBLayoutWidth AS LONG, __UI_TBLayoutHeight AS LONG, __UI_TBLayoutFont AS LONG
+DIM SHARED __UI_TBLayoutBorder AS LONG, __UI_TBLayoutScrollbarWidth AS LONG
+DIM SHARED __UI_TBKeepCaretX AS _BYTE ' Up/Down keep aiming at the same x (stored in .VisibleCursor)
+' When set, pasting into a single-line textbox replaces line breaks with this text
+' instead of keeping only the first line (UiEditor uses "\n")
+DIM SHARED __UI_PasteLineBreakAs AS STRING
 
 DIM SHARED __UI_Type(0 TO 19) AS __UI_Types
 

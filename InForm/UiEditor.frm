@@ -586,6 +586,10 @@ SUB __UI_LoadForm
     SetCaption __UI_NewID, "Password mask"
     Control(__UI_NewID).CanHaveFocus = True
 
+    __UI_NewID = __UI_NewControl(__UI_Type_CheckBox, "MultilineCB", 181, 20, 12, 78, __UI_GetID("ControlToggles"))
+    SetCaption __UI_NewID, "Multiline"
+    Control(__UI_NewID).CanHaveFocus = True
+
     __UI_NewID = __UI_NewControl(__UI_Type_CheckBox, "WordWrap", 181, 20, 12, 100, __UI_GetID("ControlToggles"))
     SetCaption __UI_NewID, "Word wrap"
     Control(__UI_NewID).CanHaveFocus = True
@@ -869,6 +873,7 @@ SUB __UI_AssignIDs
     HasBorder = __UI_GetID("HasBorder")
     ShowPercentage = __UI_GetID("ShowPercentage")
     PasswordMaskCB = __UI_GetID("PasswordMaskCB")
+    MultilineCB = __UI_GetID("MultilineCB")
     WordWrap = __UI_GetID("WordWrap")
     CanHaveFocus = __UI_GetID("CanHaveFocus")
     Disabled = __UI_GetID("Disabled")

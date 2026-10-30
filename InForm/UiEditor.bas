@@ -101,7 +101,7 @@ DIM SHARED AddToggleSwitch AS LONG, AddTabControl AS LONG
 
 'Control toggles
 DIM SHARED Stretch AS LONG, HasBorder AS LONG
-DIM SHARED ShowPercentage AS LONG, PasswordMaskCB AS LONG
+DIM SHARED ShowPercentage AS LONG, PasswordMaskCB AS LONG, MultilineCB AS LONG
 DIM SHARED WordWrap AS LONG, CanHaveFocus AS LONG
 DIM SHARED Disabled AS LONG, Transparent AS LONG
 DIM SHARED Hidden AS LONG, CenteredWindow AS LONG
@@ -415,6 +415,9 @@ SUB __UI_Click (id AS LONG)
         CASE PasswordMaskCB
             b$ = MKI$(Control(id).Value)
             SendData b$, 33
+        CASE MultilineCB
+            b$ = MKI$(Control(id).Value)
+            SendData b$, 45
         CASE AutoScroll
             b$ = MKI$(Control(id).Value)
             SendData b$, 38
@@ -1713,6 +1716,18 @@ SUB __UI_BeforeUpdateDisplay
 
     CONST PropertyUpdateDelay = .1
 
+    'Pasting into the Text field keeps line breaks as \n for multiline textboxes,
+    'and for list boxes and dropdowns, where each line becomes an item
+    __UI_PasteLineBreakAs = ""
+    IF __UI_Focus = TextTB AND FirstSelected > 0 THEN
+        SELECT CASE PreviewControls(FirstSelected).Type
+            CASE __UI_Type_ListBox, __UI_Type_DropdownList
+                __UI_PasteLineBreakAs = "\n"
+            CASE __UI_Type_TextBox
+                IF PreviewControls(FirstSelected).Multiline THEN __UI_PasteLineBreakAs = "\n"
+        END SELECT
+    END IF
+
     IF FirstSelected > 0 THEN
         DIM ThisInputBox AS LONG
         ThisInputBox = GetInputBoxFromID(__UI_Focus)
@@ -1752,7 +1767,7 @@ SUB __UI_BeforeUpdateDisplay
         END IF
 
         IF __UI_Focus <> TextTB OR (__UI_Focus = TextTB AND RevertEdit = True) THEN
-            IF PreviewControls(FirstSelected).Type = __UI_Type_ListBox OR PreviewControls(FirstSelected).Type = __UI_Type_DropdownList THEN
+            IF PreviewControls(FirstSelected).Type = __UI_Type_ListBox OR PreviewControls(FirstSelected).Type = __UI_Type_DropdownList OR (PreviewControls(FirstSelected).Type = __UI_Type_TextBox AND PreviewControls(FirstSelected).Multiline) THEN
                 Text(TextTB) = Replace(PreviewTexts(FirstSelected), CHR$(10), "\n", False, 0)
             ELSE
                 Text(TextTB) = PreviewTexts(FirstSelected)
@@ -1766,7 +1781,9 @@ SUB __UI_BeforeUpdateDisplay
         ELSEIF __UI_Focus = TextTB THEN
             Control(TextTB).NumericOnly = PreviewControls(FirstSelected).NumericOnly
             IF PropertyFullySelected(TextTB) THEN
-                IF ((PreviewControls(FirstSelected).Type = __UI_Type_ListBox OR PreviewControls(FirstSelected).Type = __UI_Type_DropdownList) AND Text(TextTB) = Replace(PreviewTexts(FirstSelected), CHR$(10), "\n", False, 0)) OR ((PreviewControls(FirstSelected).Type <> __UI_Type_ListBox AND PreviewControls(FirstSelected).Type <> __UI_Type_DropdownList) AND Text(TextTB) = PreviewTexts(FirstSelected)) THEN
+                IF Text(TextTB) = Replace(PreviewTexts(FirstSelected), CHR$(10), "\n", False, 0) AND (PreviewControls(FirstSelected).Type = __UI_Type_ListBox OR PreviewControls(FirstSelected).Type = __UI_Type_DropdownList OR (PreviewControls(FirstSelected).Type = __UI_Type_TextBox AND PreviewControls(FirstSelected).Multiline)) THEN
+                    Control(__UI_Focus).BorderColor = ShadeOfGreen
+                ELSEIF ((PreviewControls(FirstSelected).Type <> __UI_Type_ListBox AND PreviewControls(FirstSelected).Type <> __UI_Type_DropdownList) AND Text(TextTB) = PreviewTexts(FirstSelected)) THEN
                     Control(__UI_Focus).BorderColor = ShadeOfGreen
                 ELSE
                     IF TIMER - InputBox(ThisInputBox).LastEdited < PropertyUpdateDelay THEN
@@ -2044,6 +2061,7 @@ SUB __UI_BeforeUpdateDisplay
     Control(Hidden).Value = PreviewControls(FirstSelected).Hidden
     Control(CenteredWindow).Value = PreviewControls(FirstSelected).CenteredWindow
     Control(PasswordMaskCB).Value = PreviewControls(FirstSelected).PasswordField
+    Control(MultilineCB).Value = PreviewControls(FirstSelected).Multiline
     Control(BooleanOptions).Value = ABS(PreviewControls(FirstSelected).Value <> 0) + 1
     Control(AlignOptions).Value = PreviewControls(FirstSelected).Align + 1
     Control(VAlignOptions).Value = PreviewControls(FirstSelected).VAlign + 1
@@ -2188,7 +2206,8 @@ SUB __UI_BeforeUpdateDisplay
             CASE __UI_Type_TextBox
                 STATIC PreviousNumericState AS _BYTE
                 Control(Transparent).Disabled = False
-                Control(PasswordMaskCB).Disabled = (PreviewControls(FirstSelected).NumericOnly <> False)
+                Control(PasswordMaskCB).Disabled = (PreviewControls(FirstSelected).NumericOnly <> False) OR PreviewControls(FirstSelected).Multiline
+                Control(MultilineCB).Disabled = (PreviewControls(FirstSelected).NumericOnly <> False) OR PreviewControls(FirstSelected).PasswordField OR LEN(PreviewMasks(FirstSelected)) > 0
                 IF PreviousNumericState <> PreviewControls(FirstSelected).NumericOnly THEN
                     PreviousNumericState = PreviewControls(FirstSelected).NumericOnly
                     __UI_ForceRedraw = True
@@ -2843,6 +2862,7 @@ SUB __UI_OnLoad
     i = i + 1: Toggles(i) = HasBorder
     i = i + 1: Toggles(i) = ShowPercentage
     i = i + 1: Toggles(i) = PasswordMaskCB
+    i = i + 1: Toggles(i) = MultilineCB
     i = i + 1: Toggles(i) = WordWrap
     i = i + 1: Toggles(i) = CanHaveFocus
     i = i + 1: Toggles(i) = Disabled
@@ -3435,6 +3455,8 @@ SUB LoadPreview
                     PreviewControls(Dummy).VAlign = _CV(_BYTE, b$)
                 CASE -33
                     PreviewControls(Dummy).PasswordField = True
+                CASE -51
+                    PreviewControls(Dummy).Multiline = True
                 CASE -34
                     b$ = ReadSequential$(FormData$, 4)
                     PreviewControls(Dummy).Encoding = CVL(b$)
@@ -3939,6 +3961,9 @@ SUB SaveForm (ExitToQB64 AS _BYTE, SaveOnlyFrm AS _BYTE)
                 END IF
                 IF PreviewControls(i).PasswordField = True AND PreviewControls(i).Type = __UI_Type_TextBox THEN
                     PRINT #TextFileNum, "    Control(__UI_NewID).PasswordField = True"
+                END IF
+                IF PreviewControls(i).Multiline AND PreviewControls(i).Type = __UI_Type_TextBox THEN
+                    PRINT #TextFileNum, "    Control(__UI_NewID).Multiline = True"
                 END IF
                 IF PreviewControls(i).Value <> 0 THEN
                     PRINT #TextFileNum, "    Control(__UI_NewID).Value = " + LTRIM$(STR$(PreviewControls(i).Value))

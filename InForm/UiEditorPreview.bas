@@ -837,6 +837,9 @@ SUB __UI_BeforeUpdateDisplay
                                 ELSEIF Control(i).Type = __UI_Type_TextBox AND Control(i).Max > 0 THEN
                                     Text(i) = LEFT$(b$, Control(i).Max)
                                 END IF
+                                IF Control(i).Type = __UI_Type_TextBox AND Control(i).Multiline THEN
+                                    Text(i) = Replace(Text(i), "\n", CHR$(10), False, TotalReplacements)
+                                END IF
                                 IF Control(i).Type = __UI_Type_Button OR Control(i).Type = __UI_Type_MenuItem THEN
                                     LoadImage Control(i), b$
                                 ELSEIF Control(i).Type = __UI_Type_PictureBox THEN
@@ -855,7 +858,11 @@ SUB __UI_BeforeUpdateDisplay
                                     __UI_ForceRedraw = True
                                 ELSEIF Control(i).Type = __UI_Type_ListBox OR Control(i).Type = __UI_Type_DropdownList THEN
                                     Text(i) = Replace(b$, "\n", CHR$(10), False, TotalReplacements)
-                                    IF Control(i).Max < TotalReplacements + 1 THEN Control(i).Max = TotalReplacements + 1
+                                    'A trailing line break doesn't add an empty item
+                                    IF RIGHT$(Text(i), 1) = CHR$(10) THEN Text(i) = LEFT$(Text(i), LEN(Text(i)) - 1): TotalReplacements = TotalReplacements - 1
+                                    IF LEN(Text(i)) THEN Control(i).Max = TotalReplacements + 1 ELSE Control(i).Max = 0
+                                    IF Control(i).Value > Control(i).Max THEN Control(i).Value = Control(i).Max
+                                    IF Control(i).InputViewStart > Control(i).Max THEN Control(i).InputViewStart = 1
                                     Control(i).LastVisibleItem = 0 'Reset it so it's recalculated
                                 END IF
                                 IF LockedControlsGOSUB THEN RETURN
@@ -1591,6 +1598,19 @@ SUB __UI_BeforeUpdateDisplay
                                 __UI_ActivateMenu Control(Control(i).ParentID), False
                                 EXIT FOR
                             END IF
+                        END IF
+                    NEXT
+                END IF
+            CASE 45 'Multiline
+                b$ = ReadSequential$(Property$, 2)
+                IF TotalLockedControls THEN
+                    FOR j = 1 TO TotalLockedControls
+                        SetMultiline LockedControls(j), CVI(b$)
+                    NEXT
+                ELSE
+                    FOR i = 1 TO UBOUND(Control)
+                        IF Control(i).ControlIsSelected THEN
+                            SetMultiline i, CVI(b$)
                         END IF
                     NEXT
                 END IF
@@ -2698,6 +2718,9 @@ SUB LoadPreview (Destination AS _BYTE)
                 CASE -33
                     Control(TempValue).PasswordField = True
                     IF LogFileLoad THEN PRINT #LogFileNum, "PASSWORDFIELD"
+                CASE -51
+                    Control(TempValue).Multiline = True
+                    IF LogFileLoad THEN PRINT #LogFileNum, "MULTILINE"
                 CASE -34
                     IF NOT Disk THEN b$ = ReadSequential$(Clip$, 4) ELSE b$ = SPACE$(4): GET #BinaryFileNum, , b$
                     Control(TempValue).Encoding = CVL(b$)
@@ -3035,6 +3058,8 @@ SUB LoadPreviewText
                             END SELECT
                         CASE "PasswordField"
                             Control(TempValue).PasswordField = (DummyText$ = "True")
+                        CASE "Multiline"
+                            Control(TempValue).Multiline = (DummyText$ = "True")
                         CASE "Encoding"
                             Control(TempValue).Encoding = VAL(DummyText$)
                         CASE "NumericOnly"
@@ -3495,6 +3520,10 @@ SUB SavePreview (Destination AS _BYTE)
                     b$ = MKI$(-33)
                     IF Disk THEN PUT #BinFileNum, , b$ ELSE Clip$ = Clip$ + b$
                 END IF
+                IF Control(i).Multiline AND Control(i).Type = __UI_Type_TextBox THEN
+                    b$ = MKI$(-51)
+                    IF Disk THEN PUT #BinFileNum, , b$ ELSE Clip$ = Clip$ + b$
+                END IF
                 IF Control(i).Encoding > 0 THEN
                     b$ = MKI$(-34) + MKL$(Control(i).Encoding)
                     IF Disk THEN PUT #BinFileNum, , b$ ELSE Clip$ = Clip$ + b$
@@ -3948,6 +3977,31 @@ SUB RestoreRedoImage
     IF UndoPointer = TotalUndoImages THEN EXIT SUB
     UndoPointer = UndoPointer + 1
     LoadPreview ToUndoBuffer
+END SUB
+
+SUB SetMultiline (id AS LONG, state AS INTEGER)
+    'Turns the Multiline property of a textbox on or off, resizing it to suit
+    DIM prevFont AS LONG
+
+    IF Control(id).Type <> __UI_Type_TextBox THEN EXIT SUB
+    Control(id).Multiline = (state <> 0)
+    Control(id).FirstVisibleLine = 1
+    Control(id).Cursor = 0
+    Control(id).SelectionStart = 0
+    Control(id).TextIsSelected = False
+
+    prevFont = _FONT
+    _FONT Control(id).Font
+    IF Control(id).Multiline THEN
+        Control(id).PasswordField = False
+        IF Control(id).Height < uspacing * 3 THEN Control(id).Height = uspacing * 4 + __UI_TBPadding(id) * 2
+    ELSE
+        'Back to a single line: line breaks become spaces
+        Text(id) = Replace(Text(id), CHR$(10), " ", False, 0)
+        Control(id).Height = uspacing + 6 + (ABS(Control(id).HasBorder) * Control(id).BorderSize)
+    END IF
+    _FONT prevFont
+    Control(id).Redraw = True
 END SUB
 
 SUB LoadDefaultFonts

@@ -1776,54 +1776,110 @@ SUB Test_InFormUIUtils
 END SUB
 
 SUB Test_InFormUIHelpers
-    TEST_CASE_BEGIN "InFormUIHelpers: __UI_CountLines"
+    TEST_CASE_BEGIN "InFormUIHelpers: multiline textbox layout"
 
-    TEST_CHECK __UI_CountLines(0) = 0, "Empty string"
-    Text(0) = _CHR_LF
-    TEST_CHECK __UI_CountLines(0) = 1, "One line"
-    Text(0) = "Line 1" + _CHR_LF + "Line 2" + _CHR_LF + "Line 3"
-    TEST_CHECK __UI_CountLines(0) = 3, "Three lines"
-    Text(0) = "Line 1" + _CHR_LF + "Line 2" + _CHR_LF + "Line 3" + _CHR_LF
-    TEST_CHECK __UI_CountLines(0) = 3, "Three lines"
-    Text(0) = _CHR_LF + "Line 1" + _CHR_LF + "Line 2" + _CHR_LF + "Line 3"
-    TEST_CHECK __UI_CountLines(0) = 4, "Four lines"
+    'Built-in font 8 is 8 pixels per character; no border and no padding,
+    'so an 80-pixel-wide box fits 10 characters per line
+    DIM AS LONG tb, lineH, testImage, prevDest, prevIndent, prevScrollbar
+    prevDest = _DEST
+    testImage = _NEWIMAGE(320, 240, 32)
+    _DEST testImage
+    prevIndent = __UI_DefaultCaptionIndent: __UI_DefaultCaptionIndent = 0
+    prevScrollbar = __UI_ScrollbarWidth: __UI_ScrollbarWidth = 16
+
+    tb = __UI_NewControl(__UI_Type_TextBox, "TestMultilineTB", 80, 200, 0, 0, 0)
+    Control(tb).Multiline = _TRUE
+    Control(tb).Font = 8
+    Control(tb).HasBorder = _FALSE
+    lineH = __UI_TBLineHeight(tb)
+
+    Text(tb) = ""
+    TEST_CHECK __UI_TBCountLines(tb) = 1, "Empty text is one line"
+    TEST_CHECK __UI_TBLineStart(1) = 0 _ANDALSO __UI_TBLineLen(1) = 0, "Empty line"
+
+    Text(tb) = "hello world foo"
+    TEST_CHECK __UI_TBCountLines(tb) = 2, "Wraps at a space"
+    TEST_CHECK __UI_TBLineStart(1) = 0 _ANDALSO __UI_TBLineLen(1) = 6, "First line keeps its trailing space"
+    TEST_CHECK __UI_TBLineStart(2) = 6 _ANDALSO __UI_TBLineLen(2) = 9, "Second line"
+    TEST_CHECK_FALSE __UI_TBNeedsScrollbar, "Everything fits"
+    TEST_CHECK __UI_TBLineFromPos(tb, 5) = 1, "Position on line 1"
+    TEST_CHECK __UI_TBLineFromPos(tb, 6) = 2, "Wrap position belongs to the next line"
+    TEST_CHECK __UI_TBLineFromPos(tb, 15) = 2, "End of text"
+    TEST_CHECK __UI_TBLineEnd(tb, 1) = 5, "Wrapped line ends before its last space"
+    TEST_CHECK __UI_TBLineEnd(tb, 2) = 15, "Last line ends at the end of the text"
+    TEST_CHECK __UI_TBXFromPos(tb, 3) = 24, "x of position 3"
+    TEST_CHECK __UI_TBXFromPos(tb, 8) = 16, "x on the second line"
+    TEST_CHECK __UI_TBPosFromX(tb, 2, 17) = 8, "Closest position to x"
+    TEST_CHECK __UI_TBPosFromX(tb, 1, 1000) = 5, "Past the end of a wrapped line"
+    TEST_CHECK __UI_TBPosFromPoint(tb, 17, lineH + 1) = 8, "Point on line 2"
+    TEST_CHECK __UI_TBPosFromPoint(tb, 0, -50) = 0, "Point above the text"
+    TEST_CHECK __UI_TBPosFromPoint(tb, 1000, 1000) = 15, "Point below the text"
+
+    Text(tb) = "ab" + _CHR_LF + _CHR_LF + "cd"
+    TEST_CHECK __UI_TBCountLines(tb) = 3, "Line breaks, including an empty line"
+    TEST_CHECK __UI_TBLineStart(2) = 3 _ANDALSO __UI_TBLineLen(2) = 0, "Empty middle line"
+    TEST_CHECK __UI_TBLineStart(3) = 4 _ANDALSO __UI_TBLineLen(3) = 2, "Last line"
+    TEST_CHECK __UI_TBLineFromPos(tb, 2) = 1, "Position before a line break"
+    TEST_CHECK __UI_TBLineEnd(tb, 1) = 2, "Line ends at its line break"
+
+    Text(tb) = "ab" + _CHR_LF
+    TEST_CHECK __UI_TBCountLines(tb) = 2, "A final line break starts an empty line"
+    TEST_CHECK __UI_TBLineFromPos(tb, 3) = 2, "Cursor after the final line break"
+
+    Text(tb) = "abcdefghijklmnop"
+    TEST_CHECK __UI_TBCountLines(tb) = 2, "A long word is split"
+    TEST_CHECK __UI_TBLineLen(1) = 10 _ANDALSO __UI_TBLineStart(2) = 10, "Split where the box ends"
 
     TEST_CASE_END
 
-    TEST_CASE_BEGIN "InFormUIHelpers: __UI_GetTextBoxLine"
+    TEST_CASE_BEGIN "InFormUIHelpers: multiline textbox navigation"
 
-    DIM startPos AS LONG
+    Text(tb) = "hello world foo"
+    Control(tb).Cursor = 3
+    __UI_TBKeepCaretX = _FALSE
+    __UI_TBMoveLines tb, 1
+    TEST_CHECK Control(tb).Cursor = 9, "Down keeps the column"
+    __UI_TBMoveLines tb, -1
+    TEST_CHECK Control(tb).Cursor = 3, "Up keeps the column"
+    __UI_TBMoveLines tb, -1
+    TEST_CHECK Control(tb).Cursor = 0, "Up on the first line goes to the start"
+    __UI_TBKeepCaretX = _FALSE
+    Control(tb).Cursor = 9
+    __UI_TBMoveLines tb, 1
+    TEST_CHECK Control(tb).Cursor = 15, "Down on the last line goes to the end"
+    __UI_TBKeepCaretX = _FALSE
 
-    Text(0) = _CHR_LF + "Line 1" + _CHR_LF + "Line 2" + _CHR_LF + "Line 3"
+    'One visible line: the text needs a scrollbar and wraps narrower (8 characters)
+    Control(tb).Height = lineH
+    TEST_CHECK __UI_TBVisibleLines(tb) = 1, "One visible line"
+    TEST_CHECK __UI_TBCountLines(tb) = 3, "Rewrapped beside the scrollbar"
+    TEST_CHECK __UI_TBNeedsScrollbar, "Needs a scrollbar"
+    TEST_CHECK __UI_TBLineStart(2) = 6 _ANDALSO __UI_TBLineStart(3) = 12, "Lines after rewrapping"
 
-    TEST_CHECK __UI_GetTextBoxLine(0, 0, startPos) = "", "Empty string"
-    TEST_CHECK startPos = 0, "Expected 0"
+    __UI_TBScrollTo tb, 10
+    TEST_CHECK Control(tb).FirstVisibleLine = 3, "Scrolling stops at the last line"
+    __UI_TBScrollTo tb, -5
+    TEST_CHECK Control(tb).FirstVisibleLine = 1, "Scrolling stops at the first line"
+    Control(tb).Cursor = 13
+    __UI_TBScrollToCaret tb
+    TEST_CHECK Control(tb).FirstVisibleLine = 3 _ANDALSO Control(tb).CurrentLine = 3, "Scrolls to show the cursor"
+    Control(tb).Cursor = 0
+    __UI_TBScrollToCaret tb
+    TEST_CHECK Control(tb).FirstVisibleLine = 1, "Scrolls back up"
 
-    TEST_CHECK __UI_GetTextBoxLine(0, 1, startPos) = Text(0), "Complete string"
-    TEST_CHECK startPos = 1, "Expected 1"
+    Text(tb) = "foo bar baz"
+    TEST_CHECK __UI_TBWordStart(tb, 5) = 4, "Word start"
+    TEST_CHECK __UI_TBWordEnd(tb, 5) = 8, "Word end includes the following space"
+    TEST_CHECK __UI_TBWordEnd(tb, 9) = 11, "Last word"
+    TEST_CHECK __UI_IsWordSeparator(Text(tb), 4), "Space separates words"
+    TEST_CHECK_FALSE __UI_IsWordSeparator(Text(tb), 5), "Letter is part of a word"
+    TEST_CHECK __UI_IsWordSeparator(_CHR_LF, 1), "Line break separates words"
 
-    TEST_CHECK __UI_GetTextBoxLine(0, 2, startPos) = "", "Empty string"
-    TEST_CHECK startPos = 0, "Expected 0"
-
-    Control(0).Multiline = _TRUE
-
-    TEST_CHECK __UI_GetTextBoxLine(0, 0, startPos) = "", "Empty string"
-    TEST_CHECK startPos = 0, "Expected 0"
-
-    TEST_CHECK __UI_GetTextBoxLine(0, 1, startPos) = "", "Empty line"
-    TEST_CHECK startPos = 1, "Expected 1"
-
-    TEST_CHECK __UI_GetTextBoxLine(0, 2, startPos) = "Line 1", "Line 1"
-    TEST_CHECK startPos = 2, "Expected 2"
-
-    TEST_CHECK __UI_GetTextBoxLine(0, 3, startPos) = "Line 2", "Line 2"
-    TEST_CHECK startPos = 9, "Expected 9"
-
-    TEST_CHECK __UI_GetTextBoxLine(0, 4, startPos) = "Line 3", "Line 3"
-    TEST_CHECK startPos = 16, "Expected 16"
-
-    TEST_CHECK __UI_GetTextBoxLine(0, 5, startPos) = "", "Empty string"
-    TEST_CHECK startPos = 0, "Expected 0"
+    __UI_DestroyControl Control(tb)
+    __UI_DefaultCaptionIndent = prevIndent
+    __UI_ScrollbarWidth = prevScrollbar
+    _DEST prevDest
+    _FREEIMAGE testImage
 
     TEST_CASE_END
 

@@ -103,6 +103,7 @@ InForm/extensions/*.*
 | Lander1 | B+ |
 | Lander2 | B+ |
 | Mahjong | Richard Notley |
+| MultilineDemo | Fellippe Heitor |
 | MasterMindGuessTheSequence | TempodiBasic |
 | Pelmanism | Richard Notley |
 | PictureGrid | Richard Notley |
