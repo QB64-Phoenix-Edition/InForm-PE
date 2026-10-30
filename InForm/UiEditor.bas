@@ -212,6 +212,7 @@ REDIM SHARED PreviewKeyCombos(0) AS STRING
 REDIM SHARED PreviewAnimatedGif(0) AS _BYTE
 REDIM SHARED PreviewAutoPlayGif(0) AS _BYTE
 REDIM SHARED zOrderIDs(0) AS LONG
+DIM SHARED ZOrderLastMove AS DOUBLE, ZOrderListDirty AS _BYTE
 REDIM SHARED InputBox(1 TO 100) AS newInputBox
 REDIM SHARED Toggles(1 TO 100) AS LONG
 REDIM SHARED InputBoxText(1 TO 100) AS STRING
@@ -535,22 +536,13 @@ SUB __UI_Click (id AS LONG)
             IF _FILEEXISTS("InForm/UiEditorPreview.frmbin") THEN KILL "InForm/UiEditorPreview.frmbin"
             SYSTEM
         CASE EditMenuZOrdering
-            'Fill the list:
-            Caption(StatusBar) = "Editing z-ordering/tab ordering"
             DIM j AS LONG, i AS LONG
-            STATIC Moving AS _BYTE
-            REDIM _PRESERVE zOrderIDs(1 TO UBOUND(PreviewControls)) AS LONG
-            ReloadZList:
-            ResetList ControlList
-            FOR i = 1 TO UBOUND(PreviewControls)
-                SELECT CASE PreviewControls(i).Type
-                    CASE 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 18
-                        j = j + 1
-                        zOrderIDs(j) = i
-                        AddItem ControlList, __UI_Type(PreviewControls(i).Type).Name + RTRIM$(PreviewControls(i).Name)
-                END SELECT
-            NEXT
-            IF Moving THEN RETURN
+            Caption(StatusBar) = "Editing z-ordering/tab ordering"
+            ZOrderLastMove = 0
+            ZOrderListDirty = False
+            ZOrderRefreshList True
+            Control(ControlList).InputViewStart = 1
+            ZOrderSelectControl FirstSelected
             Control(DialogBG).Left = 0: Control(DialogBG).Top = 0
             Control(ZOrdering).Left = 18: Control(ZOrdering).Top = 40
             __UI_Focus = ControlList
@@ -629,26 +621,11 @@ SUB __UI_Click (id AS LONG)
             __UI_Focus = 0
             ZOrderingDialogOpen = False
         CASE UpBT
-            DIM PrevListValue AS LONG
-            PrevListValue = Control(ControlList).Value
-            b$ = MKL$(zOrderIDs(Control(ControlList).Value)) + MKL$(zOrderIDs(Control(ControlList).Value - 1))
-            SendData b$, 211
-            __UI_Delay .1
-            Moving = True: GOSUB ReloadZList
-            Moving = False
-            Control(ControlList).Value = PrevListValue - 1
+            ZOrderMove -1
             __UI_Focus = ControlList
-            __UI_ValueChanged ControlList
         CASE DownBT
-            PrevListValue = Control(ControlList).Value
-            b$ = MKL$(zOrderIDs(Control(ControlList).Value)) + MKL$(zOrderIDs(Control(ControlList).Value + 1))
-            SendData b$, 212
-            __UI_Delay .1
-            Moving = True: GOSUB ReloadZList
-            Moving = False
-            Control(ControlList).Value = PrevListValue + 1
+            ZOrderMove 1
             __UI_Focus = ControlList
-            __UI_ValueChanged ControlList
 
         CASE FileMenuOpen
             IF Edited THEN
@@ -1415,6 +1392,7 @@ SUB __UI_BeforeUpdateDisplay
             CASE "FORMDATA"
                 LastFormData$ = thisData$
                 LoadPreview
+                ZOrderListDirty = True
                 IF NOT FormDataReceived THEN
                     FormDataReceived = True
                 ELSE
@@ -1502,10 +1480,16 @@ SUB __UI_BeforeUpdateDisplay
         LoseFocus
         PrevFirstSelected = FirstSelected
         __UI_ForceRedraw = True
-        IF ZOrderingDialogOpen AND FirstSelected <> PreviewFormID THEN
-            FOR j = 1 TO UBOUND(zOrderIDs)
-                IF zOrderIDs(j) = FirstSelected THEN Control(ControlList).Value = j: __UI_ValueChanged ControlList: EXIT FOR
-            NEXT
+        'Follow selections made in the preview, but not while our own moves are
+        'still on their way there (the reported selection would be outdated)
+        IF ZOrderingDialogOpen AND NOT ZOrderMovePending THEN ZOrderSelectControl FirstSelected
+    END IF
+
+    IF ZOrderingDialogOpen AND ZOrderListDirty THEN
+        IF NOT ZOrderMovePending THEN
+            ZOrderListDirty = False
+            ZOrderRefreshList False
+            ZOrderSelectControl FirstSelected
         END IF
     END IF
 
@@ -3221,16 +3205,14 @@ SUB __UI_ValueChanged (id AS LONG)
         CASE Blue
             Text(BlueValue) = LTRIM$(STR$(Control(Blue).Value))
         CASE ControlList
-            Control(UpBT).Disabled = False
-            Control(DownBT).Disabled = False
-            IF Control(ControlList).Value = 1 THEN
-                Control(UpBT).Disabled = True
-            ELSEIF Control(ControlList).Value = 0 THEN
-                Control(UpBT).Disabled = True
-                Control(DownBT).Disabled = True
-            ELSEIF Control(ControlList).Value = Control(ControlList).Max THEN
-                Control(DownBT).Disabled = True
+            'An item was dragged to a new position (the list is reorderable)
+            IF __UI_MovedItemTo > 0 THEN
+                ZOrderItemDropped __UI_MovedItemFrom, __UI_MovedItemTo
+                EXIT SUB
             END IF
+
+            'The user picked a control in the list: select it in the preview too
+            ZOrderUpdateButtons
             IF Control(ControlList).Value > 0 THEN
                 b$ = MKL$(zOrderIDs(Control(ControlList).Value))
             ELSE
@@ -3551,6 +3533,167 @@ SUB LoadPreview
         END IF
         PrevTotalGifLoaded = TotalGifLoaded
     END IF
+END SUB
+
+'---------------------------------------------------------------------------------
+'Z-ordering dialog
+'
+'The list is kept in step with the preview locally: a move swaps the two rows
+'right away and tells the preview to swap the same two control slots. Slot
+'numbers don't change when controls are swapped, so moves can be sent back to
+'back without waiting for the preview. The list is only rebuilt from the
+'preview's data once it settles, and only if it actually differs (undo, etc.).
+
+FUNCTION ZOrderable%% (i AS LONG)
+    IF PreviewControls(i).ID = 0 THEN EXIT FUNCTION
+    SELECT CASE PreviewControls(i).Type
+        CASE 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 18
+            ZOrderable = True
+    END SELECT
+END FUNCTION
+
+FUNCTION ZOrderMovePending%%
+    'True while dragging and for a short while after a move, until the preview has caught up
+    DIM elapsed AS DOUBLE
+    IF __UI_ReorderingID = ControlList THEN ZOrderMovePending = True: EXIT FUNCTION
+    IF ZOrderLastMove = 0 THEN EXIT FUNCTION
+    elapsed = TIMER(.001) - ZOrderLastMove
+    IF elapsed >= 0 AND elapsed < .3 THEN ZOrderMovePending = True ELSE ZOrderLastMove = 0
+END FUNCTION
+
+SUB ZOrderRefreshList (Force AS _BYTE)
+    'Fills zOrderIDs() from the latest preview data and reloads the list if it changed
+    DIM i AS LONG, total AS LONG, items$, prevValue AS LONG, prevViewStart AS LONG
+
+    IF UBOUND(zOrderIDs) < UBOUND(PreviewControls) THEN REDIM zOrderIDs(0 TO UBOUND(PreviewControls)) AS LONG
+    FOR i = 1 TO UBOUND(PreviewControls)
+        IF ZOrderable(i) THEN
+            total = total + 1
+            zOrderIDs(total) = i
+            items$ = items$ + __UI_Type(PreviewControls(i).Type).Name + RTRIM$(PreviewControls(i).Name) + CHR$(10)
+        END IF
+    NEXT
+
+    IF NOT Force AND items$ = Text(ControlList) AND total = Control(ControlList).Max THEN EXIT SUB
+
+    prevValue = Control(ControlList).Value
+    prevViewStart = Control(ControlList).InputViewStart
+    ResetList ControlList
+    Text(ControlList) = items$
+    Control(ControlList).Max = total
+    Control(ControlList).LastVisibleItem = 0
+    IF prevValue > total THEN prevValue = total
+    Control(ControlList).Value = prevValue
+    Control(ControlList).PreviousValue = prevValue
+    IF prevViewStart > total THEN prevViewStart = total
+    IF prevViewStart < 1 THEN prevViewStart = 1
+    Control(ControlList).InputViewStart = prevViewStart
+    Control(ControlList).Redraw = True
+    ZOrderUpdateButtons
+END SUB
+
+SUB ZOrderSelectControl (id AS LONG)
+    'Highlights control slot id in the list without echoing it back to the preview
+    DIM i AS LONG
+    IF id = 0 OR id = PreviewFormID THEN EXIT SUB
+    FOR i = 1 TO Control(ControlList).Max
+        IF zOrderIDs(i) = id THEN
+            ZOrderSetValue i
+            EXIT SUB
+        END IF
+    NEXT
+END SUB
+
+SUB ZOrderSetValue (v AS LONG)
+    DIM visible AS LONG
+    Control(ControlList).Value = v
+    Control(ControlList).PreviousValue = v
+    visible = Control(ControlList).LastVisibleItem
+    IF visible = 0 AND Control(ControlList).ItemHeight > 0 THEN 'not drawn yet
+        visible = FIX((Control(ControlList).Height - ABS(Control(ControlList).HasBorder) * 5) / Control(ControlList).ItemHeight)
+    END IF
+    IF visible > 0 AND v > 0 THEN
+        IF v < Control(ControlList).InputViewStart THEN
+            Control(ControlList).InputViewStart = v
+        ELSEIF v > Control(ControlList).InputViewStart + visible - 1 THEN
+            Control(ControlList).InputViewStart = v - visible + 1
+        END IF
+    END IF
+    Control(ControlList).Redraw = True
+    ZOrderUpdateButtons
+END SUB
+
+SUB ZOrderUpdateButtons
+    DIM v AS LONG
+    v = Control(ControlList).Value
+    Control(UpBT).Disabled = (v <= 1 OR v > Control(ControlList).Max)
+    Control(DownBT).Disabled = (v < 1 OR v >= Control(ControlList).Max)
+END SUB
+
+SUB ZOrderMove (Direction AS LONG)
+    DIM v AS LONG, t AS LONG, a AS LONG, b AS LONG, itemA$, itemB$, b$
+
+    v = Control(ControlList).Value
+    t = v + Direction
+    IF v < 1 OR v > Control(ControlList).Max OR t < 1 OR t > Control(ControlList).Max THEN EXIT SUB
+    a = zOrderIDs(v)
+    b = zOrderIDs(t)
+
+    b$ = MKL$(a) + MKL$(b)
+    IF Direction < 0 THEN SendData b$, 211 ELSE SendData b$, 212
+
+    'The moved control now lives in slot b: keep it selected
+    b$ = MKL$(b)
+    SendData b$, 213
+
+    itemA$ = GetItem(ControlList, v)
+    itemB$ = GetItem(ControlList, t)
+    ReplaceItem ControlList, v, itemB$
+    ReplaceItem ControlList, t, itemA$
+    ZOrderSetValue t
+
+    ZOrderLastMove = TIMER(.001)
+    IF ZOrderLastMove = 0 THEN ZOrderLastMove = .001
+    ZOrderListDirty = True 'check against the preview once it settles
+END SUB
+
+SUB ZOrderItemDropped (From AS LONG, Dest AS LONG)
+    'The list has already moved the item; give the preview the whole new order
+    'in one message (which also makes the drag a single undo step)
+    DIM i AS LONG, n AS LONG, keepID AS LONG, b$
+
+    n = Control(ControlList).Max
+    IF From < 1 OR From > n OR Dest < 1 OR Dest > n THEN EXIT SUB
+    DIM order(1 TO n) AS LONG
+    FOR i = 1 TO n
+        order(i) = zOrderIDs(i)
+    NEXT
+    keepID = order(From)
+    IF Dest > From THEN
+        FOR i = From TO Dest - 1
+            order(i) = order(i + 1)
+        NEXT
+    ELSE
+        FOR i = From TO Dest + 1 STEP -1
+            order(i) = order(i - 1)
+        NEXT
+    END IF
+    order(Dest) = keepID
+
+    b$ = MKL$(n)
+    FOR i = 1 TO n
+        b$ = b$ + MKL$(zOrderIDs(i)) + MKL$(order(i))
+    NEXT
+    SendData b$, 229
+
+    'The dropped control now lives in the slot of the row it was dropped on
+    ZOrderSetValue Dest
+    b$ = MKL$(zOrderIDs(Dest))
+    SendData b$, 213
+
+    ZOrderLastMove = TIMER(.001)
+    IF ZOrderLastMove = 0 THEN ZOrderLastMove = .001
+    ZOrderListDirty = True 'check against the preview once it settles
 END SUB
 
 SUB SendData (b$, Property AS INTEGER)

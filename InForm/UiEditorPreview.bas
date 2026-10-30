@@ -56,6 +56,7 @@ CONST EMPTY_FORM = "SW5Gb3JtAcgAAAD//3cAAAABAAUARm9ybTEsASwBAAAAAAAA/v8FAAAARm9y
 '   226 = Add new ContextMenu control
 '   227 = Toggle __UI_ShowInvisibleControls
 '   228 = Bind/Unbind selected controls
+'   229 = Reorder controls (z-ordering, e.g. after dragging in the list)
 
 'SavePreview parameters:
 CONST InDisk = 1
@@ -1672,33 +1673,20 @@ SUB __UI_BeforeUpdateDisplay
                 b$ = ReadSequential$(Property$, 2)
                 DoAlign TempValue
             CASE 211, 212 'Z-Ordering -> Move up/down
-                DIM tID1 AS LONG, tID2 AS LONG
                 a$ = ReadSequential$(Property$, 4)
                 b$ = ReadSequential$(Property$, 4)
-                tID1 = Control(CVL(a$)).ID
-                tID2 = Control(CVL(b$)).ID
-                SWAP Control(CVL(b$)), Control(CVL(a$))
-                __UI_SwapBindingIDs CVL(a$), CVL(b$)
-                SWAP Caption(CVL(b$)), Caption(CVL(a$))
-                SWAP Text(CVL(b$)), Text(CVL(a$))
-                SWAP ToolTip(CVL(b$)), ToolTip(CVL(a$))
-                Control(CVL(a$)).ID = tID1
-                Control(CVL(b$)).ID = tID2
-
-                'Restore ParentIDs based on ParentName
-                FOR i = 1 TO UBOUND(Control)
-                    Control(i).ParentID = __UI_GetID(Control(i).ParentName)
-                NEXT
-
-                IF __UI_TotalActiveMenus > 0 AND LEFT$(Control(__UI_ParentMenu(__UI_TotalActiveMenus)).Name, 5) <> "__UI_" THEN
+                IF SwapZOrder(CVL(a$), CVL(b$)) THEN
                     IF Control(CVL(a$)).Type = __UI_Type_MenuItem THEN
-                        __UI_ActivateMenu Control(Control(CVL(a$)).ParentID), False
+                        RefreshMenusAfterZOrder CVL(a$)
                     ELSEIF Control(CVL(b$)).Type = __UI_Type_MenuItem THEN
-                        __UI_ActivateMenu Control(Control(CVL(b$)).ParentID), False
+                        RefreshMenusAfterZOrder CVL(b$)
                     ELSE
-                        __UI_CloseAllMenus
+                        RefreshMenusAfterZOrder 0
                     END IF
                 END IF
+            CASE 229 'Z-Ordering -> Reorder: count, then (slot, slot whose control goes there) pairs
+                b$ = ReadSequential$(Property$, 4)
+                ReorderControls ReadSequential$(Property$, CVL(b$) * 8)
             CASE 213
                 'Select control
                 b$ = ReadSequential$(Property$, 4)
@@ -1708,7 +1696,9 @@ SUB __UI_BeforeUpdateDisplay
                     Control(i).ControlIsSelected = False
                 NEXT
 
-                IF CVL(b$) > 0 THEN Control(CVL(b$)).ControlIsSelected = True
+                IF CVL(b$) > 0 AND CVL(b$) <= UBOUND(Control) THEN
+                    IF Control(CVL(b$)).ID > 0 THEN Control(CVL(b$)).ControlIsSelected = True
+                END IF
             CASE 216 TO 221
                 __UI_KeyPress TempValue
             CASE 222 'New textbox control with the NumericOnly property set to true
@@ -4133,3 +4123,119 @@ FUNCTION LoadEditorImage& (id AS _UNSIGNED _BYTE)
             ERROR 51
     END SELECT
 END FUNCTION
+
+'Swaps two controls' slots in Control(), which changes both their drawing order
+'and their tab order. Everything that refers to either slot is updated to follow
+'its control. Returns False if either slot doesn't hold a valid control.
+FUNCTION SwapZOrder%% (a AS LONG, b AS LONG)
+    SHARED __GIFPlayHashTable() AS HMap64
+    DIM i AS LONG, hasA AS _BYTE, hasB AS _BYTE, idxA AS LONG, idxB AS LONG
+
+    IF a = b OR a < 1 OR b < 1 OR a > UBOUND(Control) OR b > UBOUND(Control) THEN EXIT FUNCTION
+    IF Control(a).ID = 0 OR Control(b).ID = 0 THEN EXIT FUNCTION
+
+    SWAP Control(a), Control(b)
+    Control(a).ID = a
+    Control(b).ID = b
+    SWAP Caption(a), Caption(b)
+    SWAP Text(a), Text(b)
+    SWAP Mask(a), Mask(b)
+    SWAP ToolTip(a), ToolTip(b)
+    IF a <= UBOUND(AutoPlayGif) AND b <= UBOUND(AutoPlayGif) THEN SWAP AutoPlayGif(a), AutoPlayGif(b)
+
+    'Animated GIFs are stored by control ID
+    hasA = HMap64_Contains(__GIFPlayHashTable(), a)
+    hasB = HMap64_Contains(__GIFPlayHashTable(), b)
+    IF hasA OR hasB THEN
+        IF hasA THEN idxA = HMap64_GetLong(__GIFPlayHashTable(), a): HMap64_Remove __GIFPlayHashTable(), a
+        IF hasB THEN idxB = HMap64_GetLong(__GIFPlayHashTable(), b): HMap64_Remove __GIFPlayHashTable(), b
+        IF hasA THEN HMap64_SetLong __GIFPlayHashTable(), b, idxA
+        IF hasB THEN HMap64_SetLong __GIFPlayHashTable(), a, idxB
+    END IF
+
+    'References to other controls follow the controls they point to
+    FOR i = 1 TO UBOUND(Control)
+        Control(i).ParentID = SwapZRef(Control(i).ParentID, a, b)
+        Control(i).PreviousParentID = SwapZRef(Control(i).PreviousParentID, a, b)
+        Control(i).ContextMenuID = SwapZRef(Control(i).ContextMenuID, a, b)
+        Control(i).MenuPanelID = SwapZRef(Control(i).MenuPanelID, a, b)
+    NEXT
+    __UI_SwapBindingIDs a, b
+    FOR i = 1 TO __UI_TotalKeyCombos
+        __UI_KeyCombo(i).ControlID = SwapZRef(__UI_KeyCombo(i).ControlID, a, b)
+    NEXT
+    FOR i = 1 TO TotalLockedControls
+        LockedControls(i) = SwapZRef(LockedControls(i), a, b)
+    NEXT
+    __UI_DefaultButtonID = SwapZRef(__UI_DefaultButtonID, a, b)
+    __UI_FirstSelectedID = SwapZRef(__UI_FirstSelectedID, a, b)
+    __UI_Focus = SwapZRef(__UI_Focus, a, b)
+    __UI_PreviousFocus = SwapZRef(__UI_PreviousFocus, a, b)
+
+    Control(a).Redraw = True
+    Control(b).Redraw = True
+    SwapZOrder = True
+END FUNCTION
+
+FUNCTION SwapZRef& (v AS LONG, a AS LONG, b AS LONG)
+    IF v = a THEN
+        SwapZRef = b
+    ELSEIF v = b THEN
+        SwapZRef = a
+    ELSE
+        SwapZRef = v
+    END IF
+END FUNCTION
+
+'Applies a new z-order in one go. Order$ holds pairs of slot numbers: the slot,
+'and the slot (as it was before this call) whose control should end up there.
+'Nothing is changed unless the pairs describe a valid reordering.
+SUB ReorderControls (Order$)
+    DIM n AS LONG, k AS LONG, j AS LONG, menuItem AS LONG
+
+    n = LEN(Order$) \ 8
+    IF n < 2 THEN EXIT SUB
+    DIM slot(1 TO n) AS LONG, at(1 TO n) AS LONG
+    DIM posOf(0 TO UBOUND(Control)) AS LONG, wanted(0 TO UBOUND(Control)) AS _BYTE
+
+    FOR k = 1 TO n
+        slot(k) = CVL(MID$(Order$, (k - 1) * 8 + 1, 4))
+        at(k) = CVL(MID$(Order$, (k - 1) * 8 + 5, 4))
+        IF slot(k) < 1 OR slot(k) > UBOUND(Control) OR at(k) < 1 OR at(k) > UBOUND(Control) THEN EXIT SUB
+        IF Control(slot(k)).ID = 0 OR posOf(slot(k)) > 0 OR wanted(at(k)) THEN EXIT SUB
+        posOf(slot(k)) = k
+        wanted(at(k)) = True
+    NEXT
+    FOR k = 1 TO n
+        IF posOf(at(k)) = 0 THEN EXIT SUB 'not a reordering of the same slots
+    NEXT
+
+    'at() now holds the target order; turn it into a list of swaps.
+    'cur(k) is the original slot of the control currently at position k.
+    DIM cur(1 TO n) AS LONG
+    FOR k = 1 TO n
+        cur(k) = slot(k)
+    NEXT
+    FOR k = 1 TO n
+        IF cur(k) <> at(k) THEN
+            j = posOf(at(k))
+            IF NOT SwapZOrder(slot(k), slot(j)) THEN EXIT FOR
+            posOf(cur(k)) = j
+            posOf(cur(j)) = k
+            SWAP cur(k), cur(j)
+            IF Control(slot(k)).Type = __UI_Type_MenuItem THEN menuItem = slot(k)
+        END IF
+    NEXT
+    RefreshMenusAfterZOrder menuItem
+END SUB
+
+'An open menu of the form being edited must show its items in their new order
+SUB RefreshMenusAfterZOrder (MenuItemID AS LONG)
+    IF __UI_TotalActiveMenus = 0 THEN EXIT SUB
+    IF LEFT$(Control(__UI_ParentMenu(__UI_TotalActiveMenus)).Name, 5) = "__UI_" THEN EXIT SUB
+    IF MenuItemID > 0 THEN
+        __UI_ActivateMenu Control(Control(MenuItemID).ParentID), False
+    ELSE
+        __UI_CloseAllMenus
+    END IF
+END SUB

@@ -712,7 +712,7 @@ SUB __UI_LoadForm
     Control(__UI_NewID).VAlign = __UI_Middle
 
     __UI_NewID = __UI_NewControl(__UI_Type_Label, "ZDescriptionLB", 484, 58, 15, 419, __UI_GetID("ZOrdering"))
-    SetCaption __UI_NewID, "Select a control in the list and use the up/down buttons to change the z-ordering/tab order. This affects both the order in which the controls are drawn (in case there are overlaps) and also the tab order for keyboard navigation by your users. "
+    SetCaption __UI_NewID, "Drag controls in the list (or select one and use the up/down buttons) to change the z-ordering/tab order. This affects both the order in which the controls are drawn (in case there are overlaps) and also the tab order for keyboard navigation by your users. "
     Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).WordWrap = True
 
@@ -720,6 +720,7 @@ SUB __UI_LoadForm
     Control(__UI_NewID).Font = SetFont(__INFORM_DEFAULT_FONTS_MONO, 12)
     Control(__UI_NewID).HasBorder = True
     Control(__UI_NewID).CanHaveFocus = True
+    Control(__UI_NewID).Reorderable = True
 
     __UI_NewID = __UI_NewControl(__UI_Type_Button, "UpBT", 40, 42, 511, 162, __UI_GetID("ZOrdering"))
     SetCaption __UI_NewID, "^"
