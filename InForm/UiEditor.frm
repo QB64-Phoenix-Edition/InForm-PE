@@ -630,6 +630,10 @@ SUB __UI_LoadForm
     SetCaption __UI_NewID, "Fuzzy search"
     Control(__UI_NewID).CanHaveFocus = True
 
+    __UI_NewID = __UI_NewControl(__UI_Type_CheckBox, "ReorderableCB", 181, 20, 12, 232, __UI_GetID("ControlToggles"))
+    SetCaption __UI_NewID, "Reorderable"
+    Control(__UI_NewID).CanHaveFocus = True
+
     __UI_NewID = __UI_NewControl(__UI_Type_CheckBox, "AutoScroll", 181, 20, 12, 232, __UI_GetID("ControlToggles"))
     SetCaption __UI_NewID, "Auto-scroll"
     Control(__UI_NewID).CanHaveFocus = True
@@ -779,6 +783,7 @@ SUB __UI_LoadForm
     AddItem __UI_NewID, "Hidden"
     AddItem __UI_NewID, "Searchable"
     AddItem __UI_NewID, "Fuzzy"
+    AddItem __UI_NewID, "Reorderable"
     Control(__UI_NewID).HasBorder = True
     Control(__UI_NewID).Value = 7
     Control(__UI_NewID).CanHaveFocus = True
@@ -955,6 +960,7 @@ SUB __UI_AssignIDs
     FontSwitchMenuSwitch = __UI_GetID("FontSwitchMenuSwitch")
     FontSwitchMenu = __UI_GetID("FontSwitchMenu")
     AutoScroll = __UI_GetID("AutoScroll")
+    ReorderableCB = __UI_GetID("ReorderableCB")
     SearchableCB = __UI_GetID("SearchableCB")
     FuzzyCB = __UI_GetID("FuzzyCB")
     PasteListBT = __UI_GetID("PasteListBT")
