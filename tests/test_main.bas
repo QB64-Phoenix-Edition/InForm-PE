@@ -2043,6 +2043,72 @@ SUB Test_DropdownSearch
 
     __UI_DestroyControl Control(listID)
     TEST_CHECK __UI_ActiveDropdownList = 0 _ANDALSO LEN(__UI_DropdownSearch) = 0 _ANDALSO LEN(__UI_DropdownSearchMap) = 0, "Closing clears the search"
+    'Searchable and Fuzzy can be bound to another control's value
+    DIM cb AS LONG
+    cb = __UI_NewControl(__UI_Type_CheckBox, "TestSearchCB", 100, 20, 0, 40, 0)
+    Control(dd).Searchable = _TRUE
+    __UI_Bind cb, dd, "Value", "Searchable"
+    TEST_CHECK Control(cb).Value <> _FALSE, "Binding starts from Searchable's current state"
+    Control(dd).Searchable = _FALSE
+    Control(cb).Value = _TRUE
+    __UI_CheckBinding cb
+    TEST_CHECK Control(dd).Searchable <> _FALSE, "Binding sets Searchable from a checkbox"
+    Control(cb).Value = _FALSE
+    __UI_CheckBinding cb
+    TEST_CHECK Control(dd).Searchable = _FALSE, "Binding clears Searchable"
+    __UI_Bind cb, dd, "Value", "Fuzzy"
+    Control(cb).Value = 7 'Any non-zero value turns it on
+    __UI_CheckBinding cb
+    TEST_CHECK Control(dd).Fuzzy = _TRUE, "Binding sets Fuzzy"
+    __UI_UnBind cb
+
+    'A control can be bound to several others through different properties
+    DIM cb2 AS LONG
+    cb2 = __UI_NewControl(__UI_Type_CheckBox, "TestSearchCB2", 100, 20, 0, 70, 0)
+    Control(cb).Value = _FALSE: Control(cb2).Value = _FALSE
+    Control(dd).Disabled = _FALSE: Control(dd).Searchable = _FALSE
+    __UI_Bind dd, cb, "Disabled", "Value"
+    __UI_Bind dd, cb2, "Searchable", "Value"
+    TEST_CHECK __UI_TotalBindings = 2, "Two bindings on one control"
+    TEST_CHECK __UI_BoundPropertyName$(dd, cb) = "Disabled" _ANDALSO __UI_BoundPropertyName$(cb2, dd) = "Value", "Each binding keeps its own properties"
+    Control(cb).Value = _TRUE
+    __UI_CheckBinding cb
+    TEST_CHECK Control(dd).Disabled <> _FALSE _ANDALSO Control(dd).Searchable = _FALSE, "First binding changes only its property"
+    Control(cb2).Value = _TRUE
+    __UI_CheckBinding cb2
+    TEST_CHECK Control(dd).Searchable <> _FALSE, "Second binding works too"
+    Control(dd).Disabled = _FALSE
+    __UI_CheckBinding dd
+    TEST_CHECK Control(cb).Value = _FALSE _ANDALSO Control(cb2).Value <> _FALSE, "Changes flow from the dropdown to each bound control"
+    __UI_Bind dd, cb, "Hidden", "Value"
+    TEST_CHECK __UI_TotalBindings = 2 _ANDALSO __UI_BoundPropertyName$(dd, cb) = "Hidden", "Binding the same two controls again replaces their binding"
+    __UI_UnBindPair cb, dd
+    TEST_CHECK __UI_TotalBindings = 1 _ANDALSO __UI_BindingIndex(dd, cb2) > 0, "Unbinding a pair keeps the other bindings"
+    __UI_DestroyControl Control(cb2)
+    TEST_CHECK __UI_TotalBindings = 0, "Destroying a control removes its bindings"
+
+    'Inverted (NOT) bindings
+    Control(cb).Value = _TRUE
+    __UI_Bind dd, cb, "Disabled", "NOT Value"
+    TEST_CHECK Control(dd).Disabled = _FALSE, "NOT: a checked box leaves the dropdown enabled"
+    TEST_CHECK __UI_BoundPropertyName$(cb, dd) = "NOT Value" _ANDALSO __UI_BoundPropertyName$(dd, cb) = "Disabled", "NOT is kept with the property, as written"
+    Control(cb).Value = _FALSE
+    __UI_CheckBinding cb
+    TEST_CHECK Control(dd).Disabled = _TRUE, "NOT: zero sets True"
+    Control(cb).Value = 5
+    __UI_CheckBinding cb
+    TEST_CHECK Control(dd).Disabled = _FALSE, "NOT: any non-zero value sets zero"
+    Control(dd).Disabled = _TRUE
+    __UI_CheckBinding dd
+    TEST_CHECK Control(cb).Value = _FALSE, "NOT works in both directions"
+    __UI_Bind dd, cb, "NOT Disabled", "Value"
+    TEST_CHECK __UI_Bindings(__UI_BindingIndex(dd, cb)).Inverted, "NOT can go on either property"
+    __UI_Bind dd, cb, "NOT Disabled", "NOT Value"
+    TEST_CHECK __UI_Bindings(__UI_BindingIndex(dd, cb)).Inverted = _FALSE, "NOT on both sides cancels out"
+    __UI_UnBind dd
+
+    __UI_DestroyControl Control(cb)
+
     __UI_DestroyControl Control(dd)
 
     _DEST prevDest

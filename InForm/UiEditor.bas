@@ -124,6 +124,7 @@ DIM SHARED SourcePropertyLB AS LONG
 DIM SHARED SourcePropertyList AS LONG
 DIM SHARED TargetPropertyLB AS LONG
 DIM SHARED TargetPropertyList AS LONG
+DIM SHARED InvertBindingCB AS LONG
 DIM SHARED BindBT AS LONG
 DIM SHARED CancelBindBT AS LONG
 
@@ -203,8 +204,9 @@ REDIM SHARED PreviewActualFonts(0) AS STRING
 REDIM SHARED PreviewControls(0) AS __UI_ControlTYPE
 REDIM SHARED PreviewParentIDS(0) AS STRING
 REDIM SHARED PreviewContextMenu(0) AS STRING
-REDIM SHARED PreviewBoundTo(0) AS STRING
-REDIM SHARED PreviewBoundProperty(0) AS STRING
+'Bindings each control is part of, one record per binding:
+'MKI$(LEN(other control's name)) + name + MKI$(LEN(this control's property)) + property
+REDIM SHARED PreviewBindings(0) AS STRING
 REDIM SHARED PreviewKeyCombos(0) AS STRING
 REDIM SHARED PreviewAnimatedGif(0) AS _BYTE
 REDIM SHARED PreviewAutoPlayGif(0) AS _BYTE
@@ -561,34 +563,33 @@ SUB __UI_Click (id AS LONG)
             __UI_Focus = ControlList
             ZOrderingDialogOpen = True
         CASE EditMenuBindControls
-            'Get controls' names and bound properties
-            DIM CurrentSource$
-            j = 0
+            'Get controls' names and the properties bound between them, if any
+            DIM BindSource AS LONG, BindTarget AS LONG, SourceProperty$, TargetProperty$
+            BindSource = 0: BindTarget = 0
             FOR i = 1 TO UBOUND(PreviewControls)
                 IF PreviewControls(i).ControlIsSelected THEN
-                    j = j + 1
-                    IF j = 1 THEN
-                        Caption(SourceControlNameLB) = RTRIM$(PreviewControls(i).Name)
-                        CurrentSource$ = PreviewBoundTo(i)
-                        IF LEN(PreviewBoundProperty(i)) = 0 THEN
-                            Dummy = SelectItem(SourcePropertyList, "Value")
-                        ELSE
-                            Dummy = SelectItem(SourcePropertyList, PreviewBoundProperty(i))
-                        END IF
-                    END IF
-                    IF j = 2 THEN
-                        Caption(TargetControlNameLB) = RTRIM$(PreviewControls(i).Name)
-                        IF LEN(PreviewBoundProperty(i)) = 0 THEN
-                            Dummy = SelectItem(TargetPropertyList, "Value")
-                        ELSE
-                            Dummy = SelectItem(TargetPropertyList, PreviewBoundProperty(i))
-                        END IF
+                    IF BindSource = 0 THEN
+                        BindSource = i
+                    ELSE
+                        BindTarget = i
                         EXIT FOR
                     END IF
                 END IF
             NEXT
+            IF BindTarget = 0 THEN EXIT SUB 'Bindings are set up between two controls
 
-            IF CurrentSource$ = Caption(TargetControlNameLB) THEN
+            Caption(SourceControlNameLB) = PreviewName$(BindSource)
+            Caption(TargetControlNameLB) = PreviewName$(BindTarget)
+            SourceProperty$ = PreviewBoundProperty$(BindSource, PreviewName$(BindTarget))
+            TargetProperty$ = PreviewBoundProperty$(BindTarget, PreviewName$(BindSource))
+            'An inverted binding has "NOT " in front of one of its properties
+            Control(InvertBindingCB).Value = __UI_IsInvertedProperty(SourceProperty$) XOR __UI_IsInvertedProperty(TargetProperty$)
+            IF __UI_IsInvertedProperty(SourceProperty$) THEN SourceProperty$ = MID$(LTRIM$(SourceProperty$), 5)
+            IF __UI_IsInvertedProperty(TargetProperty$) THEN TargetProperty$ = MID$(LTRIM$(TargetProperty$), 5)
+            IF LEN(SourceProperty$) = 0 THEN Dummy = SelectItem(SourcePropertyList, "Value") ELSE Dummy = SelectItem(SourcePropertyList, SourceProperty$)
+            IF LEN(TargetProperty$) = 0 THEN Dummy = SelectItem(TargetPropertyList, "Value") ELSE Dummy = SelectItem(TargetPropertyList, TargetProperty$)
+
+            IF LEN(SourceProperty$) > 0 THEN
                 Caption(BindBT) = "Rebind"
                 Caption(CancelBindBT) = "Unbind"
             ELSE
@@ -613,8 +614,9 @@ SUB __UI_Click (id AS LONG)
             b$ = b$ + MKL$(LEN(Caption(TargetControlNameLB))) + Caption(TargetControlNameLB)
             b$ = b$ + MKL$(LEN(GetItem(SourcePropertyList, Control(SourcePropertyList).Value)))
             b$ = b$ + GetItem(SourcePropertyList, Control(SourcePropertyList).Value)
-            b$ = b$ + MKL$(LEN(GetItem(TargetPropertyList, Control(TargetPropertyList).Value)))
-            b$ = b$ + GetItem(TargetPropertyList, Control(TargetPropertyList).Value)
+            TargetProperty$ = GetItem(TargetPropertyList, Control(TargetPropertyList).Value)
+            IF Control(InvertBindingCB).Value THEN TargetProperty$ = "NOT " + TargetProperty$
+            b$ = b$ + MKL$(LEN(TargetProperty$)) + TargetProperty$
             b$ = b$ + "<END>"
             Send Client, b$
         CASE CancelBindBT
@@ -623,7 +625,7 @@ SUB __UI_Click (id AS LONG)
             SetBindingDialogOpen = False
             IF Caption(CancelBindBT) = "Unbind" THEN
                 b$ = "UNBINDCONTROLS>"
-                b$ = b$ + Caption(SourceControlNameLB)
+                b$ = b$ + Caption(SourceControlNameLB) + CHR$(10) + Caption(TargetControlNameLB)
                 b$ = b$ + "<END>"
                 Send Client, b$
             END IF
@@ -3333,8 +3335,7 @@ SUB LoadPreview
     REDIM PreviewControls(0 TO CVL(b$)) AS __UI_ControlTYPE
     REDIM PreviewParentIDS(0 TO CVL(b$)) AS STRING
     REDIM PreviewContextMenu(0 TO CVL(b$)) AS STRING
-    REDIM PreviewBoundTo(0 TO CVL(b$)) AS STRING
-    REDIM PreviewBoundProperty(0 TO CVL(b$)) AS STRING
+    REDIM PreviewBindings(0 TO CVL(b$)) AS STRING
     REDIM PreviewKeyCombos(0 TO CVL(b$)) AS STRING
     REDIM PreviewAnimatedGif(0 TO CVL(b$)) AS _BYTE
     REDIM PreviewAutoPlayGif(0 TO CVL(b$)) AS _BYTE
@@ -3522,13 +3523,13 @@ SUB LoadPreview
                     b$ = ReadSequential$(FormData$, 2)
                     PreviewTheme = ReadSequential$(FormData$, CVI(b$))
                     UpdateThemeMenu
-                CASE -48 'BoundTo
+                CASE -48 'Binding: other control's name + this control's property
                     b$ = ReadSequential$(FormData$, 2)
                     b$ = ReadSequential$(FormData$, CVI(b$))
-                    PreviewBoundTo(Dummy) = b$
+                    PreviewBindings(Dummy) = PreviewBindings(Dummy) + MKI$(LEN(b$)) + b$
                     b$ = ReadSequential$(FormData$, 2)
                     b$ = ReadSequential$(FormData$, CVI(b$))
-                    PreviewBoundProperty(Dummy) = b$
+                    PreviewBindings(Dummy) = PreviewBindings(Dummy) + MKI$(LEN(b$)) + b$
                 CASE -1 'new control
                     EXIT DO
                 CASE -1024
@@ -4072,28 +4073,31 @@ SUB SaveForm (ExitToQB64 AS _BYTE, SaveOnlyFrm AS _BYTE)
     NEXT ThisPass
 
     'Save control bindings
-    DIM BindingsSection AS _BYTE
-    DIM BindingDone(0 TO UBOUND(PreviewControls)) AS _BYTE
+    'Each binding is listed by both of its controls; write it once, from the first one
+    DIM BindingsSection AS _BYTE, OtherBound$, OtherProperty$, BindingRecord AS LONG
     FOR i = 1 TO UBOUND(PreviewControls)
-        IF LEN(PreviewBoundTo(i)) > 0 AND BindingDone(i) = False THEN
-            IF BindingsSection = False THEN
-                PRINT #TextFileNum, "    'Control bindings:"
-                BindingsSection = True
-            END IF
-            BindingDone(i) = True
-            PRINT #TextFileNum, "    __UI_Bind __UI_GetID(" + CHR$(34);
-            PRINT #TextFileNum, RTRIM$(__UI_TrimAt0$(PreviewControls(i).Name)) + CHR$(34) + "), ";
-            PRINT #TextFileNum, "__UI_GetID(" + CHR$(34);
-            PRINT #TextFileNum, PreviewBoundTo(i) + CHR$(34) + "), ";
-            PRINT #TextFileNum, CHR$(34) + PreviewBoundProperty(i) + CHR$(34) + ", ";
-            FOR j = 1 TO UBOUND(PreviewControls)
-                IF PreviewBoundTo(j) = RTRIM$(__UI_TrimAt0$(PreviewControls(i).Name)) THEN
-                    BindingDone(j) = True
-                    PRINT #TextFileNum, CHR$(34) + PreviewBoundProperty(j) + CHR$(34)
+        BindingRecord = 1
+        DO WHILE BindingRecord < LEN(PreviewBindings(i))
+            OtherBound$ = MID$(PreviewBindings(i), BindingRecord + 2, CVI(MID$(PreviewBindings(i), BindingRecord, 2)))
+            BindingRecord = BindingRecord + 2 + LEN(OtherBound$)
+            b$ = MID$(PreviewBindings(i), BindingRecord + 2, CVI(MID$(PreviewBindings(i), BindingRecord, 2)))
+            BindingRecord = BindingRecord + 2 + LEN(b$)
+            FOR j = i + 1 TO UBOUND(PreviewControls)
+                IF PreviewName$(j) = OtherBound$ THEN
+                    OtherProperty$ = PreviewBoundProperty$(j, PreviewName$(i))
+                    IF LEN(OtherProperty$) THEN
+                        IF BindingsSection = False THEN
+                            PRINT #TextFileNum, "    'Control bindings:"
+                            BindingsSection = True
+                        END IF
+                        PRINT #TextFileNum, "    __UI_Bind __UI_GetID(" + CHR$(34) + PreviewName$(i) + CHR$(34) + "), ";
+                        PRINT #TextFileNum, "__UI_GetID(" + CHR$(34) + OtherBound$ + CHR$(34) + "), ";
+                        PRINT #TextFileNum, CHR$(34) + b$ + CHR$(34) + ", " + CHR$(34) + OtherProperty$ + CHR$(34)
+                    END IF
                     EXIT FOR
                 END IF
             NEXT
-        END IF
+        LOOP
     NEXT
 
     PRINT #TextFileNum, "END SUB"
@@ -4569,3 +4573,20 @@ SUB OpenThemeEditor
     b$ = "WATCHTHEME>" + MKI$(0) + "<END>"
     Send Client, b$
 END SUB
+
+FUNCTION PreviewName$ (i AS LONG)
+    PreviewName$ = RTRIM$(__UI_TrimAt0$(PreviewControls(i).Name))
+END FUNCTION
+
+'The property of preview control i that's bound to the control named other$ ("" when not bound)
+FUNCTION PreviewBoundProperty$ (i AS LONG, other$)
+    DIM p AS LONG, n$, prop$
+    p = 1
+    DO WHILE p < LEN(PreviewBindings(i))
+        n$ = MID$(PreviewBindings(i), p + 2, CVI(MID$(PreviewBindings(i), p, 2)))
+        p = p + 2 + LEN(n$)
+        prop$ = MID$(PreviewBindings(i), p + 2, CVI(MID$(PreviewBindings(i), p, 2)))
+        p = p + 2 + LEN(prop$)
+        IF n$ = other$ THEN PreviewBoundProperty$ = prop$: EXIT FUNCTION
+    LOOP
+END FUNCTION

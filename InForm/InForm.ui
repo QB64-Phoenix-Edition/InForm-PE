@@ -736,16 +736,25 @@ SUB __UI_UpdateDisplay
                 _DEST 0
             END IF
 
-            IF i = __UI_FirstSelectedID AND Control(i).BoundTo > 0 AND __UI_DesignMode = True AND __UI_ShowInvisibleControls = True THEN
+            IF i = __UI_FirstSelectedID _ANDALSO __UI_DesignMode = True _ANDALSO __UI_ShowInvisibleControls = True _ANDALSO __UI_IsBound(i) THEN
+                'Highlight the selected control and every control bound to it
+                DIM BindingIndex AS LONG, BoundID AS LONG
                 LINE (Control(i).Left - 5 + Control(Control(i).ParentID).Left, _
                       Control(i).Top - 5 + Control(Control(i).ParentID).Top)- _
                       STEP(Control(i).Width + 10, Control(i).Height + 10), _
                       _RGB32(127, 105, 183, 50), BF
 
-                LINE (Control(Control(i).BoundTo).Left - 5 + Control(Control(Control(i).BoundTo).ParentID).Left, _
-                      Control(Control(i).BoundTo).Top - 5 + Control(Control(Control(i).BoundTo).ParentID).Top)- _
-                      STEP(Control(Control(i).BoundTo).Width + 10, Control(Control(i).BoundTo).Height + 10), _
-                      _RGB32(127, 105, 183, 50), BF
+                FOR BindingIndex = 1 TO __UI_TotalBindings
+                    BoundID = 0
+                    IF __UI_Bindings(BindingIndex).ID1 = i THEN BoundID = __UI_Bindings(BindingIndex).ID2
+                    IF __UI_Bindings(BindingIndex).ID2 = i THEN BoundID = __UI_Bindings(BindingIndex).ID1
+                    IF BoundID > 0 THEN
+                        LINE (Control(BoundID).Left - 5 + Control(Control(BoundID).ParentID).Left, _
+                              Control(BoundID).Top - 5 + Control(Control(BoundID).ParentID).Top)- _
+                              STEP(Control(BoundID).Width + 10, Control(BoundID).Height + 10), _
+                              _RGB32(127, 105, 183, 50), BF
+                    END IF
+                NEXT
             END IF
 
             IF __UI_IsOnHiddenTab(i) THEN GOTO BypassDisplay
@@ -1722,14 +1731,15 @@ SUB __UI_EventDispatcher
                     ELSE
                         Control(__UI_GetID("__UI_PreviewMenuConvertType")).Hidden = True
                     END IF
-
-                    IF Control(__UI_FirstSelectedID).BoundTo > 0 THEN
-                        Control(__UI_GetID("__UI_PreviewMenuBindControls")).Hidden = False
-                        SetCaption __UI_GetID("__UI_PreviewMenuBindControls"), "Edit binding...-"
-                    END IF
                 ELSEIF __UI_TotalSelectedControls = 2 THEN
+                    'A binding is set up between two controls: offer to edit theirs, if they're bound
+                    DIM OtherSelectedID AS LONG
+                    OtherSelectedID = 0
+                    FOR i = 1 TO UBOUND(Control)
+                        IF Control(i).ControlIsSelected AND i <> __UI_FirstSelectedID THEN OtherSelectedID = i: EXIT FOR
+                    NEXT
                     Control(__UI_GetID("__UI_PreviewMenuBindControls")).Hidden = False
-                    IF Control(__UI_FirstSelectedID).BoundTo > 0 THEN
+                    IF __UI_BindingIndex(__UI_FirstSelectedID, OtherSelectedID) > 0 THEN
                         SetCaption __UI_GetID("__UI_PreviewMenuBindControls"), "Edit binding...-"
                     ELSE
                         SetCaption __UI_GetID("__UI_PreviewMenuBindControls"), "Bind selected controls...-"
@@ -4868,6 +4878,8 @@ SUB __UI_DestroyControl (This AS __UI_ControlTYPE)
         __UI_TempTips(This.ID) = _STR_EMPTY
         Mask(This.ID) = _STR_EMPTY
 
+        __UI_UnBind This.ID
+
         IF This.Type = __UI_Type_ListBox THEN
             IF __UI_ActiveDropdownList = This.ID THEN
                 IF __UI_ParentDropdownList > 0 THEN Control(__UI_ParentDropdownList).Redraw = True
@@ -6303,7 +6315,8 @@ FUNCTION __UI_DropdownChosenItem& (ListValue AS _FLOAT)
     DIM parentID AS LONG
 
     parentID = __UI_ParentDropdownList
-    IF Control(parentID).Searchable = False THEN
+    IF LEN(__UI_DropdownSearchMap) = 0 AND LEN(__UI_DropdownSearch) = 0 THEN
+        'The list wasn't filtered
         __UI_DropdownChosenItem = ListValue
     ELSEIF ListValue >= 1 AND ListValue <= LEN(__UI_DropdownSearchMap) \ 4 THEN
         __UI_DropdownChosenItem = CVL(MID$(__UI_DropdownSearchMap, (ListValue - 1) * 4 + 1, 4))
@@ -7064,32 +7077,26 @@ FUNCTION __UI_StrUsing$ (format$, value##)
     __UI_StrUsing$ = temp$
 END FUNCTION
 
+'Binds a property of control id to a property of control targetID, so that changing
+'either one changes the other. id takes targetID's current value. A control can be
+'bound to several others; binding the same two controls again replaces their binding.
+'Starting either property name with "NOT " inverts the binding: a non-zero value
+'sets the other property to 0, and 0 sets it to True (in both directions).
 SUB __UI_Bind (id AS LONG, targetID AS LONG, __PropertyID$, __PropertyTargetID$)
-    DIM PropertyID$, PropertyTargetID$
+    DIM prop AS LONG, targetProp AS LONG, inverted AS _BYTE
 
-    PropertyID$ = UCASE$(__PropertyID$)
-    PropertyTargetID$ = UCASE$(__PropertyTargetID$)
+    IF id <= 0 OR targetID <= 0 OR id = targetID THEN EXIT SUB
+    prop = __UI_BindPropertyEnum(__PropertyID$)
+    targetProp = __UI_BindPropertyEnum(__PropertyTargetID$)
+    IF prop = 0 OR targetProp = 0 THEN EXIT SUB
+    inverted = __UI_IsInvertedProperty(__PropertyID$) XOR __UI_IsInvertedProperty(__PropertyTargetID$)
 
-    'Clear eventual previous bindings
-    IF Control(id).BoundTo > 0 THEN
-        Control(Control(id).BoundTo).BoundTo = 0
-    END IF
+    __UI_AddBinding id, prop, targetID, targetProp, inverted
 
-    IF Control(targetID).BoundTo > 0 THEN
-        Control(Control(targetID).BoundTo).BoundTo = 0
-    END IF
-
-
-    Control(id).BoundTo = targetID
-    Control(id).BoundProperty = __UI_PropertyEnum(PropertyID$, 0)
-    IF Control(id).BoundProperty = 0 THEN Control(id).BoundTo = 0: EXIT SUB
-    Control(targetID).BoundTo = id
-    Control(targetID).BoundProperty = __UI_PropertyEnum(PropertyTargetID$, 0)
-    IF Control(targetID).BoundProperty = 0 THEN
-        Control(id).BoundTo = 0
-        Control(targetID).BoundTo = 0
-    END IF
-    __UI_CheckBinding targetID 'acquire current value of targetID
+    'Acquire the current value of targetID
+    __UI_SetBoundValue id, prop, __UI_BoundValue(__UI_GetBoundValue(targetID, targetProp), inverted)
+    Control(id).Redraw = True
+    Control(targetID).Redraw = True
 END SUB
 
 FUNCTION __UI_PropertyEnum& (__property$, index AS LONG)
@@ -7133,31 +7140,146 @@ FUNCTION __UI_PropertyEnum& (__property$, index AS LONG)
     DATA Top,Left,Width,Height,Bordersize,Padding,Value
     DATA Min,Max,Interval,MinInterval,Stretch,HasBorder,ShowPercentage
     DATA AutoScroll,AutoSize,PasswordMask,Disabled,Hidden
+    DATA Searchable,Fuzzy
     DATA *
 END FUNCTION
 
-SUB __UI_UnBind (id AS LONG)
-    IF Control(id).BoundTo > 0 THEN
-        Control(Control(id).BoundTo).Redraw = True
-        Control(Control(id).BoundTo).BoundTo = 0
-        Control(id).BoundTo = 0
-        Control(id).Redraw = True
-    END IF
+'Records a binding without copying any values (props are __UI_PropertyEnum values).
+'Replaces an existing binding between the same two controls.
+SUB __UI_AddBinding (id AS LONG, prop AS LONG, targetID AS LONG, targetProp AS LONG, inverted AS _BYTE)
+    IF id <= 0 OR targetID <= 0 OR id = targetID OR prop = 0 OR targetProp = 0 THEN EXIT SUB
+    __UI_UnBindPair id, targetID
+    __UI_TotalBindings = __UI_TotalBindings + 1
+    IF __UI_TotalBindings > UBOUND(__UI_Bindings) THEN REDIM _PRESERVE __UI_Bindings(1 TO __UI_TotalBindings * 2) AS __UI_BindingTYPE
+    __UI_Bindings(__UI_TotalBindings).ID1 = id
+    __UI_Bindings(__UI_TotalBindings).Property1 = prop
+    __UI_Bindings(__UI_TotalBindings).ID2 = targetID
+    __UI_Bindings(__UI_TotalBindings).Property2 = targetProp
+    __UI_Bindings(__UI_TotalBindings).Inverted = (inverted <> False)
 END SUB
 
+'True when a bound property's name starts with "NOT " (an inverted binding)
+FUNCTION __UI_IsInvertedProperty%% (name$)
+    __UI_IsInvertedProperty = (UCASE$(LEFT$(LTRIM$(name$), 4)) = "NOT ")
+END FUNCTION
+
+'__UI_PropertyEnum value of a bound property's name, ignoring a "NOT " in front
+FUNCTION __UI_BindPropertyEnum& (name$)
+    IF __UI_IsInvertedProperty(name$) THEN
+        __UI_BindPropertyEnum = __UI_PropertyEnum(MID$(LTRIM$(name$), 5), 0)
+    ELSE
+        __UI_BindPropertyEnum = __UI_PropertyEnum(name$, 0)
+    END IF
+END FUNCTION
+
+'A value on its way through a binding
+FUNCTION __UI_BoundValue## (value AS _FLOAT, inverted AS _BYTE)
+    IF inverted THEN
+        __UI_BoundValue = (value = 0)
+    ELSE
+        __UI_BoundValue = value
+    END IF
+END FUNCTION
+
+'Removes every binding control id is part of
+SUB __UI_UnBind (id AS LONG)
+    DIM i AS LONG
+    i = 1
+    DO WHILE i <= __UI_TotalBindings
+        IF __UI_Bindings(i).ID1 = id OR __UI_Bindings(i).ID2 = id THEN
+            __UI_RemoveBinding i
+        ELSE
+            i = i + 1
+        END IF
+    LOOP
+END SUB
+
+'Removes the binding between two controls, if any
+SUB __UI_UnBindPair (id AS LONG, otherID AS LONG)
+    DIM i AS LONG
+    i = __UI_BindingIndex(id, otherID)
+    IF i > 0 THEN __UI_RemoveBinding i
+END SUB
+
+SUB __UI_RemoveBinding (index AS LONG)
+    DIM i AS LONG
+    IF index < 1 OR index > __UI_TotalBindings THEN EXIT SUB
+    Control(__UI_Bindings(index).ID1).Redraw = True
+    Control(__UI_Bindings(index).ID2).Redraw = True
+    FOR i = index TO __UI_TotalBindings - 1
+        __UI_Bindings(i) = __UI_Bindings(i + 1)
+    NEXT
+    __UI_TotalBindings = __UI_TotalBindings - 1
+END SUB
+
+'Position in __UI_Bindings of the binding between two controls (in either
+'direction), or 0 when they aren't bound
+FUNCTION __UI_BindingIndex& (id AS LONG, otherID AS LONG)
+    DIM i AS LONG
+    FOR i = 1 TO __UI_TotalBindings
+        IF (__UI_Bindings(i).ID1 = id AND __UI_Bindings(i).ID2 = otherID) OR (__UI_Bindings(i).ID1 = otherID AND __UI_Bindings(i).ID2 = id) THEN
+            __UI_BindingIndex = i
+            EXIT FUNCTION
+        END IF
+    NEXT
+END FUNCTION
+
+'True when control id is bound to any other control
+FUNCTION __UI_IsBound%% (id AS LONG)
+    DIM i AS LONG
+    FOR i = 1 TO __UI_TotalBindings
+        IF __UI_Bindings(i).ID1 = id OR __UI_Bindings(i).ID2 = id THEN __UI_IsBound = True: EXIT FUNCTION
+    NEXT
+END FUNCTION
+
+'Name of the property of control id that's bound to otherID ("" when not bound).
+'For an inverted binding, the second control's property comes with "NOT " in front,
+'as it's written in __UI_Bind.
+FUNCTION __UI_BoundPropertyName$ (id AS LONG, otherID AS LONG)
+    DIM i AS LONG, prop AS LONG, name$
+    i = __UI_BindingIndex(id, otherID)
+    IF i = 0 THEN EXIT FUNCTION
+    IF __UI_Bindings(i).ID1 = id THEN prop = __UI_Bindings(i).Property1 ELSE prop = __UI_Bindings(i).Property2
+    IF __UI_PropertyEnum(name$, prop) THEN
+        IF __UI_Bindings(i).Inverted AND __UI_Bindings(i).ID2 = id THEN name$ = "NOT " + name$
+        __UI_BoundPropertyName = name$
+    END IF
+END FUNCTION
+
+'Two controls swapped places in Control() (the editor's z-ordering): keep their
+'bindings attached to them
+SUB __UI_SwapBindingIDs (id1 AS LONG, id2 AS LONG)
+    DIM i AS LONG
+    FOR i = 1 TO __UI_TotalBindings
+        IF __UI_Bindings(i).ID1 = id1 THEN
+            __UI_Bindings(i).ID1 = id2
+        ELSEIF __UI_Bindings(i).ID1 = id2 THEN
+            __UI_Bindings(i).ID1 = id1
+        END IF
+        IF __UI_Bindings(i).ID2 = id1 THEN
+            __UI_Bindings(i).ID2 = id2
+        ELSEIF __UI_Bindings(i).ID2 = id2 THEN
+            __UI_Bindings(i).ID2 = id1
+        END IF
+    NEXT
+END SUB
+
+'Copies the bound properties of control id to every control it's bound to
 SUB __UI_CheckBinding (id AS LONG)
-    DIM BindTarget AS LONG, Temp AS _FLOAT
+    DIM i AS LONG
+    FOR i = 1 TO __UI_TotalBindings
+        IF __UI_Bindings(i).ID1 = id THEN
+            __UI_SetBoundValue __UI_Bindings(i).ID2, __UI_Bindings(i).Property2, __UI_BoundValue(__UI_GetBoundValue(id, __UI_Bindings(i).Property1), __UI_Bindings(i).Inverted)
+        ELSEIF __UI_Bindings(i).ID2 = id THEN
+            __UI_SetBoundValue __UI_Bindings(i).ID1, __UI_Bindings(i).Property1, __UI_BoundValue(__UI_GetBoundValue(id, __UI_Bindings(i).Property2), __UI_Bindings(i).Inverted)
+        END IF
+    NEXT
+END SUB
 
-    BindTarget = Control(id).BoundTo
-    IF BindTarget = 0 THEN EXIT SUB
+FUNCTION __UI_GetBoundValue## (id AS LONG, prop AS LONG)
+    DIM Temp AS _FLOAT
 
-    'IF Control(id).BoundProperty = Control(BindTarget).BoundProperty AND _
-    '   Control(id).BoundProperty = __UI_PropertyEnum&("Value", 0) THEN
-    '    Control(id).Min = Control(BindTarget).Min
-    '    Control(id).Max = Control(BindTarget).Max
-    'END IF
-
-    SELECT CASE Control(id).BoundProperty
+    SELECT CASE prop
         CASE __UI_PropertyEnum&("Top", 0)
             Temp = Control(id).Top
         CASE __UI_PropertyEnum&("Left", 0)
@@ -7178,7 +7300,7 @@ SUB __UI_CheckBinding (id AS LONG)
             Temp = Control(id).Max
         CASE __UI_PropertyEnum&("Interval", 0)
             Temp = Control(id).Interval
-        CASE __UI_PropertyEnum&("Mininterval", 0)
+        CASE __UI_PropertyEnum&("MinInterval", 0)
             Temp = Control(id).MinInterval
         CASE __UI_PropertyEnum&("Stretch", 0)
             Temp = Control(id).Stretch
@@ -7190,57 +7312,66 @@ SUB __UI_CheckBinding (id AS LONG)
             Temp = Control(id).AutoScroll
         CASE __UI_PropertyEnum&("AutoSize", 0)
             Temp = Control(id).AutoSize
-        CASE __UI_PropertyEnum&("PasswordField", 0)
+        CASE __UI_PropertyEnum&("PasswordMask", 0)
             Temp = Control(id).PasswordField
         CASE __UI_PropertyEnum&("Disabled", 0)
             Temp = Control(id).Disabled
         CASE __UI_PropertyEnum&("Hidden", 0)
             Temp = Control(id).Hidden
+        CASE __UI_PropertyEnum&("Searchable", 0)
+            Temp = Control(id).Searchable
+        CASE __UI_PropertyEnum&("Fuzzy", 0)
+            Temp = Control(id).Fuzzy
     END SELECT
+    __UI_GetBoundValue = Temp
+END FUNCTION
 
-    SELECT CASE Control(BindTarget).BoundProperty
+SUB __UI_SetBoundValue (id AS LONG, prop AS LONG, Temp AS _FLOAT)
+    SELECT CASE prop
         CASE __UI_PropertyEnum&("Top", 0)
-            Control(BindTarget).Top = Temp
+            Control(id).Top = Temp
         CASE __UI_PropertyEnum&("Left", 0)
-            Control(BindTarget).Left = Temp
+            Control(id).Left = Temp
         CASE __UI_PropertyEnum&("Width", 0)
-            Control(BindTarget).Width = Temp
+            Control(id).Width = Temp
         CASE __UI_PropertyEnum&("Height", 0)
-            Control(BindTarget).Height = Temp
+            Control(id).Height = Temp
         CASE __UI_PropertyEnum&("BorderSize", 0)
-            Control(BindTarget).BorderSize = Temp
+            Control(id).BorderSize = Temp
         CASE __UI_PropertyEnum&("Padding", 0)
-            Control(BindTarget).Padding = Temp
+            Control(id).Padding = Temp
         CASE __UI_PropertyEnum&("Value", 0)
-            Control(BindTarget).Value = Temp
+            Control(id).Value = Temp
         CASE __UI_PropertyEnum&("Min", 0)
-            Control(BindTarget).Min = Temp
+            Control(id).Min = Temp
         CASE __UI_PropertyEnum&("Max", 0)
-            Control(BindTarget).Max = Temp
+            Control(id).Max = Temp
         CASE __UI_PropertyEnum&("Interval", 0)
-            Control(BindTarget).Interval = Temp
+            Control(id).Interval = Temp
         CASE __UI_PropertyEnum&("MinInterval", 0)
-            Control(BindTarget).MinInterval = Temp
+            Control(id).MinInterval = Temp
         CASE __UI_PropertyEnum&("Stretch", 0)
-            Control(BindTarget).Stretch = Temp
+            Control(id).Stretch = (Temp <> 0)
         CASE __UI_PropertyEnum&("HasBorder", 0)
-            Control(BindTarget).HasBorder = Temp
+            Control(id).HasBorder = (Temp <> 0)
         CASE __UI_PropertyEnum&("ShowPercentage", 0)
-            Control(BindTarget).ShowPercentage = Temp
+            Control(id).ShowPercentage = (Temp <> 0)
         CASE __UI_PropertyEnum&("AutoScroll", 0)
-            Control(BindTarget).AutoScroll = Temp
+            Control(id).AutoScroll = (Temp <> 0)
         CASE __UI_PropertyEnum&("AutoSize", 0)
-            Control(BindTarget).AutoSize = Temp
-        CASE __UI_PropertyEnum&("PasswordField", 0)
-            Control(BindTarget).PasswordField = Temp
+            Control(id).AutoSize = (Temp <> 0)
+        CASE __UI_PropertyEnum&("PasswordMask", 0)
+            Control(id).PasswordField = (Temp <> 0)
         CASE __UI_PropertyEnum&("Disabled", 0)
-            Control(BindTarget).Disabled = Temp
+            Control(id).Disabled = (Temp <> 0)
         CASE __UI_PropertyEnum&("Hidden", 0)
-            Control(BindTarget).Hidden = Temp
+            Control(id).Hidden = (Temp <> 0)
+        CASE __UI_PropertyEnum&("Searchable", 0)
+            Control(id).Searchable = (Temp <> 0)
+        CASE __UI_PropertyEnum&("Fuzzy", 0)
+            Control(id).Fuzzy = (Temp <> 0)
     END SELECT
-
     Control(id).Redraw = True
-    Control(BindTarget).Redraw = True
 END SUB
 
 'Control drawing: -------------------------------------------------------------

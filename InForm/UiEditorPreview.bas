@@ -404,7 +404,12 @@ SUB __UI_BeforeUpdateDisplay
 
                 __UI_Bind __UI_GetID(BindInfo$(1)), __UI_GetID(BindInfo$(2)), BindInfo$(3), BindInfo$(4)
             CASE "UNBINDCONTROLS"
-                __UI_UnBind __UI_GetID(thisData$)
+                'Two control names, separated by CHR$(10)
+                IF INSTR(thisData$, CHR$(10)) THEN
+                    __UI_UnBindPair __UI_GetID(LEFT$(thisData$, INSTR(thisData$, CHR$(10)) - 1)), __UI_GetID(MID$(thisData$, INSTR(thisData$, CHR$(10)) + 1))
+                ELSE
+                    __UI_UnBind __UI_GetID(thisData$)
+                END IF
         END SELECT
     LOOP
 
@@ -1666,6 +1671,7 @@ SUB __UI_BeforeUpdateDisplay
                 tID1 = Control(CVL(a$)).ID
                 tID2 = Control(CVL(b$)).ID
                 SWAP Control(CVL(b$)), Control(CVL(a$))
+                __UI_SwapBindingIDs CVL(a$), CVL(b$)
                 SWAP Caption(CVL(b$)), Caption(CVL(a$))
                 SWAP Text(CVL(b$)), Text(CVL(a$))
                 SWAP ToolTip(CVL(b$)), ToolTip(CVL(a$))
@@ -2383,6 +2389,7 @@ SUB LoadPreview (Destination AS _BYTE)
     DIM Dummy AS LONG, Disk AS _BYTE, Clip$, FirstToBeSelected AS LONG
     DIM BinaryFileNum AS INTEGER, LogFileNum AS INTEGER
     DIM CorruptedData AS _BYTE, UndoBuffer AS _BYTE
+    DIM LoadedName$, PendingBindings$
 
     CONST LogFileLoad = False
 
@@ -2508,6 +2515,7 @@ SUB LoadPreview (Destination AS _BYTE)
         IF NOT Disk THEN b$ = ReadSequential$(Clip$, 2) ELSE b$ = SPACE$(2): GET #BinaryFileNum, , b$
         IF NOT Disk THEN b$ = ReadSequential$(Clip$, CVI(b$)) ELSE b$ = SPACE$(CVI(b$)): GET #BinaryFileNum, , b$
         NewName = b$
+        LoadedName$ = RTRIM$(b$) 'Bindings refer to controls by the names they were saved with
         IF LogFileLoad THEN PRINT #LogFileNum, "NAME:" + NewName
         IF NOT Disk THEN b$ = ReadSequential$(Clip$, 2) ELSE b$ = SPACE$(2): GET #BinaryFileNum, , b$
         NewWidth = CVI(b$)
@@ -2795,16 +2803,14 @@ SUB LoadPreview (Destination AS _BYTE)
                     END IF
                 CASE -47
                     Control(TempValue).ControlIsSelected = True
-                CASE -48 'BoundTo: target name + property name
+                CASE -48 'Binding: other control's name + this control's bound property
+                    'A control has one of these per binding. Both ends are paired up once all controls are loaded.
                     DIM BoundTarget$, BoundProperty$
                     IF NOT Disk THEN b$ = ReadSequential$(Clip$, 2) ELSE b$ = SPACE$(2): GET #BinaryFileNum, , b$
                     IF NOT Disk THEN BoundTarget$ = ReadSequential$(Clip$, CVI(b$)) ELSE BoundTarget$ = SPACE$(CVI(b$)): GET #BinaryFileNum, , BoundTarget$
                     IF NOT Disk THEN b$ = ReadSequential$(Clip$, 2) ELSE b$ = SPACE$(2): GET #BinaryFileNum, , b$
                     IF NOT Disk THEN BoundProperty$ = ReadSequential$(Clip$, CVI(b$)) ELSE BoundProperty$ = SPACE$(CVI(b$)): GET #BinaryFileNum, , BoundProperty$
-                    IF __UI_GetID(BoundTarget$) > 0 THEN
-                        Control(TempValue).BoundTo = __UI_GetID(BoundTarget$)
-                        Control(TempValue).BoundProperty = __UI_PropertyEnum&(BoundProperty$, 0)
-                    END IF
+                    PendingBindings$ = PendingBindings$ + MKL$(TempValue) + MKL$(__UI_BindPropertyEnum&(BoundProperty$)) + MKL$(__UI_IsInvertedProperty(BoundProperty$)) + MKI$(LEN(LoadedName$)) + LoadedName$ + MKI$(LEN(BoundTarget$)) + BoundTarget$
                 CASE -49 'TabPage
                     IF NOT Disk THEN b$ = ReadSequential$(Clip$, 2) ELSE b$ = SPACE$(2): GET #BinaryFileNum, , b$
                     Control(TempValue).TabPage = CVI(b$)
@@ -2830,6 +2836,11 @@ SUB LoadPreview (Destination AS _BYTE)
     LOOP UNTIL __UI_EOF
     IF Disk THEN CLOSE #BinaryFileNum
     IF LogFileLoad THEN CLOSE #LogFileNum
+
+    'Pair up the two ends of each binding. When pasting, a binding is copied only
+    'if both of its controls were copied.
+    LoadPendingBindings PendingBindings$
+
     IF NOT Disk AND NOT UndoBuffer THEN
         IF NOT CorruptedData THEN
             __UI_FirstSelectedID = FirstToBeSelected
@@ -2850,6 +2861,44 @@ SUB LoadPreview (Destination AS _BYTE)
     END IF
     IF LogFileLoad THEN CLOSE #LogFileNum
     __UI_AutoRefresh = True
+END SUB
+
+SUB LoadPendingBindings (Pending$)
+    'Pending$ holds one record per binding end, written by LoadPreview:
+    'MKL$(control ID) + MKL$(property) + MKL$(inverted) + name it was saved with + name of the other control
+    DIM AS LONG count, i, j, p
+    count = 0
+    p = 1
+    DO WHILE p < LEN(Pending$)
+        count = count + 1
+        p = p + 12
+        p = p + 2 + CVI(MID$(Pending$, p, 2))
+        p = p + 2 + CVI(MID$(Pending$, p, 2))
+    LOOP
+    IF count = 0 THEN EXIT SUB
+
+    DIM ids(1 TO count) AS LONG, props(1 TO count) AS LONG, inverts(1 TO count) AS LONG
+    DIM names(1 TO count) AS STRING, others(1 TO count) AS STRING
+    p = 1
+    FOR i = 1 TO count
+        ids(i) = CVL(MID$(Pending$, p, 4))
+        props(i) = CVL(MID$(Pending$, p + 4, 4))
+        inverts(i) = CVL(MID$(Pending$, p + 8, 4))
+        p = p + 12
+        names(i) = MID$(Pending$, p + 2, CVI(MID$(Pending$, p, 2)))
+        p = p + 2 + LEN(names(i))
+        others(i) = MID$(Pending$, p + 2, CVI(MID$(Pending$, p, 2)))
+        p = p + 2 + LEN(others(i))
+    NEXT
+
+    FOR i = 1 TO count
+        FOR j = i + 1 TO count
+            IF names(j) = others(i) AND others(j) = names(i) THEN
+                __UI_AddBinding ids(i), props(i), ids(j), props(j), (inverts(i) <> 0) XOR (inverts(j) <> 0)
+                EXIT FOR
+            END IF
+        NEXT
+    NEXT
 END SUB
 
 SUB LoadPreviewText
@@ -3200,26 +3249,14 @@ SUB LoadPreviewText
                     ASC(b$, 10) = 40 'Changes first space into "(" for parsing
                     DIM SourceControl$, TargetControl$
                     DIM SourceProperty$, TargetProperty$
-                    DIM SourceSet AS _BYTE, TargetSet AS _BYTE
 
                     SourceControl$ = nextParameter$(b$)
                     TargetControl$ = nextParameter$(b$)
                     SourceProperty$ = nextParameter$(b$)
                     TargetProperty$ = nextParameter$(b$)
 
-                    SourceSet = False: TargetSet = False
-                    FOR i = 1 TO UBOUND(Control)
-                        IF RTRIM$(Control(i).Name) = SourceControl$ THEN
-                            Control(i).BoundTo = __UI_GetID(TargetControl$)
-                            Control(i).BoundProperty = __UI_PropertyEnum(SourceProperty$, 0)
-                            SourceSet = True
-                        ELSEIF RTRIM$(Control(i).Name) = TargetControl$ THEN
-                            Control(i).BoundTo = __UI_GetID(SourceControl$)
-                            Control(i).BoundProperty = __UI_PropertyEnum(TargetProperty$, 0)
-                            TargetSet = True
-                        END IF
-                        IF SourceSet AND TargetSet THEN EXIT FOR
-                    NEXT
+                    'Record the binding without copying values, so the form loads as saved
+                    __UI_AddBinding __UI_GetID(SourceControl$), __UI_BindPropertyEnum(SourceProperty$), __UI_GetID(TargetControl$), __UI_BindPropertyEnum(TargetProperty$), __UI_IsInvertedProperty(SourceProperty$) XOR __UI_IsInvertedProperty(TargetProperty$)
                 ELSEIF b$ = "END SUB" THEN
                     IF LogFileLoad THEN PRINT #LogFileNum, "END OF FILE"
                     __UI_EOF = True
@@ -3715,12 +3752,19 @@ SUB SavePreview (Destination AS _BYTE)
                         IF Disk THEN PUT #BinFileNum, , b$ ELSE Clip$ = Clip$ + b$
                     END IF
                 END IF
-                IF Control(i).BoundTo > 0 THEN
-                    b$ = MKI$(-48) + MKI$(LEN(RTRIM$(Control(Control(i).BoundTo).Name))) + RTRIM$(Control(Control(i).BoundTo).Name)
-                    Dummy = __UI_PropertyEnum&(a$, Control(i).BoundProperty)
-                    b$ = b$ + MKI$(LEN(a$)) + a$
-                    IF Disk THEN PUT #BinFileNum, , b$ ELSE Clip$ = Clip$ + b$
-                END IF
+                'One record per binding this control is part of
+                DIM BindingIndex AS LONG, OtherID AS LONG
+                FOR BindingIndex = 1 TO __UI_TotalBindings
+                    OtherID = 0
+                    IF __UI_Bindings(BindingIndex).ID1 = i THEN OtherID = __UI_Bindings(BindingIndex).ID2
+                    IF __UI_Bindings(BindingIndex).ID2 = i THEN OtherID = __UI_Bindings(BindingIndex).ID1
+                    IF OtherID > 0 THEN
+                        a$ = __UI_BoundPropertyName$(i, OtherID)
+                        b$ = MKI$(-48) + MKI$(LEN(RTRIM$(Control(OtherID).Name))) + RTRIM$(Control(OtherID).Name)
+                        b$ = b$ + MKI$(LEN(a$)) + a$
+                        IF Disk THEN PUT #BinFileNum, , b$ ELSE Clip$ = Clip$ + b$
+                    END IF
+                NEXT
             END IF
         NEXT
     NEXT

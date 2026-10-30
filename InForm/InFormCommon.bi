@@ -348,11 +348,19 @@ TYPE __UI_ControlTYPE
     BulletStyle AS _BYTE
     MenuItemGroup AS INTEGER
     KeyCombo AS LONG
-    BoundTo AS LONG
-    BoundProperty AS LONG
     TabPage AS INTEGER ' tab a child of a TabControl belongs to (0 = all tabs)
     ChildCount AS LONG ' number of child controls (containers only)
     HoveringTab AS INTEGER ' tab under the mouse (TabControl only)
+END TYPE
+
+' Two control properties kept in sync (see __UI_Bind). Properties are
+' __UI_PropertyEnum values.
+TYPE __UI_BindingTYPE
+    ID1 AS LONG
+    Property1 AS LONG
+    ID2 AS LONG
+    Property2 AS LONG
+    Inverted AS _BYTE ' values pass through NOT: non-zero becomes 0, and 0 becomes True
 END TYPE
 
 TYPE __UI_Types
@@ -490,7 +498,10 @@ DIM SHARED __UI_PasteLineBreakAs AS STRING
 ' Searchable dropdown lists (see __UI_FilterDropdownList). While one is open,
 ' the dropdown box shows the search text and the list shows only matching items.
 DIM SHARED __UI_DropdownSearch AS STRING ' what has been typed so far
-DIM SHARED __UI_DropdownSearchMap AS STRING ' MKL$ of the dropdown's item number for each item shown
+DIM SHARED __UI_DropdownSearchMap AS STRING
+
+REDIM SHARED __UI_Bindings(1 TO 10) AS __UI_BindingTYPE
+DIM SHARED __UI_TotalBindings AS LONG ' MKL$ of the dropdown's item number for each item shown
 
 DIM SHARED __UI_Type(0 TO 19) AS __UI_Types
 

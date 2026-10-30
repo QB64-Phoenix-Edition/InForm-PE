@@ -777,6 +777,8 @@ SUB __UI_LoadForm
     AddItem __UI_NewID, "PasswordMask"
     AddItem __UI_NewID, "Disabled"
     AddItem __UI_NewID, "Hidden"
+    AddItem __UI_NewID, "Searchable"
+    AddItem __UI_NewID, "Fuzzy"
     Control(__UI_NewID).HasBorder = True
     Control(__UI_NewID).Value = 7
     Control(__UI_NewID).CanHaveFocus = True
@@ -789,6 +791,10 @@ SUB __UI_LoadForm
     Control(__UI_NewID).Value = 7
     Control(__UI_NewID).CanHaveFocus = True
     Control(__UI_NewID).BorderSize = 1
+
+    __UI_NewID = __UI_NewControl(__UI_Type_CheckBox, "InvertBindingCB", 380, 20, 35, 190, __UI_GetID("SetControlBinding"))
+    SetCaption __UI_NewID, "Invert (NOT): non-zero sets zero, zero sets True"
+    Control(__UI_NewID).CanHaveFocus = True
 
     __UI_NewID = __UI_NewControl(__UI_Type_Button, "BindBT", 80, 23, 248, 220, __UI_GetID("SetControlBinding"))
     SetCaption __UI_NewID, "Bind"
@@ -982,6 +988,7 @@ SUB __UI_AssignIDs
     SourcePropertyList = __UI_GetID("SourcePropertyList")
     TargetPropertyLB = __UI_GetID("TargetPropertyLB")
     TargetPropertyList = __UI_GetID("TargetPropertyList")
+    InvertBindingCB = __UI_GetID("InvertBindingCB")
     BindBT = __UI_GetID("BindBT")
     CancelBindBT = __UI_GetID("CancelBindBT")
 
