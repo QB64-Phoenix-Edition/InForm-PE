@@ -689,6 +689,7 @@ SUB __UI_BeforeUpdateDisplay
 
             LoadPreview InDisk
             LoadDefaultFonts
+            SetTheme "light" 'new forms start with the light theme
 
             LastPreviewDataSent$ = ""
             UndoPointer = 0
