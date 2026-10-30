@@ -90,5 +90,11 @@ FOR EACH CONTROL (FORM INCLUDED):
                 For children of TabControl controls
     INTEGER -50 (Theme) + INTEGER LEN(Theme) + Theme
                 For the Form, when its theme isn't the default "xp"
+    INTEGER -51 (Multiline = True)
+                For TextBox controls
+    INTEGER -52 (Searchable = True)
+                For DropdownList controls
+    INTEGER -53 (Fuzzy = True)
+                For searchable DropdownList controls
     -------------------
 INTEGER -1024 (End of file)

@@ -39,6 +39,7 @@ SUB __UI_BeforeInit
     Test_INI_Manager
     Test_InFormUIUtils
     Test_InFormUIHelpers
+    Test_DropdownSearch
     Test_InFormUIUnicodeUtils
     Test_Theme
     Test_TabControl
@@ -1962,6 +1963,90 @@ SUB Test_InFormUIHelpers
 
     TEST_CHECK ASC(RestoreCHR$("\0;"), 1) = 0, "RestoreCHR$ should produce CHR$(0) for \0;"
     TEST_CHECK ASC(RestoreCHR$("\65;"), 1) = 65, "RestoreCHR$ should produce CHR$(65) for \65;"
+
+    TEST_CASE_END
+END SUB
+
+SUB Test_DropdownSearch
+    TEST_CASE_BEGIN "InFormUIHelpers: searchable dropdown list"
+
+    TEST_CHECK __UI_MatchesSearch("Resistor 10k 1/4W", ""), "Empty search matches everything"
+    TEST_CHECK __UI_MatchesSearch("Resistor 10k 1/4W", "   "), "Blank search matches everything"
+    TEST_CHECK __UI_MatchesSearch("Resistor 10k 1/4W", "10k"), "One word"
+    TEST_CHECK __UI_MatchesSearch("Resistor 10k 1/4W", "10K resist"), "Words in any order, any case"
+    TEST_CHECK __UI_MatchesSearch("Resistor 10k 1/4W", "  res   1/4  "), "Extra spaces are ignored"
+    TEST_CHECK NOT __UI_MatchesSearch("Resistor 10k 1/4W", "res 22k"), "Every word must match"
+    TEST_CHECK NOT __UI_MatchesSearch("", "a"), "Empty item doesn't match a word"
+
+    'The list needs a graphics surface to measure its font on
+    DIM AS LONG dd, listID, testImage, prevDest
+    prevDest = _DEST
+    testImage = _NEWIMAGE(320, 240, 32)
+    _DEST testImage
+
+    dd = __UI_NewControl(__UI_Type_DropdownList, "TestSearchDD", 200, 23, 0, 0, 0)
+    Control(dd).Font = 8
+    Control(dd).Searchable = _TRUE
+    AddItem dd, "Resistor 10k"
+    AddItem dd, "Resistor 22k"
+    AddItem dd, "Capacitor 10uF"
+    AddItem dd, "Capacitor 22pF"
+    Control(dd).Value = 4
+
+    __UI_ActivateDropdownlist Control(dd)
+    listID = __UI_ActiveDropdownList
+    TEST_CHECK listID > 0, "List opens"
+    TEST_CHECK Control(listID).Max = 4 _ANDALSO Control(listID).Value = 4, "Empty search shows every item, current one selected"
+
+    __UI_DropdownSearch = "22"
+    __UI_FilterDropdownList
+    TEST_CHECK Control(listID).Max = 2, "Two items contain 22"
+    TEST_CHECK Text(listID) = "Resistor 22k" + CHR$(10) + "Capacitor 22pF", "Filtered items keep their order"
+    TEST_CHECK Control(listID).Value = 2, "Current item stays selected when shown"
+    TEST_CHECK __UI_DropdownChosenItem(1) = 2 _ANDALSO __UI_DropdownChosenItem(2) = 4, "Shown items map back to the dropdown's items"
+
+    __UI_DropdownSearch = "cap 10"
+    __UI_FilterDropdownList
+    TEST_CHECK Control(listID).Max = 1 _ANDALSO Text(listID) = "Capacitor 10uF", "Several words narrow the list"
+    TEST_CHECK Control(listID).Value = 1, "First item selected when the current one is hidden"
+    TEST_CHECK __UI_DropdownChosenItem(1) = 3, "Picks the right item"
+
+    __UI_DropdownSearch = "inductor"
+    __UI_FilterDropdownList
+    TEST_CHECK Control(listID).Max = 0 _ANDALSO Control(listID).Value = 0, "No matches"
+    TEST_CHECK __UI_DropdownChosenItem(0) = 4, "Nothing picked keeps the current item"
+
+    'Fuzzy search
+    TEST_CHECK __UI_SearchScore("Resistor 10k", "rs10", _FALSE) = 0, "Plain search needs the letters together"
+    TEST_CHECK __UI_SearchScore("Resistor 10k", "rs10", _TRUE) > 0, "Fuzzy search takes letters in order"
+    TEST_CHECK __UI_SearchScore("Resistor 10k", "01", _TRUE) = 0, "Fuzzy search keeps the letters' order"
+    TEST_CHECK __UI_SearchScore("Capacitor 22pF ceramic", "cer 22p", _TRUE) > 0, "Fuzzy words in any order"
+    TEST_CHECK __UI_SearchScore("Capacitor 22pF ceramic", "cer xyz", _TRUE) = 0, "Fuzzy: every word must match"
+    TEST_CHECK __UI_SearchScore("Resistor", "res", _TRUE) > __UI_SearchScore("Resistor", "rst", _TRUE), "Letters together beat scattered ones"
+    TEST_CHECK __UI_SearchScore("LED red", "red", _TRUE) > __UI_SearchScore("Shredder", "red", _TRUE), "Word starts beat the middle of a word"
+    TEST_CHECK __UI_SearchScore("anything", "", _TRUE) > 0, "Empty fuzzy search matches everything"
+
+    Control(dd).Fuzzy = _TRUE
+    __UI_DropdownSearch = "cp"
+    __UI_FilterDropdownList
+    TEST_CHECK Control(listID).Max = 2, "Fuzzy finds both capacitors"
+    __UI_DropdownSearch = "10"
+    __UI_FilterDropdownList
+    TEST_CHECK Text(listID) = "Resistor 10k" + CHR$(10) + "Capacitor 10uF", "Earlier hits come first"
+    __UI_DropdownSearch = "pf"
+    __UI_FilterDropdownList
+    TEST_CHECK Text(listID) = "Capacitor 22pF" + CHR$(10) + "Capacitor 10uF", "Best match first, even when it's later in the list"
+    TEST_CHECK Control(listID).Value = 1 _ANDALSO __UI_DropdownChosenItem(1) = 4, "Best match is selected and maps back"
+    __UI_DropdownSearch = "zz"
+    __UI_FilterDropdownList
+    TEST_CHECK Control(listID).Max = 0, "Fuzzy: no matches"
+
+    __UI_DestroyControl Control(listID)
+    TEST_CHECK __UI_ActiveDropdownList = 0 _ANDALSO LEN(__UI_DropdownSearch) = 0 _ANDALSO LEN(__UI_DropdownSearchMap) = 0, "Closing clears the search"
+    __UI_DestroyControl Control(dd)
+
+    _DEST prevDest
+    _FREEIMAGE testImage
 
     TEST_CASE_END
 END SUB

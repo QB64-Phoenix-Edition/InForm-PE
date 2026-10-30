@@ -110,6 +110,7 @@ InForm/extensions/*.*
 | PlayFX | Samuel Gomes |
 | R2P | bobalooie |
 | RockPaperScissorsSpockLizard | TempodiBasic |
+| SearchableDropdownDemo | Fellippe Heitor |
 | Stopwatch | Fellippe Heitor |
 | TabDemo | Fellippe Heitor |
 | TextFetch | B+ |

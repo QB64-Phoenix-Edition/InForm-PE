@@ -1614,6 +1614,32 @@ SUB __UI_BeforeUpdateDisplay
                         END IF
                     NEXT
                 END IF
+            CASE 46 'Searchable (dropdown lists)
+                b$ = ReadSequential$(Property$, 2)
+                IF TotalLockedControls THEN
+                    FOR j = 1 TO TotalLockedControls
+                        IF Control(LockedControls(j)).Type = __UI_Type_DropdownList THEN Control(LockedControls(j)).Searchable = CVI(b$)
+                    NEXT
+                ELSE
+                    FOR i = 1 TO UBOUND(Control)
+                        IF Control(i).ControlIsSelected AND Control(i).Type = __UI_Type_DropdownList THEN
+                            Control(i).Searchable = CVI(b$)
+                        END IF
+                    NEXT
+                END IF
+            CASE 47 'Fuzzy search (searchable dropdown lists)
+                b$ = ReadSequential$(Property$, 2)
+                IF TotalLockedControls THEN
+                    FOR j = 1 TO TotalLockedControls
+                        IF Control(LockedControls(j)).Type = __UI_Type_DropdownList THEN Control(LockedControls(j)).Fuzzy = CVI(b$)
+                    NEXT
+                ELSE
+                    FOR i = 1 TO UBOUND(Control)
+                        IF Control(i).ControlIsSelected AND Control(i).Type = __UI_Type_DropdownList THEN
+                            Control(i).Fuzzy = CVI(b$)
+                        END IF
+                    NEXT
+                END IF
             CASE 44 'Auto-play (GIF extension)
                 b$ = ReadSequential$(Property$, 2)
                 IF TotalLockedControls THEN
@@ -2721,6 +2747,12 @@ SUB LoadPreview (Destination AS _BYTE)
                 CASE -51
                     Control(TempValue).Multiline = True
                     IF LogFileLoad THEN PRINT #LogFileNum, "MULTILINE"
+                CASE -52
+                    Control(TempValue).Searchable = True
+                    IF LogFileLoad THEN PRINT #LogFileNum, "SEARCHABLE"
+                CASE -53
+                    Control(TempValue).Fuzzy = True
+                    IF LogFileLoad THEN PRINT #LogFileNum, "FUZZY"
                 CASE -34
                     IF NOT Disk THEN b$ = ReadSequential$(Clip$, 4) ELSE b$ = SPACE$(4): GET #BinaryFileNum, , b$
                     Control(TempValue).Encoding = CVL(b$)
@@ -3060,6 +3092,10 @@ SUB LoadPreviewText
                             Control(TempValue).PasswordField = (DummyText$ = "True")
                         CASE "Multiline"
                             Control(TempValue).Multiline = (DummyText$ = "True")
+                        CASE "Searchable"
+                            Control(TempValue).Searchable = (DummyText$ = "True")
+                        CASE "Fuzzy"
+                            Control(TempValue).Fuzzy = (DummyText$ = "True")
                         CASE "Encoding"
                             Control(TempValue).Encoding = VAL(DummyText$)
                         CASE "NumericOnly"
@@ -3523,6 +3559,14 @@ SUB SavePreview (Destination AS _BYTE)
                 IF Control(i).Multiline AND Control(i).Type = __UI_Type_TextBox THEN
                     b$ = MKI$(-51)
                     IF Disk THEN PUT #BinFileNum, , b$ ELSE Clip$ = Clip$ + b$
+                END IF
+                IF Control(i).Searchable AND Control(i).Type = __UI_Type_DropdownList THEN
+                    b$ = MKI$(-52)
+                    IF Disk THEN PUT #BinFileNum, , b$ ELSE Clip$ = Clip$ + b$
+                    IF Control(i).Fuzzy THEN
+                        b$ = MKI$(-53)
+                        IF Disk THEN PUT #BinFileNum, , b$ ELSE Clip$ = Clip$ + b$
+                    END IF
                 END IF
                 IF Control(i).Encoding > 0 THEN
                     b$ = MKI$(-34) + MKL$(Control(i).Encoding)

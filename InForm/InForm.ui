@@ -1580,11 +1580,13 @@ SUB __UI_EventDispatcher
             IF Control(__UI_HoveringID).InputViewStart + Control(__UI_HoveringID).LastVisibleItem > Control(__UI_HoveringID).Max THEN
                 Control(__UI_HoveringID).InputViewStart = Control(__UI_HoveringID).Max - Control(__UI_HoveringID).LastVisibleItem + 1
             END IF
+            IF Control(__UI_HoveringID).InputViewStart < 1 THEN Control(__UI_HoveringID).InputViewStart = 1
         ELSEIF (__UI_ActiveDropdownList > 0 AND __UI_Focus = __UI_ActiveDropdownList AND __UI_ParentDropdownList = __UI_HoveringID) THEN
             Control(__UI_ActiveDropdownList).InputViewStart = Control(__UI_ActiveDropdownList).InputViewStart + __UI_MouseWheel
             IF Control(__UI_ActiveDropdownList).InputViewStart + Control(__UI_ActiveDropdownList).LastVisibleItem > Control(__UI_ActiveDropdownList).Max THEN
                 Control(__UI_ActiveDropdownList).InputViewStart = Control(__UI_ActiveDropdownList).Max - Control(__UI_ActiveDropdownList).LastVisibleItem + 1
             END IF
+            IF Control(__UI_ActiveDropdownList).InputViewStart < 1 THEN Control(__UI_ActiveDropdownList).InputViewStart = 1
         ELSEIF Control(__UI_HoveringID).Type = __UI_Type_TextBox _ANDALSO Control(__UI_HoveringID).Multiline _ANDALSO NOT Control(__UI_HoveringID).Disabled THEN
             __UI_TBScrollTo __UI_HoveringID, Control(__UI_HoveringID).FirstVisibleLine + __UI_MouseWheel * 3
         ELSEIF (Control(__UI_Focus).Type = __UI_Type_DropdownList AND NOT Control(__UI_Focus).Disabled) THEN
@@ -2440,7 +2442,7 @@ SUB __UI_EventDispatcher
 
                                 IF __UI_HoveringID = __UI_ActiveDropdownList THEN
                                     __UI_Focus = __UI_ParentDropdownList
-                                    Control(__UI_ParentDropdownList).Value = Control(__UI_ActiveDropdownList).Value
+                                    Control(__UI_ParentDropdownList).Value = __UI_DropdownChosenItem(Control(__UI_ActiveDropdownList).Value)
                                     IF Control(__UI_ParentDropdownList).PreviousValue <> Control(__UI_ParentDropdownList).Value THEN
                                         __UI_ValueChanged __UI_ParentDropdownList
                                         Control(__UI_ParentDropdownList).PreviousValue = Control(__UI_ParentDropdownList).Value
@@ -3344,7 +3346,7 @@ SUB __UI_EventDispatcher
                 GOTO ProcessClick
             ELSEIF Control(__UI_Focus).Type = __UI_Type_ListBox AND __UI_Focus = __UI_ActiveDropdownList THEN
                 __UI_Focus = __UI_ParentDropdownList
-                Control(__UI_ParentDropdownList).Value = Control(__UI_ActiveDropdownList).Value
+                Control(__UI_ParentDropdownList).Value = __UI_DropdownChosenItem(Control(__UI_ActiveDropdownList).Value)
                 __UI_DestroyControl Control(__UI_ActiveDropdownList)
                 IF Control(__UI_Focus).PreviousValue <> Control(__UI_Focus).Value THEN
                     __UI_ValueChanged __UI_Focus
@@ -3359,6 +3361,9 @@ SUB __UI_EventDispatcher
                 __UI_Click __UI_DefaultButtonID
             END IF
         ELSE
+            'Keys typed into a searchable dropdown list go to its search
+            IF __UI_DropdownSearchKey THEN __UI_KeyHit = 0
+
             SELECT CASE Control(__UI_Focus).Type
                 CASE __UI_Type_TrackBar
                     SELECT CASE __UI_KeyHit
@@ -4865,6 +4870,9 @@ SUB __UI_DestroyControl (This AS __UI_ControlTYPE)
 
         IF This.Type = __UI_Type_ListBox THEN
             IF __UI_ActiveDropdownList = This.ID THEN
+                IF __UI_ParentDropdownList > 0 THEN Control(__UI_ParentDropdownList).Redraw = True
+                __UI_DropdownSearch = _STR_EMPTY
+                __UI_DropdownSearchMap = _STR_EMPTY
                 __UI_ActiveDropdownList = 0
                 __UI_ParentDropdownList = 0
             END IF
@@ -6106,7 +6114,12 @@ SUB __UI_ActivateDropdownlist (This AS __UI_ControlTYPE)
         Control(__UI_ActiveDropdownList).Height = (uspacing& + (((_FONT = 8) * -1) * __UI_Font8Offset + ((_FONT = 16) * -1) * __UI_Font16Offset) + 3) * (MaxVisible + .5)
 
         IF Control(__UI_ActiveDropdownList).Top + Control(__UI_ActiveDropdownList).Height > Control(__UI_FormID).Height THEN
-            Control(__UI_ActiveDropdownList).Top = Control(__UI_FormID).Height - Control(__UI_ActiveDropdownList).Height
+            IF This.Top + Control(This.ParentID).Top - Control(__UI_ActiveDropdownList).Height >= 0 THEN
+                'No room below, so open above, keeping the dropdown box (and its search) visible
+                Control(__UI_ActiveDropdownList).Top = This.Top + Control(This.ParentID).Top - Control(__UI_ActiveDropdownList).Height
+            ELSE
+                Control(__UI_ActiveDropdownList).Top = Control(__UI_FormID).Height - Control(__UI_ActiveDropdownList).Height
+            END IF
         END IF
         Control(__UI_ActiveDropdownList).Max = This.Max
         Control(__UI_ActiveDropdownList).Value = This.Value
@@ -6123,6 +6136,12 @@ SUB __UI_ActivateDropdownlist (This AS __UI_ControlTYPE)
         Control(__UI_ActiveDropdownList).LastVisibleItem = MaxVisible
         __UI_Focus = __UI_ActiveDropdownList
 
+        IF This.Searchable THEN
+            'Start with an empty search, which shows every item
+            __UI_DropdownSearch = _STR_EMPTY
+            __UI_FilterDropdownList
+        END IF
+
         'Adjust view:
         IF Control(__UI_Focus).Value < Control(__UI_Focus).InputViewStart THEN
             Control(__UI_Focus).InputViewStart = Control(__UI_Focus).Value
@@ -6131,6 +6150,222 @@ SUB __UI_ActivateDropdownlist (This AS __UI_ControlTYPE)
         END IF
     END IF
 END SUB
+
+'---------------------------------------------------------------------------------
+'True when item$ contains every space-separated word in search$, in any order,
+'ignoring case. An empty search matches everything.
+FUNCTION __UI_MatchesSearch%% (item$, search$)
+    __UI_MatchesSearch = (__UI_SearchScore(item$, search$, False) > 0)
+END FUNCTION
+
+'---------------------------------------------------------------------------------
+'How well item$ matches search$: 0 when it doesn't, higher for better matches.
+'Every space-separated word in search$ has to match, in any order, ignoring case.
+'Plain search: a word matches when the item contains it.
+'Fuzzy search: a word also matches when its letters appear in the item in the
+'same order with other letters in between ("rs10" matches "Resistor 10k").
+FUNCTION __UI_SearchScore& (item$, search$, fuzzy AS _BYTE)
+    DIM u$, s$, p AS LONG, q AS LONG, wordScore AS LONG, total AS LONG
+
+    u$ = UCASE$(item$)
+    s$ = UCASE$(search$)
+    total = 1 'An empty search matches everything
+    p = 1
+    DO
+        DO WHILE MID$(s$, p, 1) = " ": p = p + 1: LOOP
+        IF p > LEN(s$) THEN EXIT DO
+        q = INSTR(p, s$, " ")
+        IF q = 0 THEN q = LEN(s$) + 1
+        IF fuzzy THEN
+            wordScore = __UI_FuzzyWordScore(u$, MID$(s$, p, q - p))
+        ELSE
+            wordScore = ABS(INSTR(u$, MID$(s$, p, q - p)) > 0)
+        END IF
+        IF wordScore = 0 THEN EXIT FUNCTION
+        total = total + wordScore
+        p = q
+    LOOP
+    __UI_SearchScore = total
+END FUNCTION
+
+'---------------------------------------------------------------------------------
+'Fuzzy score of one search word (both already in capitals); 0 when its letters
+'can't be found in order. Whole-word hits score highest, then letters that
+'follow each other or start words.
+FUNCTION __UI_FuzzyWordScore& (u$, w$)
+    DIM found AS LONG, i AS LONG, j AS LONG, lastHit AS LONG, score AS LONG
+
+    found = INSTR(u$, w$)
+    IF found THEN
+        score = 1000 - found
+        IF __UI_StartsWord(u$, found) THEN score = score + 100
+        __UI_FuzzyWordScore = score
+        EXIT FUNCTION
+    END IF
+
+    j = 1
+    FOR i = 1 TO LEN(w$)
+        DO WHILE j <= LEN(u$)
+            IF ASC(u$, j) = ASC(w$, i) THEN EXIT DO
+            j = j + 1
+        LOOP
+        IF j > LEN(u$) THEN EXIT FUNCTION 'Letter not found
+        score = score + 10
+        IF lastHit > 0 AND j = lastHit + 1 THEN score = score + 15
+        IF __UI_StartsWord(u$, j) THEN score = score + 10
+        lastHit = j
+        j = j + 1
+    NEXT
+    IF score > 999 THEN score = 999 'Always below a whole-word hit
+    __UI_FuzzyWordScore = score
+END FUNCTION
+
+'---------------------------------------------------------------------------------
+'True when position p of text$ starts a word
+FUNCTION __UI_StartsWord%% (text$, p AS LONG)
+    IF p <= 1 THEN __UI_StartsWord = True: EXIT FUNCTION
+    SELECT CASE ASC(text$, p - 1)
+        CASE 48 TO 57, 65 TO 90, 97 TO 122
+        CASE ELSE
+            __UI_StartsWord = True
+    END SELECT
+END FUNCTION
+
+'---------------------------------------------------------------------------------
+'Fills the open dropdown list with the items of its dropdown that match
+'__UI_DropdownSearch. The dropdown's current item stays selected if it's shown.
+'With a fuzzy search, the best matches come first and the best one is selected.
+SUB __UI_FilterDropdownList
+    DIM listID AS LONG, parentID AS LONG, fuzzy AS _BYTE
+    DIM items$, filtered$, p AS LONG, q AS LONG, n AS LONG, kept AS LONG, selected AS LONG
+    DIM i AS LONG, j AS LONG, score AS LONG
+    REDIM itemStart(1 TO 64) AS LONG, itemLen(1 TO 64) AS LONG, itemNumber(1 TO 64) AS LONG, itemScore(1 TO 64) AS LONG
+
+    listID = __UI_ActiveDropdownList
+    parentID = __UI_ParentDropdownList
+    IF listID = 0 OR parentID = 0 THEN EXIT SUB
+    fuzzy = (Control(parentID).Fuzzy <> False)
+
+    items$ = Replace(Text(parentID), _CHR_CR + _CHR_LF, _CHR_LF, False, 0)
+    p = 1
+    DO WHILE p <= LEN(items$)
+        q = INSTR(p, items$, _CHR_LF)
+        IF q = 0 THEN q = LEN(items$) + 1
+        n = n + 1
+        score = __UI_SearchScore(MID$(items$, p, q - p), __UI_DropdownSearch, fuzzy)
+        IF score > 0 THEN
+            kept = kept + 1
+            IF kept > UBOUND(itemStart) THEN
+                REDIM _PRESERVE itemStart(1 TO kept * 2) AS LONG, itemLen(1 TO kept * 2) AS LONG
+                REDIM _PRESERVE itemNumber(1 TO kept * 2) AS LONG, itemScore(1 TO kept * 2) AS LONG
+            END IF
+            'Fuzzy: insert by score, best first, keeping the list order for equal scores
+            i = kept
+            IF fuzzy THEN
+                DO WHILE i > 1
+                    IF itemScore(i - 1) >= score THEN EXIT DO
+                    itemStart(i) = itemStart(i - 1): itemLen(i) = itemLen(i - 1)
+                    itemNumber(i) = itemNumber(i - 1): itemScore(i) = itemScore(i - 1)
+                    i = i - 1
+                LOOP
+            END IF
+            itemStart(i) = p: itemLen(i) = q - p: itemNumber(i) = n: itemScore(i) = score
+        END IF
+        p = q + 1
+    LOOP
+
+    __UI_DropdownSearchMap = _STR_EMPTY
+    FOR j = 1 TO kept
+        IF j > 1 THEN filtered$ = filtered$ + _CHR_LF
+        filtered$ = filtered$ + MID$(items$, itemStart(j), itemLen(j))
+        __UI_DropdownSearchMap = __UI_DropdownSearchMap + MKL$(itemNumber(j))
+        IF itemNumber(j) = Control(parentID).Value THEN selected = j
+    NEXT
+
+    IF fuzzy AND LEN(_TRIM$(__UI_DropdownSearch)) > 0 THEN selected = 0
+    IF selected = 0 AND kept > 0 THEN selected = 1
+    Text(listID) = filtered$
+    Control(listID).Max = kept
+    Control(listID).Value = selected
+    Control(listID).HasVScrollbar = False 'Worked out again when the list is drawn
+    Control(listID).InputViewStart = 1
+    IF selected > Control(listID).LastVisibleItem THEN
+        Control(listID).InputViewStart = selected - Control(listID).LastVisibleItem + 1
+    END IF
+    Control(listID).Redraw = True
+    Control(parentID).Redraw = True 'The dropdown box shows the search text
+END SUB
+
+'---------------------------------------------------------------------------------
+'Turns an item number of the open dropdown list into the matching item number of
+'its dropdown, which differ when the list has been filtered by a search
+FUNCTION __UI_DropdownChosenItem& (ListValue AS _FLOAT)
+    DIM parentID AS LONG
+
+    parentID = __UI_ParentDropdownList
+    IF Control(parentID).Searchable = False THEN
+        __UI_DropdownChosenItem = ListValue
+    ELSEIF ListValue >= 1 AND ListValue <= LEN(__UI_DropdownSearchMap) \ 4 THEN
+        __UI_DropdownChosenItem = CVL(MID$(__UI_DropdownSearchMap, (ListValue - 1) * 4 + 1, 4))
+    ELSE
+        'Nothing matched or nothing picked: keep what was selected
+        __UI_DropdownChosenItem = Control(parentID).Value
+    END IF
+END FUNCTION
+
+'---------------------------------------------------------------------------------
+'Typing into a searchable dropdown list filters its items. Typing on a closed one
+'opens it. Returns True when the key was used for the search.
+FUNCTION __UI_DropdownSearchKey%%
+    DIM parentID AS LONG, Typed$, Search$
+
+    IF __UI_AltIsDown THEN EXIT FUNCTION
+    IF __UI_ActiveDropdownList > 0 _ANDALSO __UI_Focus = __UI_ActiveDropdownList THEN
+        parentID = __UI_ParentDropdownList
+    ELSEIF Control(__UI_Focus).Type = __UI_Type_DropdownList THEN
+        parentID = __UI_Focus
+    ELSE
+        EXIT FUNCTION
+    END IF
+    IF Control(parentID).Searchable = False OR Control(parentID).Disabled THEN EXIT FUNCTION
+
+    Search$ = __UI_DropdownSearch
+    IF __UI_ActiveDropdownList = 0 THEN Search$ = _STR_EMPTY
+
+    IF __UI_CtrlIsDown THEN
+        SELECT CASE __UI_KeyHit
+            CASE __ASC_LOWER_V, __ASC_UPPER_V 'Paste the first line of the clipboard
+                Typed$ = _CLIPBOARD$
+                IF INSTR(Typed$, _CHR_CR) THEN Typed$ = LEFT$(Typed$, INSTR(Typed$, _CHR_CR) - 1)
+                IF INSTR(Typed$, _CHR_LF) THEN Typed$ = LEFT$(Typed$, INSTR(Typed$, _CHR_LF) - 1)
+                IF LEN(Typed$) = 0 THEN EXIT FUNCTION
+                Search$ = Search$ + Typed$
+            CASE 8, 127 'Ctrl+Backspace clears the search
+                IF __UI_ActiveDropdownList = 0 THEN EXIT FUNCTION
+                Search$ = _STR_EMPTY
+            CASE ELSE
+                EXIT FUNCTION
+        END SELECT
+    ELSE
+        SELECT CASE __UI_KeyHit
+            CASE 32 TO 254
+                'Space doesn't open a closed dropdown; the search starts with a word
+                IF __UI_KeyHit = 32 AND __UI_ActiveDropdownList = 0 THEN EXIT FUNCTION
+                Search$ = Search$ + CHR$(__UI_KeyHit)
+            CASE 8 'Backspace
+                IF __UI_ActiveDropdownList = 0 THEN EXIT FUNCTION
+                IF LEN(Search$) THEN Search$ = LEFT$(Search$, LEN(Search$) - 1)
+            CASE ELSE
+                EXIT FUNCTION
+        END SELECT
+    END IF
+
+    IF __UI_ActiveDropdownList = 0 THEN __UI_ActivateDropdownlist Control(parentID)
+    IF __UI_ActiveDropdownList = 0 THEN EXIT FUNCTION
+    __UI_DropdownSearch = Search$
+    __UI_FilterDropdownList
+    __UI_DropdownSearchKey = True
+END FUNCTION
 
 '---------------------------------------------------------------------------------
 SUB __UI_CloseAllMenus
@@ -8169,6 +8404,10 @@ SUB __UI_DrawListBox (This AS __UI_ControlTYPE, ControlState AS _BYTE)
             ELSE
                 This.HasVScrollbar = False
             END IF
+        ELSEIF This.ID = __UI_ActiveDropdownList AND LEN(__UI_DropdownSearch) > 0 THEN
+            'A searchable dropdown list whose search matched nothing
+            COLOR __UI_DisabledColor
+            __UI_PrintString CaptionIndent * 2, CaptionIndent + 2, "No matches"
         END IF
 
         IF This.HasBorder THEN
@@ -8420,7 +8659,28 @@ SUB __UI_DrawDropdownList (This AS __UI_ControlTYPE, ControlState AS _BYTE)
 
         DIM TempText$, ThisItem%, FindLF&, ThisItemTop%
 
-        IF This.Value > 0 THEN
+        IF This.Searchable AND This.ID = __UI_ParentDropdownList AND __UI_ActiveDropdownList > 0 THEN
+            'While the list is open, the box is its search field
+            DIM SearchLeft AS INTEGER, SearchRoom AS INTEGER, CaretLeft AS INTEGER
+            ThisItemTop% = This.Height \ 2 - uspacing& \ 2 + 1
+            SearchLeft = CaptionIndent * 2
+            SearchRoom = This.Width - (__UI_ScrollbarWidth + 2) - SearchLeft - CaptionIndent - 2
+            IF LEN(__UI_DropdownSearch) THEN
+                'Show the end of the search when it doesn't fit
+                TempCaption$ = __UI_DropdownSearch
+                DO WHILE LEN(TempCaption$) > 1 AND __UI_PrintWidth(TempCaption$) > SearchRoom
+                    TempCaption$ = MID$(TempCaption$, 2)
+                LOOP
+                COLOR This.ForeColor
+                __UI_PrintString SearchLeft, ThisItemTop%, TempCaption$
+                CaretLeft = SearchLeft + __UI_PrintWidth(TempCaption$)
+            ELSE
+                COLOR __UI_DisabledColor
+                __UI_PrintString SearchLeft, ThisItemTop%, "Search..."
+                CaretLeft = SearchLeft
+            END IF
+            LINE (CaretLeft, ThisItemTop%)-STEP(0, uspacing& - 2), This.ForeColor
+        ELSEIF This.Value > 0 THEN
             IF LEN(Text(This.ID)) THEN
                 TempText$ = Text(This.ID)
                 ThisItem% = 0

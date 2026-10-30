@@ -101,7 +101,7 @@ DIM SHARED AddToggleSwitch AS LONG, AddTabControl AS LONG
 
 'Control toggles
 DIM SHARED Stretch AS LONG, HasBorder AS LONG
-DIM SHARED ShowPercentage AS LONG, PasswordMaskCB AS LONG, MultilineCB AS LONG
+DIM SHARED ShowPercentage AS LONG, PasswordMaskCB AS LONG, MultilineCB AS LONG, SearchableCB AS LONG, FuzzyCB AS LONG
 DIM SHARED WordWrap AS LONG, CanHaveFocus AS LONG
 DIM SHARED Disabled AS LONG, Transparent AS LONG
 DIM SHARED Hidden AS LONG, CenteredWindow AS LONG
@@ -418,6 +418,12 @@ SUB __UI_Click (id AS LONG)
         CASE MultilineCB
             b$ = MKI$(Control(id).Value)
             SendData b$, 45
+        CASE SearchableCB
+            b$ = MKI$(Control(id).Value)
+            SendData b$, 46
+        CASE FuzzyCB
+            b$ = MKI$(Control(id).Value)
+            SendData b$, 47
         CASE AutoScroll
             b$ = MKI$(Control(id).Value)
             SendData b$, 38
@@ -2069,6 +2075,8 @@ SUB __UI_BeforeUpdateDisplay
     Control(Transparent).Value = PreviewControls(FirstSelected).BackStyle
     Control(Resizable).Value = PreviewControls(FirstSelected).CanResize
     Control(AutoScroll).Value = PreviewControls(FirstSelected).AutoScroll
+    Control(SearchableCB).Value = PreviewControls(FirstSelected).Searchable
+    Control(FuzzyCB).Value = PreviewControls(FirstSelected).Fuzzy
     Control(AutoSize).Value = PreviewControls(FirstSelected).AutoSize
     Control(HideTicks).Value = (PreviewControls(FirstSelected).Height = __UI_Type(__UI_Type_TrackBar).MinimumHeight)
     Control(AutoPlayGif).Value = PreviewAutoPlayGif(FirstSelected)
@@ -2305,6 +2313,9 @@ SUB __UI_BeforeUpdateDisplay
                 NEXT
             CASE __UI_Type_ListBox
                 Control(AutoScroll).Disabled = False
+            CASE __UI_Type_DropdownList
+                Control(SearchableCB).Disabled = False
+                Control(FuzzyCB).Disabled = (PreviewControls(FirstSelected).Searchable = False)
             CASE __UI_Type_TabControl
                 Caption(TextLB) = "Tabs"
                 Caption(ValueLB) = "Active tab"
@@ -2871,6 +2882,8 @@ SUB __UI_OnLoad
     i = i + 1: Toggles(i) = CenteredWindow
     i = i + 1: Toggles(i) = Resizable
     i = i + 1: Toggles(i) = AutoScroll
+    i = i + 1: Toggles(i) = SearchableCB
+    i = i + 1: Toggles(i) = FuzzyCB
     i = i + 1: Toggles(i) = AutoSize
     i = i + 1: Toggles(i) = HideTicks
     i = i + 1: Toggles(i) = AutoPlayGif
@@ -3457,6 +3470,10 @@ SUB LoadPreview
                     PreviewControls(Dummy).PasswordField = True
                 CASE -51
                     PreviewControls(Dummy).Multiline = True
+                CASE -52
+                    PreviewControls(Dummy).Searchable = True
+                CASE -53
+                    PreviewControls(Dummy).Fuzzy = True
                 CASE -34
                     b$ = ReadSequential$(FormData$, 4)
                     PreviewControls(Dummy).Encoding = CVL(b$)
@@ -4040,6 +4057,10 @@ SUB SaveForm (ExitToQB64 AS _BYTE, SaveOnlyFrm AS _BYTE)
                 END IF
                 IF PreviewControls(i).AutoScroll THEN
                     PRINT #TextFileNum, "    Control(__UI_NewID).AutoScroll = True"
+                END IF
+                IF PreviewControls(i).Searchable AND PreviewControls(i).Type = __UI_Type_DropdownList THEN
+                    PRINT #TextFileNum, "    Control(__UI_NewID).Searchable = True"
+                    IF PreviewControls(i).Fuzzy THEN PRINT #TextFileNum, "    Control(__UI_NewID).Fuzzy = True"
                 END IF
                 IF PreviewControls(i).AutoSize THEN
                     PRINT #TextFileNum, "    Control(__UI_NewID).AutoSize = True"
