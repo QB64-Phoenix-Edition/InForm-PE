@@ -2134,7 +2134,8 @@ SUB __UI_EventDispatcher
                     ELSEIF Control(__UI_HoveringID).HoveringVScrollbarButton = 3 THEN
                         IF NOT __UI_DraggingThumb THEN
                             __UI_DraggingThumb = True
-                            __UI_ThumbDragTop = __UI_MouseTop
+                            'Remember where on the thumb it was grabbed
+                            __UI_ThumbDragTop = __UI_MouseTop - (Control(Control(__UI_HoveringID).ParentID).Top + Control(__UI_HoveringID).ThumbTop)
                             __UI_DraggingThumbOnID = __UI_HoveringID
                         END IF
                     END IF
@@ -3065,26 +3066,20 @@ SUB __UI_EventDispatcher
     END IF
 
     IF __UI_DraggingThumb = True THEN
+        'The thumb follows the mouse; __UI_ThumbDragTop holds where on the thumb it was grabbed
+        DIM AS LONG ThumbTravel, ThumbOffset, ScrollMax
+        ThumbTravel = Control(__UI_DraggingThumbOnID).Height - __UI_ScrollbarButtonHeight * 2 - 2 - Control(__UI_DraggingThumbOnID).ThumbHeight
+        ThumbOffset = __UI_MouseTop - __UI_ThumbDragTop - (Control(Control(__UI_DraggingThumbOnID).ParentID).Top + Control(__UI_DraggingThumbOnID).Top + 1 + __UI_ScrollbarButtonHeight)
         IF Control(__UI_DraggingThumbOnID).Type = __UI_Type_ListBox THEN
-            IF __UI_MouseTop >= Control(__UI_DraggingThumbOnID).Top + Control(Control(__UI_DraggingThumbOnID).ParentID).Top + __UI_ScrollbarButtonHeight AND __UI_MouseTop <= Control(__UI_DraggingThumbOnID).Top + Control(Control(__UI_DraggingThumbOnID).ParentID).Top + Control(__UI_DraggingThumbOnID).Height - __UI_ScrollbarButtonHeight THEN
-                'Dragging in the track area
-                Control(__UI_DraggingThumbOnID).InputViewStart = Control(__UI_DraggingThumbOnID).InputViewStart + ((__UI_MouseTop - __UI_ThumbDragTop) * Control(__UI_DraggingThumbOnID).VScrollbarRatio)
-                IF Control(__UI_DraggingThumbOnID).InputViewStart + Control(__UI_DraggingThumbOnID).LastVisibleItem - 1 > Control(__UI_DraggingThumbOnID).Max THEN Control(__UI_DraggingThumbOnID).InputViewStart = Control(__UI_DraggingThumbOnID).Max - Control(__UI_DraggingThumbOnID).LastVisibleItem + 1
-                __UI_ThumbDragTop = __UI_MouseTop
-            ELSEIF __UI_MouseTop < Control(__UI_DraggingThumbOnID).Top + Control(Control(__UI_DraggingThumbOnID).ParentID).Top + __UI_ScrollbarButtonHeight THEN
-                'Dragging above the track area
-                Control(__UI_DraggingThumbOnID).InputViewStart = 1
-            ELSEIF __UI_MouseTop > Control(__UI_DraggingThumbOnID).Top + Control(Control(__UI_DraggingThumbOnID).ParentID).Top + Control(__UI_DraggingThumbOnID).Height - __UI_ScrollbarButtonHeight THEN
-                'Dragging below the track area
-                Control(__UI_DraggingThumbOnID).InputViewStart = Control(__UI_DraggingThumbOnID).Max - Control(__UI_DraggingThumbOnID).LastVisibleItem + 1
+            ScrollMax = Control(__UI_DraggingThumbOnID).Max - Control(__UI_DraggingThumbOnID).LastVisibleItem
+            IF ThumbTravel > 0 _ANDALSO ScrollMax > 0 THEN
+                Control(__UI_DraggingThumbOnID).InputViewStart = 1 + _ROUND(ThumbOffset / ThumbTravel * ScrollMax)
+                IF Control(__UI_DraggingThumbOnID).InputViewStart < 1 THEN Control(__UI_DraggingThumbOnID).InputViewStart = 1
+                IF Control(__UI_DraggingThumbOnID).InputViewStart > ScrollMax + 1 THEN Control(__UI_DraggingThumbOnID).InputViewStart = ScrollMax + 1
             END IF
         ELSEIF Control(__UI_DraggingThumbOnID).Type = __UI_Type_TextBox THEN
-            'The thumb follows the mouse; __UI_ThumbDragTop holds where on the thumb it was grabbed
-            DIM AS LONG ThumbTravel, ThumbOffset, ScrollMax
-            ThumbTravel = Control(__UI_DraggingThumbOnID).Height - __UI_ScrollbarButtonHeight * 2 - 2 - Control(__UI_DraggingThumbOnID).ThumbHeight
             ScrollMax = __UI_TBCountLines(__UI_DraggingThumbOnID) - __UI_TBVisibleLines(__UI_DraggingThumbOnID)
             IF ThumbTravel > 0 _ANDALSO ScrollMax > 0 THEN
-                ThumbOffset = __UI_MouseTop - __UI_ThumbDragTop - (Control(Control(__UI_DraggingThumbOnID).ParentID).Top + Control(__UI_DraggingThumbOnID).Top + 1 + __UI_ScrollbarButtonHeight)
                 __UI_TBScrollTo __UI_DraggingThumbOnID, 1 + _ROUND(ThumbOffset / ThumbTravel * ScrollMax)
             END IF
         END IF
@@ -8215,8 +8210,10 @@ SUB __UI_DrawVScrollBar (TempThis AS __UI_ControlTYPE, ControlState AS _BYTE)
 
     _FONT This.Font
 
+    DIM Visible AS LONG ' items or lines shown at once
     IF This.Type = __UI_Type_ListBox THEN
         This.Min = 0
+        Visible = This.LastVisibleItem
         This.Max = This.Max - This.LastVisibleItem
         This.Value = This.InputViewStart - 1
         This.Left = This.Width - __UI_ScrollbarWidth - 1
@@ -8225,8 +8222,8 @@ SUB __UI_DrawVScrollBar (TempThis AS __UI_ControlTYPE, ControlState AS _BYTE)
         This.Width = __UI_ScrollbarWidth
     ELSEIF This.Type = __UI_Type_TextBox THEN
         This.Min = 0
-        This.Max = __UI_TBCountLines(This.ID) - __UI_TBVisibleLines(This.ID)
-        IF This.Max < 1 THEN This.Max = 1
+        Visible = __UI_TBVisibleLines(This.ID)
+        This.Max = __UI_TBCountLines(This.ID) - Visible
         This.Value = This.FirstVisibleLine - 1
         This.Left = This.Width - __UI_ScrollbarWidth - 1
         This.Top = 1
@@ -8235,12 +8232,20 @@ SUB __UI_DrawVScrollBar (TempThis AS __UI_ControlTYPE, ControlState AS _BYTE)
     END IF
 
     'Scrollbar measurements:
+    'The thumb is to the track what the visible part is to the whole contents.
+    'Ratio is how far the view scrolls per pixel the thumb moves.
     TrackHeight = This.Height - __UI_ScrollbarButtonHeight * 2 - 1
-    Ratio = (This.Max) / TrackHeight
-    ThumbHeight = TrackHeight - This.Height * Ratio
-    IF ThumbHeight < 22 THEN ThumbHeight = 22
-    IF ThumbHeight > TrackHeight THEN ThumbHeight = TrackHeight
-    ThumbTop = This.Top + (TrackHeight - ThumbHeight) * (This.Value / This.Max)
+    IF This.Max < 1 _ORELSE Visible < 1 THEN
+        ThumbHeight = TrackHeight
+        Ratio = 0
+        ThumbTop = This.Top
+    ELSE
+        ThumbHeight = TrackHeight * Visible / (This.Max + Visible)
+        IF ThumbHeight < 22 THEN ThumbHeight = 22
+        IF ThumbHeight > TrackHeight THEN ThumbHeight = TrackHeight
+        IF TrackHeight > ThumbHeight THEN Ratio = This.Max / (TrackHeight - ThumbHeight) ELSE Ratio = 0
+        ThumbTop = This.Top + (TrackHeight - ThumbHeight) * (This.Value / This.Max)
+    END IF
     TempThis.ThumbTop = TempThis.Top + ThumbTop + __UI_ScrollbarButtonHeight
 
     IF __UI_Theme.Style = __UI_ThemeStyle_Flat THEN
