@@ -8279,7 +8279,8 @@ SUB __UI_DrawDropdownList (This AS __UI_ControlTYPE, ControlState AS _BYTE)
 
                         IF __UI_Focus = This.ID THEN
                             COLOR This.SelectedForeColor
-                            LINE (CaptionIndent, 3)-STEP(This.Width - CaptionIndent * 2, This.Height - 7), This.SelectedBackColor, BF
+                            'Stop the highlight short of the dropdown button
+                            LINE (CaptionIndent, 3)-(This.Width - (__UI_ScrollbarWidth + 2) - 2, This.Height - 4), This.SelectedBackColor, BF
                         END IF
 
                         SELECT CASE This.Align
@@ -8288,7 +8289,7 @@ SUB __UI_DrawDropdownList (This AS __UI_ControlTYPE, ControlState AS _BYTE)
                             CASE __UI_Center
                                 __UI_PrintString (This.Width \ 2 - __UI_PrintWidth(TempCaption$) \ 2), ThisItemTop%, TempCaption$
                             CASE __UI_Right
-                                __UI_PrintString (This.Width - __UI_PrintWidth(TempCaption$)) - CaptionIndent, ThisItemTop%, TempCaption$
+                                __UI_PrintString (This.Width - (__UI_ScrollbarWidth + 2) - __UI_PrintWidth(TempCaption$)) - CaptionIndent, ThisItemTop%, TempCaption$
                         END SELECT
                         EXIT DO
                     END IF
