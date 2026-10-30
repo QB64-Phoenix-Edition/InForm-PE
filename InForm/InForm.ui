@@ -7400,7 +7400,7 @@ SUB __UI_DrawProgressBar (This AS __UI_ControlTYPE, ControlState AS _BYTE)
         IF __UI_Theme.Style = __UI_ThemeStyle_Flat THEN
             DIM FlatFraction AS SINGLE
             IF This.Max > 0 THEN FlatFraction = This.Value / This.Max
-            __UI_FlatProgressBar This.Width, This.Height, FlatFraction, This.Disabled, This.SelectedBackColor, This.BorderColor
+            __UI_FlatProgressBar This.Width, This.Height, FlatFraction, This.Disabled, This.SelectedBackColor
         ELSE
             'Draw track
             'Back
