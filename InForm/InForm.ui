@@ -6013,7 +6013,9 @@ SUB __UI_ActivateMenu (This AS __UI_ControlTYPE, SelectFirstItem AS _BYTE)
         END IF
 
         'Calculate panel's width and position the menu items
+        CONST __UI_MenuItemMinHeight = 24 'leaves room around 16px menu icons
         ItemHeight = _ULINESPACING + (((_FONT = 8) * -1) * __UI_Font8Offset + ((_FONT = 16) * -1) * __UI_Font16Offset) + 3
+        IF ItemHeight < __UI_MenuItemMinHeight THEN ItemHeight = __UI_MenuItemMinHeight
         Control(__UI_ActiveMenu(__UI_TotalActiveMenus)).Height = (((_FONT = 8) * -1) * 3 + _ULINESPACING) / 4
         Control(__UI_ActiveMenu(__UI_TotalActiveMenus)).Width = 0
         CurrentGroup = 1
