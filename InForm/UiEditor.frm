@@ -423,6 +423,11 @@ SUB __UI_LoadForm
     Control(__UI_NewID).CanHaveFocus = True
     ToolTip(__UI_NewID) = "Paste list into control"
 
+    __UI_NewID = __UI_NewControl(__UI_Type_Button, "BrowseImageBT", 23, 23, 106, 54, __UI_GetID("ControlProperties"))
+    SetCaption __UI_NewID, "..."
+    Control(__UI_NewID).CanHaveFocus = True
+    ToolTip(__UI_NewID) = "Choose an image file"
+
     __UI_NewID = __UI_NewControl(__UI_Type_TextBox, "TextTB", 230, 23, 129, 54, __UI_GetID("ControlProperties"))
     Control(__UI_NewID).HasBorder = True
     Control(__UI_NewID).CanHaveFocus = True
@@ -978,6 +983,7 @@ SUB __UI_AssignIDs
     SearchableCB = __UI_GetID("SearchableCB")
     FuzzyCB = __UI_GetID("FuzzyCB")
     PasteListBT = __UI_GetID("PasteListBT")
+    BrowseImageBT = __UI_GetID("BrowseImageBT")
     EditMenuConvertType = __UI_GetID("EditMenuConvertType")
     AutoSize = __UI_GetID("AutoSize")
     SizeTB = __UI_GetID("SizeTB")

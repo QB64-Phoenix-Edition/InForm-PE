@@ -159,7 +159,7 @@ DIM SHARED MaskTB AS LONG, MaskLB AS LONG
 DIM SHARED BulletOptions AS LONG, BulletOptionsLB AS LONG
 DIM SHARED BooleanLB AS LONG, BooleanOptions AS LONG
 DIM SHARED FontListLB AS LONG, FontList AS LONG, FontSizeList
-DIM SHARED PasteListBT AS LONG, ContextMenuLB AS LONG
+DIM SHARED PasteListBT AS LONG, BrowseImageBT AS LONG, ContextMenuLB AS LONG
 DIM SHARED ContextMenuControlsList AS LONG
 DIM SHARED KeyboardComboLB AS LONG, KeyboardComboBT AS LONG
 '------------------------------------------------------------------------------
@@ -777,6 +777,24 @@ SUB __UI_Click (id AS LONG)
             __UI_Focus = Dummy
             Control(Dummy).Cursor = LEN(Text(Dummy))
             Control(Dummy).TextIsSelected = False
+        CASE BrowseImageBT
+            DIM ImageFile$, ImagePath$
+            ImagePath$ = Text(TextTB)
+            IF LEN(ImagePath$) > 0 AND _FILEEXISTS(ImagePath$) THEN
+                ImagePath$ = Pathname_GetPath(ImagePath$)
+            ELSEIF LEN(CurrentPath$) > 0 THEN
+                ImagePath$ = CurrentPath$
+            ELSE
+                ImagePath$ = Pathname_AddDirectorySeparator(_STARTDIR$)
+            END IF
+            __UI_Delay COMMDLG_DELAY
+            ImageFile$ = _OPENFILEDIALOG$(UiEditorTitle$ + ": Choose image", ImagePath$, "*.png|*.PNG|*.jpg|*.JPG|*.jpeg|*.JPEG|*.bmp|*.BMP|*.gif|*.GIF|*.tga|*.TGA|*.psd|*.PSD|*.pcx|*.PCX|*.pnm|*.PNM|*.qoi|*.QOI|*.svg|*.SVG|*.ico|*.ICO|*.cur|*.CUR", "Image files")
+            IF LEN(ImageFile$) THEN
+                Text(TextTB) = ImageFile$
+                InputBox(GetInputBoxFromID(TextTB)).Sent = False
+                ConfirmEdits TextTB
+                Caption(StatusBar) = "Image file set."
+            END IF
         CASE KeyboardComboBT
             __UI_BypassKeyCombos = True
             Caption(KeyboardComboBT) = CHR$(7) + " hit a key combo... (ESC to clear)"
@@ -2418,6 +2436,12 @@ SUB __UI_BeforeUpdateDisplay
     Control(FontSizeList).Hidden = Control(FontList).Hidden
     Control(FontSizeList).Top = Control(FontList).Top
     Control(PasteListBT).Hidden = True
+    Control(BrowseImageBT).Hidden = True
+
+    IF PreviewControls(FirstSelected).Type = __UI_Type_PictureBox AND Control(TextTB).Hidden = False THEN
+        Control(BrowseImageBT).Top = Control(TextTB).Top
+        Control(BrowseImageBT).Hidden = False
+    END IF
 
     IF PreviewControls(FirstSelected).Type = __UI_Type_ListBox OR PreviewControls(FirstSelected).Type = __UI_Type_DropdownList THEN
         IF INSTR(_CLIPBOARD$, CHR$(10)) THEN
