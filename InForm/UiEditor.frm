@@ -655,23 +655,11 @@ SUB __UI_LoadForm
 
     __UI_NewID = __UI_NewControl(__UI_Type_Label, "AnchorLB", 52, 20, 12, 232, __UI_GetID("ControlToggles"))
     SetCaption __UI_NewID, "Anchor"
-    Control(__UI_NewID).VAlign = __UI_Middle
 
-    __UI_NewID = __UI_NewControl(__UI_Type_CheckBox, "AnchorLeftCB", 34, 20, 64, 232, __UI_GetID("ControlToggles"))
-    SetCaption __UI_NewID, "L"
-    Control(__UI_NewID).CanHaveFocus = True
+    __UI_NewID = __UI_NewControl(__UI_Type_PictureBox, "AnchorPicker", 128, 62, 66, 232, __UI_GetID("ControlToggles"))
 
-    __UI_NewID = __UI_NewControl(__UI_Type_CheckBox, "AnchorTopCB", 34, 20, 100, 232, __UI_GetID("ControlToggles"))
-    SetCaption __UI_NewID, "T"
-    Control(__UI_NewID).CanHaveFocus = True
-
-    __UI_NewID = __UI_NewControl(__UI_Type_CheckBox, "AnchorRightCB", 34, 20, 136, 232, __UI_GetID("ControlToggles"))
-    SetCaption __UI_NewID, "R"
-    Control(__UI_NewID).CanHaveFocus = True
-
-    __UI_NewID = __UI_NewControl(__UI_Type_CheckBox, "AnchorBottomCB", 34, 20, 172, 232, __UI_GetID("ControlToggles"))
-    SetCaption __UI_NewID, "B"
-    Control(__UI_NewID).CanHaveFocus = True
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "AnchorInfoLB", 184, 34, 12, 298, __UI_GetID("ControlToggles"))
+    Control(__UI_NewID).WordWrap = True
 
     __UI_NewID = __UI_NewControl(__UI_Type_CheckBox, "AutoScroll", 181, 20, 12, 232, __UI_GetID("ControlToggles"))
     SetCaption __UI_NewID, "Auto-scroll"
@@ -1004,10 +992,8 @@ SUB __UI_AssignIDs
     AutoScroll = __UI_GetID("AutoScroll")
     ReorderableCB = __UI_GetID("ReorderableCB")
     AnchorLB = __UI_GetID("AnchorLB")
-    AnchorLeftCB = __UI_GetID("AnchorLeftCB")
-    AnchorTopCB = __UI_GetID("AnchorTopCB")
-    AnchorRightCB = __UI_GetID("AnchorRightCB")
-    AnchorBottomCB = __UI_GetID("AnchorBottomCB")
+    AnchorPicker = __UI_GetID("AnchorPicker")
+    AnchorInfoLB = __UI_GetID("AnchorInfoLB")
     SearchableCB = __UI_GetID("SearchableCB")
     FuzzyCB = __UI_GetID("FuzzyCB")
     PasteListBT = __UI_GetID("PasteListBT")

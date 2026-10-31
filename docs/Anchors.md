@@ -5,7 +5,7 @@ Anchors let controls move and stretch on their own when a form is resized, so a 
 ## In the designer
 
 1. Select the form and tick **Resizable** in Control toggles.
-2. Select a control and use the **Anchor L T R B** checkboxes (left, top, right, bottom) to pick the edges it follows.
+2. Select a control. Under Control toggles, the **Anchor** picker shows the control as a box inside its parent, with a bar from each side to the parent's edge. Click a side to anchor the control to that edge (the bar turns solid) or to release it (the bar turns dotted). The line under the picker says what the control will do, e.g. "Sticks to the bottom-right corner of the form."
 
 | Anchored to | When the form gets wider, the control... |
 |-------------|------------------------------------------|
@@ -13,7 +13,7 @@ Anchors let controls move and stretch on their own when a form is resized, so a 
 | Right | moves right with the edge |
 | Left + right | gets wider |
 
-Top and bottom work the same way for the height. Selecting several controls and ticking a box changes only that edge on each of them.
+Top and bottom work the same way for the height. A control always follows at least one side in each direction, so to release the left side, anchor the right one first. With several controls selected, a click changes only that edge on each of them.
 
 ## How it works
 

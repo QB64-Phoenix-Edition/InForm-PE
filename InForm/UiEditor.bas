@@ -108,7 +108,9 @@ DIM SHARED AddToggleSwitch AS LONG, AddTabControl AS LONG
 DIM SHARED Stretch AS LONG, HasBorder AS LONG
 DIM SHARED ShowPercentage AS LONG, PasswordMaskCB AS LONG, MultilineCB AS LONG, SearchableCB AS LONG, FuzzyCB AS LONG
 DIM SHARED ReorderableCB AS LONG
-DIM SHARED AnchorLB AS LONG, AnchorLeftCB AS LONG, AnchorTopCB AS LONG, AnchorRightCB AS LONG, AnchorBottomCB AS LONG
+DIM SHARED AnchorLB AS LONG, AnchorPicker AS LONG, AnchorInfoLB AS LONG
+DIM SHARED AnchorPickerFlags AS LONG ' anchor edges of the first selected control, as the picker shows them
+CONST AnchorPickerBoxW = 40, AnchorPickerBoxH = 20 ' size of the control drawn in the anchor picker
 DIM SHARED WordWrap AS LONG, CanHaveFocus AS LONG
 DIM SHARED Disabled AS LONG, Transparent AS LONG
 DIM SHARED Hidden AS LONG, CenteredWindow AS LONG
@@ -430,16 +432,8 @@ SUB __UI_Click (id AS LONG)
         CASE ReorderableCB
             b$ = MKI$(Control(id).Value)
             SendData b$, 48
-        CASE AnchorLeftCB, AnchorTopCB, AnchorRightCB, AnchorBottomCB
-            'Sends which edge changed and whether it's on, so each selected control keeps its other edges
-            SELECT CASE id
-                CASE AnchorLeftCB: b$ = MKI$(__UI_Anchor_Left)
-                CASE AnchorTopCB: b$ = MKI$(__UI_Anchor_Top)
-                CASE AnchorRightCB: b$ = MKI$(__UI_Anchor_Right)
-                CASE AnchorBottomCB: b$ = MKI$(__UI_Anchor_Bottom)
-            END SELECT
-            b$ = b$ + MKI$(Control(id).Value)
-            SendData b$, 49
+        CASE AnchorPicker
+            ToggleAnchorEdge AnchorPickerEdge
         CASE AutoScroll
             b$ = MKI$(Control(id).Value)
             SendData b$, 38
@@ -1185,7 +1179,6 @@ SUB __UI_BeforeUpdateDisplay
     DIM i AS LONG, j AS LONG, Answer AS _BYTE
     DIM incomingData$, Signal$
     DIM thisData$, thisCommand$
-    DIM AnchorFlags AS LONG
     STATIC OriginalImageWidth AS INTEGER, OriginalImageHeight AS INTEGER
     STATIC PrevFirstSelected AS LONG, PreviewHasMenuActive AS INTEGER
     STATIC ThisControlTurnsInto AS INTEGER
@@ -1798,6 +1791,7 @@ SUB __UI_BeforeUpdateDisplay
         Control(Toggles(i)).Disabled = True
         Control(Toggles(i)).Hidden = False
     NEXT
+    Control(AnchorPicker).Disabled = True
 
     CONST ShadeOfGreen~& = _RGB32(28, 150, 50)
     CONST ShadeOfRed~& = _RGB32(233, 44, 0)
@@ -2160,12 +2154,8 @@ SUB __UI_BeforeUpdateDisplay
     Control(SearchableCB).Value = PreviewControls(FirstSelected).Searchable
     Control(FuzzyCB).Value = PreviewControls(FirstSelected).Fuzzy
     Control(ReorderableCB).Value = PreviewControls(FirstSelected).Reorderable
-    AnchorFlags = PreviewControls(FirstSelected).Anchor
-    IF AnchorFlags = 0 THEN AnchorFlags = __UI_Anchor_Left OR __UI_Anchor_Top
-    Control(AnchorLeftCB).Value = ((AnchorFlags AND __UI_Anchor_Left) <> 0)
-    Control(AnchorTopCB).Value = ((AnchorFlags AND __UI_Anchor_Top) <> 0)
-    Control(AnchorRightCB).Value = ((AnchorFlags AND __UI_Anchor_Right) <> 0)
-    Control(AnchorBottomCB).Value = ((AnchorFlags AND __UI_Anchor_Bottom) <> 0)
+    AnchorPickerFlags = PreviewControls(FirstSelected).Anchor
+    IF AnchorPickerFlags = 0 THEN AnchorPickerFlags = __UI_Anchor_Left OR __UI_Anchor_Top
     Control(AutoSize).Value = PreviewControls(FirstSelected).AutoSize
     Control(HideTicks).Value = (PreviewControls(FirstSelected).Height = __UI_Type(__UI_Type_TrackBar).MinimumHeight)
     Control(AutoPlayGif).Value = PreviewAutoPlayGif(FirstSelected)
@@ -2431,7 +2421,7 @@ SUB __UI_BeforeUpdateDisplay
             CASE __UI_Type_Frame, __UI_Type_TabControl, __UI_Type_Button, __UI_Type_CheckBox, __UI_Type_RadioButton, __UI_Type_TextBox, __UI_Type_ListBox, __UI_Type_DropdownList, __UI_Type_TrackBar, __UI_Type_Label, __UI_Type_ProgressBar, __UI_Type_PictureBox
                 Control(Hidden).Disabled = False
             CASE __UI_Type_Frame, __UI_Type_TabControl, __UI_Type_Button, __UI_Type_CheckBox, __UI_Type_RadioButton, __UI_Type_TextBox, __UI_Type_ListBox, __UI_Type_DropdownList, __UI_Type_TrackBar, __UI_Type_Label, __UI_Type_ProgressBar, __UI_Type_PictureBox, __UI_Type_ToggleSwitch
-                Control(AnchorLeftCB).Disabled = False
+                Control(AnchorPicker).Disabled = False
             CASE __UI_Type_Label
                 Control(AlignOptions).Disabled = False
                 Control(VAlignOptions).Disabled = False
@@ -2494,18 +2484,16 @@ SUB __UI_BeforeUpdateDisplay
         END IF
     NEXT
 
-    'The anchor checkboxes share one row: AnchorLeftCB is in Toggles() and the rest follow it
-    Control(AnchorLB).Hidden = Control(AnchorLeftCB).Hidden
-    Control(AnchorLB).Top = Control(AnchorLeftCB).Top
-    Control(AnchorTopCB).Disabled = Control(AnchorLeftCB).Disabled
-    Control(AnchorTopCB).Hidden = Control(AnchorLeftCB).Hidden
-    Control(AnchorTopCB).Top = Control(AnchorLeftCB).Top
-    Control(AnchorRightCB).Disabled = Control(AnchorLeftCB).Disabled
-    Control(AnchorRightCB).Hidden = Control(AnchorLeftCB).Hidden
-    Control(AnchorRightCB).Top = Control(AnchorLeftCB).Top
-    Control(AnchorBottomCB).Disabled = Control(AnchorLeftCB).Disabled
-    Control(AnchorBottomCB).Hidden = Control(AnchorLeftCB).Hidden
-    Control(AnchorBottomCB).Top = Control(AnchorLeftCB).Top
+    'The anchor picker goes below the toggles, with its description under it
+    Control(AnchorPicker).Hidden = Control(AnchorPicker).Disabled
+    Control(AnchorLB).Hidden = Control(AnchorPicker).Hidden
+    Control(AnchorInfoLB).Hidden = Control(AnchorPicker).Hidden
+    IF NOT Control(AnchorPicker).Hidden THEN
+        Control(AnchorPicker).Top = LastTopForInputBox + TopIncrementForInputBox + 6
+        Control(AnchorLB).Top = Control(AnchorPicker).Top
+        Control(AnchorInfoLB).Top = Control(AnchorPicker).Top + Control(AnchorPicker).Height + 2
+        UpdateAnchorPicker
+    END IF
 
     'Custom cases
     Control(AutoPlayGif).Disabled = NOT Control(AddGifExtensionToggle).Value
@@ -3007,7 +2995,6 @@ SUB __UI_OnLoad
     i = i + 1: Toggles(i) = SearchableCB
     i = i + 1: Toggles(i) = FuzzyCB
     i = i + 1: Toggles(i) = ReorderableCB
-    i = i + 1: Toggles(i) = AnchorLeftCB
     i = i + 1: Toggles(i) = AutoSize
     i = i + 1: Toggles(i) = HideTicks
     i = i + 1: Toggles(i) = AutoPlayGif
@@ -3016,11 +3003,8 @@ SUB __UI_OnLoad
 
     ToolTip(FontTB) = "Multiple fonts can be specified by separating them with a question mark (?)." + CHR$(10) + "The first font that can be found/loaded is used."
     ToolTip(FontList) = "System fonts may not be available in all computers. To specify a local font file, right-click 'Font' to the left of this list and disable 'Show system fonts list'."
-    ToolTip(AnchorLB) = "Edges of the form (or of the frame/tab control it's in) the control follows when that gets resized." + CHR$(10) + "Left + right: the control stretches. Right only: it moves along."
-    ToolTip(AnchorLeftCB) = "Anchor to the left edge"
-    ToolTip(AnchorTopCB) = "Anchor to the top edge"
-    ToolTip(AnchorRightCB) = "Anchor to the right edge"
-    ToolTip(AnchorBottomCB) = "Anchor to the bottom edge"
+    ToolTip(AnchorLB) = "The edges of the form (or of the frame/tab control it's in) that the control follows when that gets resized."
+    ToolTip(AnchorPicker) = "Click a side to anchor the control to that edge of its parent, or to release it."
     ToolTip(ColorPreview) = "Click to copy the current color's hex value to the clipboard."
     ToolTip(KeyboardComboBT) = "Click to assign a key combination to the selected control"
 
@@ -5122,3 +5106,158 @@ FUNCTION AnchorFlagsCode$ (Flags AS _BYTE)
     IF (Flags AND __UI_Anchor_Bottom) THEN a$ = a$ + " OR __UI_Anchor_Bottom"
     AnchorFlagsCode$ = MID$(a$, 5)
 END FUNCTION
+
+
+'---------------------------------------------------------------------------------
+'Anchor picker: a drawing of the selected control inside its parent, with a bar
+'from each side of the control to the parent's edge. Lit bars are anchored edges;
+'clicking a side of the drawing toggles that edge.
+
+'The edge (__UI_Anchor_*) under the mouse, or 0 when it's over the control box or outside
+FUNCTION AnchorPickerEdge&
+    DIM mx AS SINGLE, my AS SINGLE, cx AS SINGLE, cy AS SINGLE, dx AS SINGLE, dy AS SINGLE
+    IF __UI_HoveringID <> AnchorPicker OR Control(AnchorPicker).Hidden THEN EXIT FUNCTION
+    mx = __UI_MouseLeft - Control(AnchorPicker).Left - Control(ControlToggles).Left
+    my = __UI_MouseTop - Control(AnchorPicker).Top - Control(ControlToggles).Top
+    cx = Control(AnchorPicker).Width / 2: cy = Control(AnchorPicker).Height / 2
+    IF ABS(mx - cx) <= AnchorPickerBoxW / 2 AND ABS(my - cy) <= AnchorPickerBoxH / 2 THEN EXIT FUNCTION
+    'Split the drawing along its diagonals: each quarter belongs to the side it touches
+    dx = (mx - cx) / cx: dy = (my - cy) / cy
+    IF ABS(dx) > ABS(dy) THEN
+        IF dx < 0 THEN AnchorPickerEdge = __UI_Anchor_Left ELSE AnchorPickerEdge = __UI_Anchor_Right
+    ELSE
+        IF dy < 0 THEN AnchorPickerEdge = __UI_Anchor_Top ELSE AnchorPickerEdge = __UI_Anchor_Bottom
+    END IF
+END FUNCTION
+
+'Anchors or releases one edge on every selected control
+SUB ToggleAnchorEdge (Edge AS LONG)
+    DIM Opposite AS LONG, b$, EdgeName$, OppositeName$
+    IF Edge = 0 THEN EXIT SUB
+    SELECT CASE Edge
+        CASE __UI_Anchor_Left: Opposite = __UI_Anchor_Right
+        CASE __UI_Anchor_Right: Opposite = __UI_Anchor_Left
+        CASE __UI_Anchor_Top: Opposite = __UI_Anchor_Bottom
+        CASE __UI_Anchor_Bottom: Opposite = __UI_Anchor_Top
+    END SELECT
+    IF (AnchorPickerFlags AND Edge) THEN
+        IF (AnchorPickerFlags AND Opposite) = 0 THEN
+            'A control always follows at least one side in each direction
+            SELECT CASE Edge
+                CASE __UI_Anchor_Left: EdgeName$ = "left": OppositeName$ = "right"
+                CASE __UI_Anchor_Right: EdgeName$ = "right": OppositeName$ = "left"
+                CASE __UI_Anchor_Top: EdgeName$ = "top": OppositeName$ = "bottom"
+                CASE __UI_Anchor_Bottom: EdgeName$ = "bottom": OppositeName$ = "top"
+            END SELECT
+            Caption(StatusBar) = "To release the " + EdgeName$ + ", anchor the " + OppositeName$ + " first: a control always follows one of them."
+            BlinkStatusBar = TIMER
+            EXIT SUB
+        END IF
+        AnchorPickerFlags = AnchorPickerFlags AND NOT Edge
+        b$ = MKI$(Edge) + MKI$(False)
+    ELSE
+        AnchorPickerFlags = AnchorPickerFlags OR Edge
+        b$ = MKI$(Edge) + MKI$(True)
+    END IF
+    SendData b$, 49
+    UpdateAnchorPicker
+END SUB
+
+'What the anchors do, in words
+FUNCTION AnchorDescription$ (Flags AS LONG)
+    DIM h AS LONG, v AS LONG, p$
+    'h/v: 0 = stays, 1 = moves along, 2 = stretches
+    IF (Flags AND __UI_Anchor_Right) THEN h = 1 - ((Flags AND __UI_Anchor_Left) <> 0)
+    IF (Flags AND __UI_Anchor_Bottom) THEN v = 1 - ((Flags AND __UI_Anchor_Top) <> 0)
+
+    p$ = "the form"
+    IF TotalSelected > 0 _ANDALSO FirstSelected <= UBOUND(PreviewParentIDS) THEN
+        IF LEN(PreviewParentIDS(FirstSelected)) THEN
+            IF PreviewIsTabChild(FirstSelected) THEN p$ = "the tab control" ELSE p$ = "the frame"
+        END IF
+    END IF
+
+    SELECT CASE h * 3 + v
+        CASE 0: AnchorDescription$ = "Stays put when " + p$ + " is resized."
+        CASE 1: AnchorDescription$ = "Sticks to the bottom of " + p$ + "."
+        CASE 2: AnchorDescription$ = "Gets taller with " + p$ + "."
+        CASE 3: AnchorDescription$ = "Sticks to the right side of " + p$ + "."
+        CASE 4: AnchorDescription$ = "Sticks to the bottom-right corner of " + p$ + "."
+        CASE 5: AnchorDescription$ = "Gets taller and sticks to the right of " + p$ + "."
+        CASE 6: AnchorDescription$ = "Gets wider with " + p$ + "."
+        CASE 7: AnchorDescription$ = "Gets wider and sticks to the bottom of " + p$ + "."
+        CASE 8: AnchorDescription$ = "Grows with " + p$ + " in both directions."
+    END SELECT
+END FUNCTION
+
+'Redraws the picker when what it shows has changed
+SUB UpdateAnchorPicker
+    STATIC LastFlags AS LONG, LastHover AS LONG, LastBack AS _UNSIGNED LONG, LastAccent AS _UNSIGNED LONG
+    DIM Hover AS LONG, w AS LONG, h AS LONG, cx AS LONG, cy AS LONG
+    DIM bl AS LONG, bt AS LONG, br AS LONG, bb AS LONG
+    DIM Back AS _UNSIGNED LONG, Accent AS _UNSIGNED LONG, Faint AS _UNSIGNED LONG, BoxBack AS _UNSIGNED LONG
+
+    Hover = AnchorPickerEdge
+    Back = Control(ControlToggles).BackColor
+    Accent = __UI_ThemeColor(__UI_ThemeColor_Accent)
+    SetCaption AnchorInfoLB, AnchorDescription$(AnchorPickerFlags)
+
+    IF Control(AnchorPicker).HelperCanvas = 0 THEN
+        Control(AnchorPicker).HelperCanvas = _NEWIMAGE(Control(AnchorPicker).Width, Control(AnchorPicker).Height, 32)
+    ELSEIF AnchorPickerFlags = LastFlags AND Hover = LastHover AND Back = LastBack AND Accent = LastAccent THEN
+        EXIT SUB
+    END IF
+    LastFlags = AnchorPickerFlags: LastHover = Hover: LastBack = Back: LastAccent = Accent
+
+    Faint = __UI_ThemeColor(__UI_ThemeColor_Border)
+    BoxBack = __UI_ThemeColor(__UI_ThemeColor_InputBack)
+
+    _DEST Control(AnchorPicker).HelperCanvas
+    w = _WIDTH: h = _HEIGHT
+    cx = w \ 2: cy = h \ 2
+    bl = cx - AnchorPickerBoxW \ 2: br = bl + AnchorPickerBoxW - 1
+    bt = cy - AnchorPickerBoxH \ 2: bb = bt + AnchorPickerBoxH - 1
+
+    'The parent and the control
+    LINE (0, 0)-(w - 1, h - 1), Back, BF
+    LINE (0, 0)-(w - 1, h - 1), Faint, B
+    LINE (bl, bt)-(br, bb), BoxBack, BF
+    LINE (bl, bt)-(br, bb), Faint, B
+
+    DrawAnchorBar 3, cy, bl - 2, cy, __UI_Anchor_Left, Hover, Accent, Faint
+    DrawAnchorBar br + 2, cy, w - 4, cy, __UI_Anchor_Right, Hover, Accent, Faint
+    DrawAnchorBar cx, 3, cx, bt - 2, __UI_Anchor_Top, Hover, Accent, Faint
+    DrawAnchorBar cx, bb + 2, cx, h - 4, __UI_Anchor_Bottom, Hover, Accent, Faint
+
+    _DEST 0
+    Control(AnchorPicker).Redraw = True
+END SUB
+
+'One bar of the picker: solid and thick when anchored, dotted when not.
+'The one under the mouse gets a soft band behind it, keeping its own look.
+SUB DrawAnchorBar (x1 AS LONG, y1 AS LONG, x2 AS LONG, y2 AS LONG, Edge AS LONG, Hover AS LONG, Accent AS _UNSIGNED LONG, Faint AS _UNSIGNED LONG)
+    DIM k AS LONG
+
+    IF Hover = Edge THEN
+        IF y1 = y2 THEN
+            LINE (x1 - 2, y1 - 7)-(x2 + 2, y2 + 7), _RGBA32(_RED32(Accent), _GREEN32(Accent), _BLUE32(Accent), 45), BF
+        ELSE
+            LINE (x1 - 7, y1 - 2)-(x2 + 7, y2 + 2), _RGBA32(_RED32(Accent), _GREEN32(Accent), _BLUE32(Accent), 45), BF
+        END IF
+    END IF
+
+    IF (AnchorPickerFlags AND Edge) THEN
+        FOR k = -1 TO 1
+            IF y1 = y2 THEN LINE (x1, y1 + k)-(x2, y2 + k), Accent ELSE LINE (x1 + k, y1)-(x2 + k, y2), Accent
+        NEXT
+        'A cap where the bar meets the parent's edge
+        SELECT CASE Edge
+            CASE __UI_Anchor_Left: LINE (x1, y1 - 5)-(x1 + 1, y1 + 5), Accent, BF
+            CASE __UI_Anchor_Right: LINE (x2 - 1, y2 - 5)-(x2, y2 + 5), Accent, BF
+            CASE __UI_Anchor_Top: LINE (x1 - 5, y1)-(x1 + 5, y1 + 1), Accent, BF
+            CASE __UI_Anchor_Bottom: LINE (x2 - 5, y2 - 1)-(x2 + 5, y2), Accent, BF
+        END SELECT
+    ELSE
+        LINE (x1, y1)-(x2, y2), Faint, , &HCCCC
+    END IF
+END SUB
