@@ -104,117 +104,60 @@ SUB __UI_InternalMenus
     __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "__UI_PreviewMenuSelect", 0, 0, 0, 0, __UI_GetID("__UI_PreviewMenu"))
     SetCaption __UI_GetID("__UI_PreviewMenuSelect"), "Select &All"
 
-    DIM prevDest AS LONG
+    __UI_DrawAlignIcons
+END SUB
+
+'---------------------------------------------------------------------------------
+'Draws the Align menu icons of the internal context menu in the colors of the
+'current theme. Each icon is a 48x16 strip: normal, hovered and disabled states.
+'The images are redrawn in place, so code sharing them gets the new look too.
+SUB __UI_DrawAlignIcons
+    DIM i AS LONG, s AS LONG, x AS LONG, id AS LONG, prevDest AS LONG
+    DIM ink AS _UNSIGNED LONG
+
     prevDest = _DEST
-    'Draw Align menu icons
-    Control(__UI_GetID("__UI_PreviewMenuAlignLeft")).HelperCanvas = _NEWIMAGE(48, 16, 32)
-    _DEST Control(__UI_GetID("__UI_PreviewMenuAlignLeft")).HelperCanvas
-    'Normal state
-    LINE (0, 0)-(1, 16), _RGB32(105, 105, 105), BF
-    LINE (3, 2)-(14, 7), _RGB32(255, 255, 255), BF
-    LINE (3, 2)-(14, 7), _RGB32(105, 105, 105), B
-    LINE (3, 10)-(10, 14), _RGB32(105, 105, 105), BF
-    'Hovered
-    LINE (16, 0)-STEP(1, 16), _RGB32(255, 255, 255), BF
-    LINE (19, 2)-STEP(11, 5), _RGB32(105, 105, 105), BF
-    LINE (19, 2)-STEP(11, 5), _RGB32(255, 255, 255), B
-    LINE (19, 10)-STEP(7, 4), _RGB32(255, 255, 255), BF
-    'Disabled
-    LINE (32, 0)-STEP(1, 16), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), BF
-    LINE (35, 2)-STEP(11, 5), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), BF
-    LINE (35, 2)-STEP(11, 5), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), B
-    LINE (35, 10)-STEP(7, 4), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), BF
-
-    Control(__UI_GetID("__UI_PreviewMenuAlignRight")).HelperCanvas = _NEWIMAGE(48, 16, 32)
-    _DEST Control(__UI_GetID("__UI_PreviewMenuAlignRight")).HelperCanvas
-    'Normal state
-    LINE (14, 0)-STEP(1, 16), _RGB32(105, 105, 105), BF
-    LINE (1, 2)-STEP(11, 5), _RGB32(255, 255, 255), BF
-    LINE (1, 2)-STEP(11, 5), _RGB32(105, 105, 105), B
-    LINE (5, 10)-STEP(7, 4), _RGB32(105, 105, 105), BF
-    'Hovered
-    LINE (14 + 16, 0)-STEP(1, 16), _RGB32(255, 255, 255), BF
-    LINE (1 + 16, 2)-STEP(11, 5), _RGB32(105, 105, 105), BF
-    LINE (1 + 16, 2)-STEP(11, 5), _RGB32(255, 255, 255), B
-    LINE (5 + 16, 10)-STEP(7, 4), _RGB32(255, 255, 255), BF
-    'Disabled
-    LINE (14 + 32, 0)-STEP(1, 16), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), BF
-    LINE (1 + 32, 2)-STEP(11, 5), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), BF
-    LINE (1 + 32, 2)-STEP(11, 5), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), B
-    LINE (5 + 32, 10)-STEP(7, 4), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), BF
-
-    Control(__UI_GetID("__UI_PreviewMenuAlignTops")).HelperCanvas = _NEWIMAGE(48, 16, 32)
-    _DEST Control(__UI_GetID("__UI_PreviewMenuAlignTops")).HelperCanvas
-    'Normal
-    LINE (0, 0)-STEP(16, 1), _RGB32(105, 105, 105), BF
-    LINE (2, 3)-STEP(5, 11), _RGB32(255, 255, 255), BF
-    LINE (2, 3)-STEP(4, 11), _RGB32(105, 105, 105), B
-    LINE (9, 3)-STEP(4, 7), _RGB32(105, 105, 105), BF
-    'Hovered
-    LINE (0 + 16, 0)-STEP(16, 1), _RGB32(255, 255, 255), BF
-    LINE (2 + 16, 3)-STEP(5, 11), _RGB32(105, 105, 105), BF
-    LINE (2 + 16, 3)-STEP(4, 11), _RGB32(255, 255, 255), B
-    LINE (9 + 16, 3)-STEP(4, 7), _RGB32(255, 255, 255), BF
-    'Disabled
-    LINE (0 + 32, 0)-STEP(16, 1), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), BF
-    LINE (2 + 32, 3)-STEP(5, 11), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), BF
-    LINE (2 + 32, 3)-STEP(4, 11), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), B
-    LINE (9 + 32, 3)-STEP(4, 7), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), BF
-
-    Control(__UI_GetID("__UI_PreviewMenuAlignBottoms")).HelperCanvas = _NEWIMAGE(48, 16, 32)
-    _DEST Control(__UI_GetID("__UI_PreviewMenuAlignBottoms")).HelperCanvas
-    'Normal
-    LINE (0, 14)-STEP(16, 1), _RGB32(105, 105, 105), BF
-    LINE (2, 1)-STEP(5, 11), _RGB32(255, 255, 255), BF
-    LINE (2, 1)-STEP(5, 11), _RGB32(105, 105, 105), B
-    LINE (9, 5)-STEP(4, 7), _RGB32(105, 105, 105), BF
-    'Hovered
-    LINE (0 + 16, 14)-STEP(16, 1), _RGB32(255, 255, 255), BF
-    LINE (2 + 16, 1)-STEP(5, 11), _RGB32(105, 105, 105), BF
-    LINE (2 + 16, 1)-STEP(5, 11), _RGB32(255, 255, 255), B
-    LINE (9 + 16, 5)-STEP(4, 7), _RGB32(255, 255, 255), BF
-    'Disabled
-    LINE (0 + 32, 14)-STEP(16, 1), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), BF
-    LINE (2 + 32, 1)-STEP(5, 11), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), BF
-    LINE (2 + 32, 1)-STEP(5, 11), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), B
-    LINE (9 + 32, 5)-STEP(4, 7), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), BF
-
-    Control(__UI_GetID("__UI_PreviewMenuAlignCentersV")).HelperCanvas = _NEWIMAGE(48, 16, 32)
-    _DEST Control(__UI_GetID("__UI_PreviewMenuAlignCentersV")).HelperCanvas
-    'Normal
-    LINE (0, 7)-STEP(16, 1), _RGB32(105, 105, 105), BF
-    LINE (2, 2)-STEP(5, 11), _RGB32(255, 255, 255), BF
-    LINE (2, 2)-STEP(5, 11), _RGB32(105, 105, 105), B
-    LINE (9, 4)-STEP(4, 7), _RGB32(105, 105, 105), BF
-    'Hovered
-    LINE (0 + 16, 7)-STEP(16, 1), _RGB32(255, 255, 255), BF
-    LINE (2 + 16, 2)-STEP(5, 11), _RGB32(105, 105, 105), BF
-    LINE (2 + 16, 2)-STEP(5, 11), _RGB32(255, 255, 255), B
-    LINE (9 + 16, 4)-STEP(4, 7), _RGB32(255, 255, 255), BF
-    'Disabled
-    LINE (0 + 32, 7)-STEP(16, 1), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), BF
-    LINE (2 + 32, 2)-STEP(5, 11), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), BF
-    LINE (2 + 32, 2)-STEP(5, 11), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), B
-    LINE (9 + 32, 4)-STEP(4, 7), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), BF
-
-    Control(__UI_GetID("__UI_PreviewMenuAlignCentersH")).HelperCanvas = _NEWIMAGE(48, 16, 32)
-    _DEST Control(__UI_GetID("__UI_PreviewMenuAlignCentersH")).HelperCanvas
-    'Normal
-    LINE (7, 0)-STEP(1, 16), _RGB32(105, 105, 105), BF
-    LINE (2, 2)-STEP(11, 5), _RGB32(255, 255, 255), BF
-    LINE (2, 2)-STEP(11, 5), _RGB32(105, 105, 105), B
-    LINE (4, 9)-STEP(7, 4), _RGB32(105, 105, 105), BF
-    'Hovered
-    LINE (7 + 16, 0)-STEP(1, 16), _RGB32(255, 255, 255), BF
-    LINE (2 + 16, 2)-STEP(11, 5), _RGB32(105, 105, 105), BF
-    LINE (2 + 16, 2)-STEP(11, 5), _RGB32(255, 255, 255), B
-    LINE (4 + 16, 9)-STEP(7, 4), _RGB32(255, 255, 255), BF
-    'Disabled
-    LINE (7 + 32, 0)-STEP(1, 16), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), BF
-    LINE (2 + 32, 2)-STEP(11, 5), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), BF
-    LINE (2 + 32, 2)-STEP(11, 5), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), B
-    LINE (4 + 32, 9)-STEP(7, 4), Darken(__UI_DefaultColor(__UI_Type_Form, 2), 80), BF
-
+    FOR i = 1 TO 6
+        id = __UI_GetID("__UI_PreviewMenuAlign" + __UI_Theme_ItemAt$("Left,Right,Tops,Bottoms,CentersV,CentersH", i))
+        IF id > 0 THEN
+            IF Control(id).HelperCanvas >= -1 THEN Control(id).HelperCanvas = _NEWIMAGE(48, 16, 32)
+            _DEST Control(id).HelperCanvas
+            CLS , _RGBA32(0, 0, 0, 0)
+            FOR s = 0 TO 2
+                SELECT CASE s
+                    CASE 0: ink = __UI_DefaultColor(__UI_Type_MenuItem, 1)
+                    CASE 1: ink = __UI_DefaultColor(__UI_Type_MenuItem, 3)
+                    CASE 2: ink = __UI_DisabledColor
+                END SELECT
+                x = s * 16
+                SELECT CASE i
+                    CASE 1 'left
+                        LINE (x + 1, 0)-STEP(1, 15), ink, BF
+                        LINE (x + 4, 2)-STEP(10, 4), ink, B
+                        LINE (x + 4, 9)-STEP(6, 4), ink, BF
+                    CASE 2 'right
+                        LINE (x + 13, 0)-STEP(1, 15), ink, BF
+                        LINE (x + 1, 2)-STEP(10, 4), ink, B
+                        LINE (x + 5, 9)-STEP(6, 4), ink, BF
+                    CASE 3 'tops
+                        LINE (x, 1)-STEP(15, 1), ink, BF
+                        LINE (x + 2, 4)-STEP(4, 10), ink, B
+                        LINE (x + 9, 4)-STEP(4, 6), ink, BF
+                    CASE 4 'bottoms
+                        LINE (x, 13)-STEP(15, 1), ink, BF
+                        LINE (x + 2, 1)-STEP(4, 10), ink, B
+                        LINE (x + 9, 5)-STEP(4, 6), ink, BF
+                    CASE 5 'centers, vertically
+                        LINE (x, 7)-STEP(15, 1), ink, BF
+                        LINE (x + 2, 2)-STEP(4, 11), ink, B
+                        LINE (x + 9, 4)-STEP(4, 7), ink, BF
+                    CASE 6 'centers, horizontally
+                        LINE (x + 7, 0)-STEP(1, 15), ink, BF
+                        LINE (x + 2, 2)-STEP(11, 4), ink, B
+                        LINE (x + 4, 9)-STEP(7, 4), ink, BF
+                END SELECT
+            NEXT
+        END IF
+    NEXT
     _DEST prevDest
 END SUB
 

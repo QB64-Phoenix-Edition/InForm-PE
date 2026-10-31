@@ -263,9 +263,6 @@ END IF
 
 DIM SHARED CurrentPath$, ThisFileName$
 
-CONST EDITOR_IMAGE_COMMONCONTROLS~%% = 1~%%
-CONST EDITOR_IMAGE_DISK~%% = 2~%%
-
 $IF WIN THEN
     DECLARE DYNAMIC LIBRARY "kernel32"
         FUNCTION OpenProcess& (BYVAL dwDesiredAccess AS LONG, BYVAL bInheritHandle AS LONG, BYVAL dwProcessId AS LONG)
@@ -536,7 +533,7 @@ SUB __UI_Click (id AS LONG)
             IF _FILEEXISTS("InForm/UiEditorPreview.frmbin") THEN KILL "InForm/UiEditorPreview.frmbin"
             SYSTEM
         CASE EditMenuZOrdering
-            DIM j AS LONG, i AS LONG
+            DIM i AS LONG
             Caption(StatusBar) = "Editing z-ordering/tab ordering"
             ZOrderLastMove = 0
             ZOrderListDirty = False
@@ -2573,7 +2570,6 @@ END SUB
 
 SUB __UI_OnLoad
     DIM i AS LONG, b$
-    DIM prevDest AS LONG
 
     __UI_KeepScreenHidden = False
     _SCREENSHOW
@@ -2887,84 +2883,7 @@ SUB __UI_OnLoad
     b$ = "Loading images..."
     GOSUB ShowMessage
 
-    'Load toolbox images:
-    DIM CommControls AS LONG
-    CommControls = LoadEditorImage(EDITOR_IMAGE_COMMONCONTROLS)
-    __UI_ClearColor CommControls, 0, 0
-
-    i = 0
-    Control(AddButton).HelperCanvas = _NEWIMAGE(16, 16, 32)
-    i = i + 1: _PUTIMAGE (0, 0), CommControls, Control(AddButton).HelperCanvas, (0, i * 16 - 16)-STEP(15, 15)
-    Control(AddLabel).HelperCanvas = _NEWIMAGE(16, 16, 32)
-    i = i + 1: _PUTIMAGE (0, 0), CommControls, Control(AddLabel).HelperCanvas, (0, i * 16 - 16)-STEP(15, 15)
-    Control(AddTextBox).HelperCanvas = _NEWIMAGE(16, 16, 32)
-    i = i + 1: _PUTIMAGE (0, 0), CommControls, Control(AddTextBox).HelperCanvas, (0, i * 16 - 16)-STEP(15, 15)
-    Control(AddCheckBox).HelperCanvas = _NEWIMAGE(16, 16, 32)
-    i = i + 1: _PUTIMAGE (0, 0), CommControls, Control(AddCheckBox).HelperCanvas, (0, i * 16 - 16)-STEP(15, 15)
-    Control(AddRadioButton).HelperCanvas = _NEWIMAGE(16, 16, 32)
-    i = i + 1: _PUTIMAGE (0, 0), CommControls, Control(AddRadioButton).HelperCanvas, (0, i * 16 - 16)-STEP(15, 15)
-    Control(AddListBox).HelperCanvas = _NEWIMAGE(16, 16, 32)
-    i = i + 1: _PUTIMAGE (0, 0), CommControls, Control(AddListBox).HelperCanvas, (0, i * 16 - 16)-STEP(15, 15)
-    Control(AddDropdownList).HelperCanvas = _NEWIMAGE(16, 16, 32)
-    i = i + 1: _PUTIMAGE (0, 0), CommControls, Control(AddDropdownList).HelperCanvas, (0, i * 16 - 16)-STEP(15, 15)
-    Control(AddTrackBar).HelperCanvas = _NEWIMAGE(16, 16, 32)
-    i = i + 1: _PUTIMAGE (0, 0), CommControls, Control(AddTrackBar).HelperCanvas, (0, i * 16 - 16)-STEP(15, 15)
-    Control(AddProgressBar).HelperCanvas = _NEWIMAGE(16, 16, 32)
-    i = i + 1: _PUTIMAGE (0, 0), CommControls, Control(AddProgressBar).HelperCanvas, (0, i * 16 - 16)-STEP(15, 15)
-    Control(AddPictureBox).HelperCanvas = _NEWIMAGE(16, 16, 32)
-    i = i + 1: _PUTIMAGE (0, 0), CommControls, Control(AddPictureBox).HelperCanvas, (0, i * 16 - 16)-STEP(15, 15)
-    Control(AddFrame).HelperCanvas = _NEWIMAGE(16, 16, 32)
-    i = i + 1: _PUTIMAGE (0, 0), CommControls, Control(AddFrame).HelperCanvas, (0, i * 16 - 16)-STEP(15, 15)
-
-    'Draw ToggleSwitch icon
-    prevDest = _DEST
-    Control(AddToggleSwitch).HelperCanvas = _NEWIMAGE(16, 16, 32)
-    _DEST Control(AddToggleSwitch).HelperCanvas
-    LINE (2, 4)-(13, 11), _RGB32(0, 128, 255), BF
-    LINE (2, 4)-(13, 11), _RGB32(170, 170, 170), B
-    LINE (8, 6)-(11, 9), _RGB32(255, 255, 255), BF
-
-    'Draw AddTabControl icon
-    Control(AddTabControl).HelperCanvas = _NEWIMAGE(16, 16, 32)
-    _DEST Control(AddTabControl).HelperCanvas
-    LINE (1, 5)-(14, 14), _RGB32(255, 255, 255), BF
-    LINE (1, 5)-(14, 14), _RGB32(132, 165, 189), B
-    LINE (1, 1)-(6, 5), _RGB32(255, 255, 255), BF
-    LINE (1, 1)-(6, 5), _RGB32(132, 165, 189), B
-    LINE (2, 5)-(5, 5), _RGB32(255, 255, 255)
-    LINE (7, 2)-(12, 5), _RGB32(220, 230, 240), BF
-    LINE (7, 2)-(12, 5), _RGB32(132, 165, 189), B
-
-    'Draw AddNumericBox icon
-    Control(AddNumericBox).HelperCanvas = _NEWIMAGE(16, 16, 32)
-    _DEST Control(AddNumericBox).HelperCanvas
-    _FONT 8
-    LINE (1, 3)-(15, 13), _RGB32(255, 255, 255), BF
-    LINE (1, 3)-(15, 13), _RGB32(132, 165, 189), B
-    COLOR _RGB32(55, 55, 55), _RGBA32(0, 0, 0, 0)
-    __UI_PrintString 5, 3, "#"
-
-    'Draw PasteListBT icon
-    Control(PasteListBT).HelperCanvas = _NEWIMAGE(17, 17, 32)
-    _DEST Control(PasteListBT).HelperCanvas
-    _FONT 16
-    FOR i = 4 TO 15 STEP 4
-        LINE (3, i)-STEP(_WIDTH - 6, 1), _RGB32(122, 122, 122), BF
-    NEXT
-
-    'Import Align menu icons from InForm.ui
-    Control(AlignMenuAlignLeft).HelperCanvas = Control(__UI_GetID("__UI_PreviewMenuAlignLeft")).HelperCanvas
-    Control(AlignMenuAlignRight).HelperCanvas = Control(__UI_GetID("__UI_PreviewMenuAlignRight")).HelperCanvas
-    Control(AlignMenuAlignTops).HelperCanvas = Control(__UI_GetID("__UI_PreviewMenuAlignTops")).HelperCanvas
-    Control(AlignMenuAlignBottoms).HelperCanvas = Control(__UI_GetID("__UI_PreviewMenuAlignBottoms")).HelperCanvas
-    Control(AlignMenuAlignCentersV).HelperCanvas = Control(__UI_GetID("__UI_PreviewMenuAlignCentersV")).HelperCanvas
-    Control(AlignMenuAlignCentersH).HelperCanvas = Control(__UI_GetID("__UI_PreviewMenuAlignCentersH")).HelperCanvas
-
-    _DEST prevDest
-
-    Control(FileMenuSave).HelperCanvas = LoadEditorImage(EDITOR_IMAGE_DISK)
-
-    _FREEIMAGE CommControls
+    DrawEditorIcons
 
     b$ = "Launching Preview component..."
     GOSUB ShowMessage
@@ -3226,57 +3145,265 @@ SUB __UI_ValueChanged (id AS LONG)
 END SUB
 
 '---------------------------------------------------------------------------------
-' Use this to store editor images and bitmaps
-' Take care not to call multiple times for the same image as it will create a new _IMAGE everytime it is called!
-FUNCTION LoadEditorImage& (id AS _UNSIGNED _BYTE)
-    SELECT CASE id
-        CASE EDITOR_IMAGE_COMMONCONTROLS
-            CONST SIZE_COMMONCONTROLS_BMP_11386~& = 11386~&
-            CONST COMP_COMMONCONTROLS_BMP_11386%% = -1%%
-            CONST DATA_COMMONCONTROLS_BMP_11386 = _
-                "eNpy8q3SYQC0W4UwsgJJdC5nRo4ceciRSCwSiRw7knO4wyKRyLZIkjNILBLZsi0S90e+q7x0SF96tj/MbvJ/NluZl6KYflVV3UWnKP8R/FtwEfxX" + _
-                "8I/Tv07/PH0ksD9rvCG/Tr/wWXRdC6VadIp6t22578alD8Fn8haoPxdfuD/1f239Oj25mjDZ6UD9zvow3+1hPnvr/Xy8/n8VO6D/SnRljjq9oc4E" + _
-                "aURU6RW1oEos4ovFmShvZ7j8Vis0gmpu8BhL5EOBWOW4tSmuTbLhViXIkht9bfzqjnGZ0C8D/dRzKz6qzUckPi6N8O4JinuGR54yB8tHXz3I1U8j" + _
-                "ekTr5JH1BW4qQ54laKuSkGtTamJ8YmgKqK62PjS11IJyapjDQ+ob+w5D15I7tI3Ed/klnuvi+DDUUgcKyU2PA8w8kvscFQbVoE6uG39sa4iAPuqS" + _
-                "3EHqKB4Z5l6hyFPWbAYFTB1G1aJy+JMin/JcDH10jeRkZmDRgJkgSQDzIOjFRcsztnzanjxXQk8a0V3jmk/Qw0AfkhP7w/LF9vjWxxPxw6CcgKwV" + _
-                "P/nMPLTwpdccvsIHInyNcQXKEcxDEoIZOua/h28McyCkFu7HMnY74/v7gcUINL8Xl68HRT1Tt5i7lucyCqQ/COlTQr4XgvwffBpFUbyDjbssCw4K" + _
-                "OdYP7cxkSE0KEWqx7fuU9itx+bG+ITaxfY5p2/e0f8dPTIJEx9uzwHsO8XOTCXL7nNN234f4xhgclXVdyf3s+f3g+0B13dvcxjS4dte3fDSaXLRz" + _
-                "i2t7Rdf3h/iMqxXvhGZsUNcNdgr5ddPiCWBZV2itaa/PpwDUol7ZDp/xGF+T33AflFIh7cVfnfhH68/mDOmUUTd1eYgf9ZH4iKh5Dk11gP+Dsasx" + _
-                "qsrq+pBNvrwLyXPm3Ec9d+1mWz51mL9xOQPTh8/nfw68+Hzn6FHti8/cJ+ZAWNurn3H9HPj/JGtHC2sfrd/LI1Q/5Yvrd/af9hecP/uoziPB9R3N" + _
-                "fdwr5NyFM02bj1Ed4ZO7QWzvPAP2/+d+p/5G94dT8wGbfFUhJE7Ps39oO/077elf9/7oW9oH+5dceXa+n2rX/WPje/qd+sn16w/eP3iuwLp4+mD9" + _
-                "Xh6h+ilfW797f/2R87d3oF//J/v/u2EeO/RtzTuubyvae3hmHnk/Dm0JLc8ifCc238tzkNvVd+pXYvSEvn585IP+9SRnbOdiat8H172ut+RMLTzR" + _
-                "K5TucFM3qFlhdXxJLd5+dNyjnuvWdUWnhdvfEHU3XNoLfVhh/k2RuXzu87Is5Ep8ZFOOdM6QjAnoR/JwhOtdflvdMUn8ZV2JfumRa/ExZeQrrehX" + _
-                "hOfSlNmr+sld6WMRHwPz6EzH/fDr9/df9oB12Dy4H7YmQtv+CJ3/PA1bHpZLP2NX8/9QD+l52PpvsrnMovu24PtD/d88uM+yt2693xXuTCOI9tje" + _
-                "+fvfXnAW8+ILj9gjr+K7vSaCqIsOx18tX7j2G472xrc9T66HPfFtz29x/TzC8e23x7XOt+fmEYpP7otvz80jGN/Y+B/dATY+nz+ITx+BPIhgfMHv" + _
-                "8rDxv7T/f+b/4+LPf4fEm/+8Gda3KfbZn3/9NcF3bv1+/DDfr/9o/HD9lIP1++LGp4TrP8j/+vM/JH/R/P+DaZoQxzecz2dE0ZW2+7/bx9fL5SMf" + _
-                "/M/hbmjqitzo6vr2UT7ueOS5tf34j3senh3nmeuyNEESx0iTGJfLeePL/wE+QY6TI3MOxPagmhr3LHXzwVlAnzvP4nI+U0sd5Cfx7dg8WRaoiseR" + _
-                "ur0cLJf1v9NTVcUzd+s+nIPthW8NPfWcaar0hDI5/U5z9pnHbuM2jxjj0GPWhpis/sgex4EcPfaosgvmecJqZ7Sdmj4kD+bkzIi7tOGMuLIWgfuf" + _
-                "e8/4tl23CFd8MLaA70TANcDGc/Vz+x/kL6sT33IC84Pri1yBjU++J6H5YV1Zxxafsn9+YA7iY4sfEJfn8pmzjX+Yb30wdnO/wegJR2URjvQ8+7gt" + _
-                "Eph5v491MWht/8o3QC157Ph2qNnzeiL30/gfg472/w=="
+'Editor icons
+'
+'The toolbox, menu and button icons are drawn in code with the colors of the
+'editor's theme, so they suit both light and dark themes. Shapes are drawn with
+'anti-aliased edges, in pixel coordinates (the pixel at 0,0 spans 0 to 1).
+'Call DrawEditorIcons again after changing the editor's theme.
 
-            LoadEditorImage = _LOADIMAGE(Resource_LoadBase64String(DATA_COMMONCONTROLS_BMP_11386, SIZE_COMMONCONTROLS_BMP_11386, COMP_COMMONCONTROLS_BMP_11386), 32, "memory")
+SUB DrawEditorIcons
+    DIM prevDest AS LONG, i AS LONG, x AS SINGLE, ink AS _UNSIGNED LONG
+    DIM fg AS _UNSIGNED LONG, soft AS _UNSIGNED LONG, acc AS _UNSIGNED LONG
+    DIM accText AS _UNSIGNED LONG, paper AS _UNSIGNED LONG
 
-        CASE EDITOR_IMAGE_DISK
-            CONST SIZE_DISK_BMP_1146~& = 1146~&
-            CONST COMP_DISK_BMP_1146%% = -1%%
-            CONST DATA_DISK_BMP_1146 = _
-                "eNpy8q1iYQCDKiDOAWIBKGZkUGBgZsAF/kMQjEMG4OHhERMXF/cDMu2B2IEIbA90qrOokJAHkM2urqISAqTvx0RF/u/v7v7f1d7+v7ujAxcGy9tY" + _
-                "Wf7kZGW5paKg4AAgixwC64iDMJ5jbbtx8mxtbLO27V5q81j3Xtu2bTxbcW7Vvv06/dft4Rv/ZhYmk6mAePe61as/1odDkbDfx9cE/EwUf8sjP2K+" + _
-                "LhTkHRYzsjMzm+mb2CSJiYY0jishHsTzDeEwQl4Pwj7vv6K6F7WBAFw2q5CZno6ObdpALBar0zmumHisWbmSrw344Xc5EXC7/pfLhTDtsL9/h6yM" + _
-                "tEjXjh0gEok0P/nVy5bxYY8HXrsNPoed5PjlSVS3sx2W169B94Ve3boxPiud8VhL92tov4/m/DT/j9iuIPG2t2+Qm5UV6durJ+TEcwYD4+fNmsW/" + _
-                "ff4Mb5/90PN/9OwpzC9f4t716zDqdUJCTDS7LxOLixUSCaQiEU91mAx6aNUq8jrQfwJHOXmkkNJSONaTJCcJUlEyoqOjNUqZuFgll0EhlfBUQ15O" + _
-                "NkaPHIHB1VWoLC9HVUUF8+WlJWwPzYEkyCVixmuVyuJUkwF9u3fh58yahQP792PZ0qU4dPAgTh4/juPHjuHY0aM4dfIkpk+bBnpXGHXaiFatRDzx" + _
-                "6ZyhODcrA9G9e/BLFy/G3r172cz+fftw4fx5nDl9munSxYuYP28e62WlpUTSTEaI4uM1edkZRaWF+VCKE/llSxYzrlvLljh44ADjz/7BL5w/Hy2j" + _
-                "ooTCvJxIXlYG+/4VhYVlw4dUQ54Y83H71q24e+eOQDeE+/fvCw6HQzCbzYL5/XvB6XQKmzdtYr3K0uIvxQW5kMtFGsrbjBw6+FF+BofdO3cIwYAf" + _
-                "d27dgtfjQU04jHAoiGAggMaGeuzavh2K6GhMHDMS40YNA6fX64iP+rqAgAABV0dHL193d+2e9nbj9atWGbc31RpXFOcZ1xYXGzeUlhrVVhQbJ8fF" + _
-                "GXq5uOgG+/v4hgb5h3t6evIBAK70LyE="
+    prevDest = _DEST
+    fg = __UI_ThemeColor(__UI_ThemeColor_ButtonText)
+    soft = IconMix(fg, __UI_ThemeColor(__UI_ThemeColor_ButtonFace), .6)
+    acc = __UI_ThemeColor(__UI_ThemeColor_Accent)
+    accText = __UI_ThemeColor(__UI_ThemeColor_AccentText)
+    paper = __UI_ThemeColor(__UI_ThemeColor_InputBack)
 
-            LoadEditorImage = _LOADIMAGE(Resource_LoadBase64String(DATA_DISK_BMP_1146, SIZE_DISK_BMP_1146, COMP_DISK_BMP_1146), 32, "memory")
+    'Button
+    EditorIconCanvas AddButton, 16
+    IconRoundRect 1, 3, 15, 13, 2, 0, acc
+    IconLine 5, 8, 11, 8, 2, accText
 
-        CASE ELSE
-            ERROR 51
-    END SELECT
+    'Label
+    EditorIconCanvas AddLabel, 16
+    IconLine 3.2, 13.5, 8, 2.5, 1.7, fg
+    IconLine 8, 2.5, 12.8, 13.5, 1.7, fg
+    IconLine 5.4, 9.8, 10.6, 9.8, 1.4, fg
+
+    'Text box: a field with a caret and an accent underline
+    EditorIconCanvas AddTextBox, 16
+    IconRoundRect 0, 3, 16, 13, 2, 0, paper
+    IconRoundRect 0, 3, 16, 13, 2, 1, fg
+    IconLine 4.5, 6, 4.5, 10, 1.2, acc
+    IconLine 2.5, 12.5, 13.5, 12.5, 1, acc
+
+    'Numeric text box: a field with up/down arrows
+    EditorIconCanvas AddNumericBox, 16
+    IconRoundRect 0, 3, 16, 13, 2, 0, paper
+    IconRoundRect 0, 3, 16, 13, 2, 1, fg
+    IconLine 4.5, 6, 4.5, 10, 1.2, acc
+    IconTriangle 9.5, 7.4, 11.75, 5, 14, 7.4, fg
+    IconTriangle 9.5, 8.6, 11.75, 11, 14, 8.6, fg
+
+    'Check box
+    EditorIconCanvas AddCheckBox, 16
+    IconRoundRect 1, 1, 15, 15, 2.5, 0, acc
+    IconLine 4.6, 8.3, 7, 10.7, 1.6, accText
+    IconLine 7, 10.7, 11.6, 5.6, 1.6, accText
+
+    'Radio button
+    EditorIconCanvas AddRadioButton, 16
+    IconCircle 8, 8, 6.6, 0, acc
+    IconCircle 8, 8, 2.6, 0, accText
+
+    'List box: a few items, one of them selected
+    EditorIconCanvas AddListBox, 16
+    IconRoundRect 0, 0, 16, 16, 2, 0, paper
+    IconRoundRect 0, 0, 16, 16, 2, 1, fg
+    IconLine 4, 3.5, 11, 3.5, 1, soft
+    IconRoundRect 2, 6, 14, 10, 1, 0, acc
+    IconLine 4, 8, 10, 8, 2, accText
+    IconLine 4, 12.5, 9, 12.5, 1, soft
+
+    'Dropdown list
+    EditorIconCanvas AddDropdownList, 16
+    IconRoundRect 0, 3, 16, 13, 2, 0, paper
+    IconRoundRect 0, 3, 16, 13, 2, 1, fg
+    IconLine 3.5, 8, 7, 8, 2, soft
+    IconLine 9.5, 6.75, 11.5, 8.75, 1.4, fg
+    IconLine 11.5, 8.75, 13.5, 6.75, 1.4, fg
+
+    'Track bar
+    EditorIconCanvas AddTrackBar, 16
+    IconLine 2, 8, 14, 8, 2, soft
+    IconLine 2, 8, 7, 8, 2, acc
+    IconCircle 7, 8, 3.8, 0, acc
+    IconCircle 7, 8, 1.6, 0, paper
+
+    'Progress bar
+    EditorIconCanvas AddProgressBar, 16
+    IconRoundRect 0, 4, 16, 12, 2, 1, fg
+    IconRoundRect 2, 6, 10, 10, 1, 0, acc
+
+    'Picture box: a framed landscape
+    EditorIconCanvas AddPictureBox, 16
+    IconRoundRect 0, 2, 16, 14, 2, 1, fg
+    IconTriangle 6.5, 13, 10.5, 8.5, 14.5, 13, soft
+    IconTriangle 1.5, 13, 6, 7, 10.5, 13, acc
+    IconCircle 11.5, 6, 1.6, 0, acc
+
+    'Frame: a box with a caption on its top edge
+    EditorIconCanvas AddFrame, 16
+    IconLine 1.5, 4.5, 2.5, 4.5, 1, fg
+    IconLine 12.5, 4.5, 14.5, 4.5, 1, fg
+    IconLine 1.5, 4.5, 1.5, 14.5, 1, fg
+    IconLine 14.5, 4.5, 14.5, 14.5, 1, fg
+    IconLine 1.5, 14.5, 14.5, 14.5, 1, fg
+    IconLine 4.5, 4.5, 10.5, 4.5, 1.6, acc
+
+    'Toggle switch
+    EditorIconCanvas AddToggleSwitch, 16
+    IconRoundRect 0, 4, 16, 12, 4, 0, acc
+    IconCircle 11.5, 8, 2.3, 0, accText
+
+    'Tab control: the selected tab and the page below it
+    EditorIconCanvas AddTabControl, 16
+    IconRoundRect 0, 5, 16, 16, 1.5, 1, fg
+    IconRoundRect 1, 1, 8, 6, 1, 0, acc
+    IconLine 9.5, 2.5, 13.5, 2.5, 1, soft
+    IconLine 9.5, 2.5, 9.5, 5, 1, soft
+    IconLine 13.5, 2.5, 13.5, 5, 1, soft
+
+    'Paste list button: lines of text
+    EditorIconCanvas PasteListBT, 17
+    FOR i = 0 TO 2
+        IconLine 4, 4 + i * 4, 13 - i * 2, 4 + i * 4, 2, fg
+    NEXT
+
+    'Save menu item (a floppy disk) in normal, hovered and disabled states
+    EditorIconCanvas FileMenuSave, 48
+    FOR i = 0 TO 2
+        SELECT CASE i
+            CASE 0: ink = __UI_DefaultColor(__UI_Type_MenuItem, 1)
+            CASE 1: ink = __UI_DefaultColor(__UI_Type_MenuItem, 3)
+            CASE 2: ink = __UI_DisabledColor
+        END SELECT
+        x = i * 16
+        IconRoundRect x + 1, 1, x + 15, 15, 1.5, 1, ink
+        IconRoundRect x + 4, 1, x + 11, 6, .5, 0, ink
+        IconRoundRect x + 4, 9, x + 12, 15, .5, 1, ink
+    NEXT
+
+    'The Align menu shares its icons with the preview's context menu
+    Control(AlignMenuAlignLeft).HelperCanvas = Control(__UI_GetID("__UI_PreviewMenuAlignLeft")).HelperCanvas
+    Control(AlignMenuAlignRight).HelperCanvas = Control(__UI_GetID("__UI_PreviewMenuAlignRight")).HelperCanvas
+    Control(AlignMenuAlignTops).HelperCanvas = Control(__UI_GetID("__UI_PreviewMenuAlignTops")).HelperCanvas
+    Control(AlignMenuAlignBottoms).HelperCanvas = Control(__UI_GetID("__UI_PreviewMenuAlignBottoms")).HelperCanvas
+    Control(AlignMenuAlignCentersV).HelperCanvas = Control(__UI_GetID("__UI_PreviewMenuAlignCentersV")).HelperCanvas
+    Control(AlignMenuAlignCentersH).HelperCanvas = Control(__UI_GetID("__UI_PreviewMenuAlignCentersH")).HelperCanvas
+
+    _DEST prevDest
+END SUB
+
+'Makes Control(id).HelperCanvas a clear Wide x 16 image (17 x 17 for 17) and
+'sets it as the drawing destination
+SUB EditorIconCanvas (id AS LONG, Wide AS INTEGER)
+    DIM h AS INTEGER
+    h = 16: IF Wide = 17 THEN h = 17
+    IF Control(id).HelperCanvas < -1 THEN
+        IF _WIDTH(Control(id).HelperCanvas) <> Wide OR _HEIGHT(Control(id).HelperCanvas) <> h THEN
+            _FREEIMAGE Control(id).HelperCanvas
+            Control(id).HelperCanvas = 0
+        END IF
+    END IF
+    IF Control(id).HelperCanvas >= -1 THEN Control(id).HelperCanvas = _NEWIMAGE(Wide, h, 32)
+    _DEST Control(id).HelperCanvas
+    CLS , _RGBA32(0, 0, 0, 0)
+    Control(id).Redraw = True
+END SUB
+
+FUNCTION IconMix~& (c1 AS _UNSIGNED LONG, c2 AS _UNSIGNED LONG, t AS SINGLE)
+    'Blends c1 into c2: t = 1 gives c1, t = 0 gives c2
+    IconMix = _RGB32(_RED32(c1) * t + _RED32(c2) * (1 - t), _GREEN32(c1) * t + _GREEN32(c2) * (1 - t), _BLUE32(c1) * t + _BLUE32(c2) * (1 - t))
 END FUNCTION
+
+'Plots a pixel whose share covered by a shape is Coverage (0 to 1)
+SUB IconPlot (x AS INTEGER, y AS INTEGER, Coverage AS SINGLE, c AS _UNSIGNED LONG)
+    IF Coverage <= 0 THEN EXIT SUB
+    IF x < 0 OR y < 0 OR x >= _WIDTH OR y >= _HEIGHT THEN EXIT SUB
+    PSET (x, y), _RGBA32(_RED32(c), _GREEN32(c), _BLUE32(c), _ALPHA32(c) * Coverage)
+END SUB
+
+'Signed distance from (px, py) to a rounded rectangle (negative inside)
+FUNCTION IconRoundRectDist! (px AS SINGLE, py AS SINGLE, x1 AS SINGLE, y1 AS SINGLE, x2 AS SINGLE, y2 AS SINGLE, Radius AS SINGLE)
+    DIM qx AS SINGLE, qy AS SINGLE, ox AS SINGLE, oy AS SINGLE, inside AS SINGLE
+    qx = ABS(px - (x1 + x2) / 2) - ((x2 - x1) / 2 - Radius)
+    qy = ABS(py - (y1 + y2) / 2) - ((y2 - y1) / 2 - Radius)
+    IF qx > 0 THEN ox = qx
+    IF qy > 0 THEN oy = qy
+    inside = qx: IF qy > inside THEN inside = qy
+    IF inside > 0 THEN inside = 0
+    IconRoundRectDist = SQR(ox * ox + oy * oy) + inside - Radius
+END FUNCTION
+
+'Rounded rectangle from (x1, y1) to (x2, y2): filled if Thickness is 0,
+'otherwise just its outline, drawn inside the edges
+SUB IconRoundRect (x1 AS SINGLE, y1 AS SINGLE, x2 AS SINGLE, y2 AS SINGLE, Radius AS SINGLE, Thickness AS SINGLE, c AS _UNSIGNED LONG)
+    DIM x AS INTEGER, y AS INTEGER, sx AS INTEGER, sy AS INTEGER, hits AS INTEGER, d AS SINGLE
+    FOR y = INT(y1) TO INT(y2)
+        FOR x = INT(x1) TO INT(x2)
+            hits = 0
+            FOR sy = 0 TO 3
+                FOR sx = 0 TO 3
+                    d = IconRoundRectDist(x + (sx + .5) / 4, y + (sy + .5) / 4, x1, y1, x2, y2, Radius)
+                    IF d <= 0 AND (Thickness = 0 OR d > -Thickness) THEN hits = hits + 1
+                NEXT
+            NEXT
+            IconPlot x, y, hits / 16, c
+        NEXT
+    NEXT
+END SUB
+
+'Circle centered at (cx, cy): filled if Thickness is 0, otherwise a ring
+SUB IconCircle (cx AS SINGLE, cy AS SINGLE, Radius AS SINGLE, Thickness AS SINGLE, c AS _UNSIGNED LONG)
+    IconRoundRect cx - Radius, cy - Radius, cx + Radius, cy + Radius, Radius, Thickness, c
+END SUB
+
+'Line from (x1, y1) to (x2, y2) with rounded ends
+SUB IconLine (x1 AS SINGLE, y1 AS SINGLE, x2 AS SINGLE, y2 AS SINGLE, Thickness AS SINGLE, c AS _UNSIGNED LONG)
+    DIM x AS INTEGER, y AS INTEGER, sx AS INTEGER, sy AS INTEGER, hits AS INTEGER
+    DIM px AS SINGLE, py AS SINGLE, dx AS SINGLE, dy AS SINGLE, t AS SINGLE, l2 AS SINGLE, r AS SINGLE
+    DIM xa AS INTEGER, xb AS INTEGER, ya AS INTEGER, yb AS INTEGER
+
+    r = Thickness / 2
+    dx = x2 - x1: dy = y2 - y1
+    l2 = dx * dx + dy * dy
+    xa = INT(_MIN(x1, x2) - r): xb = INT(_MAX(x1, x2) + r)
+    ya = INT(_MIN(y1, y2) - r): yb = INT(_MAX(y1, y2) + r)
+    FOR y = ya TO yb
+        FOR x = xa TO xb
+            hits = 0
+            FOR sy = 0 TO 3
+                FOR sx = 0 TO 3
+                    px = x + (sx + .5) / 4: py = y + (sy + .5) / 4
+                    t = 0
+                    IF l2 > 0 THEN t = ((px - x1) * dx + (py - y1) * dy) / l2
+                    IF t < 0 THEN t = 0
+                    IF t > 1 THEN t = 1
+                    px = px - (x1 + t * dx): py = py - (y1 + t * dy)
+                    IF px * px + py * py <= r * r THEN hits = hits + 1
+                NEXT
+            NEXT
+            IconPlot x, y, hits / 16, c
+        NEXT
+    NEXT
+END SUB
+
+'Filled triangle
+SUB IconTriangle (ax AS SINGLE, ay AS SINGLE, bx AS SINGLE, by AS SINGLE, cx AS SINGLE, cy AS SINGLE, c AS _UNSIGNED LONG)
+    DIM x AS INTEGER, y AS INTEGER, sx AS INTEGER, sy AS INTEGER, hits AS INTEGER
+    DIM px AS SINGLE, py AS SINGLE, d1 AS SINGLE, d2 AS SINGLE, d3 AS SINGLE
+    FOR y = INT(_MIN(ay, _MIN(by, cy))) TO INT(_MAX(ay, _MAX(by, cy)))
+        FOR x = INT(_MIN(ax, _MIN(bx, cx))) TO INT(_MAX(ax, _MAX(bx, cx)))
+            hits = 0
+            FOR sy = 0 TO 3
+                FOR sx = 0 TO 3
+                    px = x + (sx + .5) / 4: py = y + (sy + .5) / 4
+                    d1 = (px - bx) * (ay - by) - (ax - bx) * (py - by)
+                    d2 = (px - cx) * (by - cy) - (bx - cx) * (py - cy)
+                    d3 = (px - ax) * (cy - ay) - (cx - ax) * (py - ay)
+                    IF NOT ((d1 < 0 OR d2 < 0 OR d3 < 0) AND (d1 > 0 OR d2 > 0 OR d3 > 0)) THEN hits = hits + 1
+                NEXT
+            NEXT
+            IconPlot x, y, hits / 16, c
+        NEXT
+    NEXT
+END SUB
 
 FUNCTION ReadSequential$ (Txt$, Bytes%)
     ReadSequential$ = LEFT$(Txt$, Bytes%)
