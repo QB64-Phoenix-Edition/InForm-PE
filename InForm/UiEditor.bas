@@ -4805,6 +4805,9 @@ SUB SaveForm (ExitToQB64 AS _BYTE, SaveOnlyFrm AS _BYTE)
             b$ = b$ + CHR$(10) + CHR$(10) + "Close the editor?"
             __UI_Delay COMMDLG_DELAY: Answer = _MESSAGEBOX(UiEditorTitle$, b$, "yesno", "question", 0)
             IF Answer = 0 THEN Edited = False: EXIT SUB
+            SaveSettings
+            IF _FILEEXISTS("InForm/UiEditorPreview.frmbin") THEN KILL "InForm/UiEditorPreview.frmbin"
+            SYSTEM
         END IF
     ELSE
         MessageBox b$, UiEditorTitle$, MsgBox_Information
