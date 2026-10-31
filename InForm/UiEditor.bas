@@ -788,7 +788,12 @@ SUB __UI_Click (id AS LONG)
                 ImagePath$ = Pathname_AddDirectorySeparator(_STARTDIR$)
             END IF
             __UI_Delay COMMDLG_DELAY
-            ImageFile$ = _OPENFILEDIALOG$(UiEditorTitle$ + ": Choose image", ImagePath$, "*.png|*.PNG|*.jpg|*.JPG|*.jpeg|*.JPEG|*.bmp|*.BMP|*.gif|*.GIF|*.tga|*.TGA|*.psd|*.PSD|*.pcx|*.PCX|*.pnm|*.PNM|*.qoi|*.QOI|*.svg|*.SVG|*.ico|*.ICO|*.cur|*.CUR", "Image files")
+            IF PreviewControls(FirstSelected).Type = __UI_Type_Form THEN
+                'The form icon becomes the executable icon, which must be an .ico file
+                ImageFile$ = _OPENFILEDIALOG$(UiEditorTitle$ + ": Choose icon", ImagePath$, "*.ico|*.ICO", "Icon files")
+            ELSE
+                ImageFile$ = _OPENFILEDIALOG$(UiEditorTitle$ + ": Choose image", ImagePath$, "*.png|*.PNG|*.jpg|*.JPG|*.jpeg|*.JPEG|*.bmp|*.BMP|*.gif|*.GIF|*.tga|*.TGA|*.psd|*.PSD|*.pcx|*.PCX|*.pnm|*.PNM|*.qoi|*.QOI|*.svg|*.SVG|*.ico|*.ICO|*.cur|*.CUR", "Image files")
+            END IF
             IF LEN(ImageFile$) THEN
                 Text(TextTB) = ImageFile$
                 InputBox(GetInputBoxFromID(TextTB)).Sent = False
@@ -2438,10 +2443,13 @@ SUB __UI_BeforeUpdateDisplay
     Control(PasteListBT).Hidden = True
     Control(BrowseImageBT).Hidden = True
 
-    IF PreviewControls(FirstSelected).Type = __UI_Type_PictureBox AND Control(TextTB).Hidden = False THEN
-        Control(BrowseImageBT).Top = Control(TextTB).Top
-        Control(BrowseImageBT).Hidden = False
-    END IF
+    SELECT CASE PreviewControls(FirstSelected).Type
+        CASE __UI_Type_PictureBox, __UI_Type_Button, __UI_Type_MenuItem, __UI_Type_Form
+            IF Control(TextTB).Hidden = False AND Control(TextTB).Disabled = False THEN
+                Control(BrowseImageBT).Top = Control(TextTB).Top
+                Control(BrowseImageBT).Hidden = False
+            END IF
+    END SELECT
 
     IF PreviewControls(FirstSelected).Type = __UI_Type_ListBox OR PreviewControls(FirstSelected).Type = __UI_Type_DropdownList THEN
         IF INSTR(_CLIPBOARD$, CHR$(10)) THEN

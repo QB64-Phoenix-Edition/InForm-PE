@@ -426,7 +426,7 @@ SUB __UI_LoadForm
     __UI_NewID = __UI_NewControl(__UI_Type_Button, "BrowseImageBT", 23, 23, 106, 54, __UI_GetID("ControlProperties"))
     SetCaption __UI_NewID, "..."
     Control(__UI_NewID).CanHaveFocus = True
-    ToolTip(__UI_NewID) = "Choose an image file"
+    ToolTip(__UI_NewID) = "Browse for a file"
 
     __UI_NewID = __UI_NewControl(__UI_Type_TextBox, "TextTB", 230, 23, 129, 54, __UI_GetID("ControlProperties"))
     Control(__UI_NewID).HasBorder = True
