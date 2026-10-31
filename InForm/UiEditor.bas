@@ -3179,7 +3179,13 @@ END SUB
 
 ''' @brief Switches the editor's own theme ("light" or "dark") and redraws what depends on it.
 SUB SetEditorTheme (themeName AS STRING)
-    DIM blinking AS _BYTE
+    DIM blinking AS _BYTE, prevAutoRefresh AS _BYTE, i AS LONG
+
+    'Pause the refresh timer so no frame is drawn halfway through the switch
+    '(it would show a mix of both themes and could redirect the icon drawing)
+    prevAutoRefresh = __UI_AutoRefresh
+    __UI_AutoRefresh = False
+
     EditorTheme = LCASE$(themeName)
     blinking = (StatusBarBackColor <> 0 AND Control(StatusBar).BackColor <> StatusBarBackColor)
     IF LCASE$(GetTheme$) <> EditorTheme THEN SetTheme EditorTheme
@@ -3191,7 +3197,13 @@ SUB SetEditorTheme (themeName AS STRING)
     DrawEditorIcons
     Control(OptionsMenuEditorThemeLight).Value = (EditorTheme = "light")
     Control(OptionsMenuEditorThemeDark).Value = (EditorTheme = "dark")
+
+    'Repaint everything in the new theme on the next frame
+    FOR i = 1 TO UBOUND(Control)
+        IF Control(i).ID > 0 THEN Control(i).Redraw = True
+    NEXT
     __UI_ForceRedraw = True
+    __UI_AutoRefresh = prevAutoRefresh
 END SUB
 
 SUB DrawEditorIcons

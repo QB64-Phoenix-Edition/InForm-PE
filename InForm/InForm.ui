@@ -1122,7 +1122,7 @@ SUB __UI_UpdateDisplay
 
     STATIC PanelWidth AS INTEGER, PanelHeight AS INTEGER
     IF __UI_ActiveTipID > 0 THEN
-        IF __UI_ActiveTipID <> __UI_PreviousTipID OR ToolTip(__UI_ActiveTipID) <> __UI_TempTips(__UI_ActiveTipID) THEN
+        IF __UI_ActiveTipID <> __UI_PreviousTipID OR ToolTip(__UI_ActiveTipID) <> __UI_TempTips(__UI_ActiveTipID) OR __UI_ForceRedraw THEN
             __UI_PreviousTipID = __UI_ActiveTipID
             ToolTip(__UI_ActiveTipID) = RestoreCHR$(ToolTip(__UI_ActiveTipID))
             __UI_TempTips(__UI_ActiveTipID) = ToolTip(__UI_ActiveTipID)
@@ -1187,7 +1187,8 @@ SUB __UI_UpdateDisplay
     IF ((__UI_IsResizing AND Control(__UI_ResizingID).AutoSize = False) OR (__UI_IsDragging AND __UI_DraggingID > 0 AND __UI_DraggingID <> __UI_FormID)) AND (_KEYDOWN(100305) = 0 AND _KEYDOWN(100306) = 0) AND __UI_SnapLines THEN
         STATIC DragTip AS LONG, TipPanelWidth AS INTEGER
 
-        IF DragTip = 0 THEN
+        IF DragTip = 0 OR __UI_ForceRedraw THEN 'rebuilt on a forced redraw so it follows theme changes
+            IF DragTip <> 0 THEN _FREEIMAGE DragTip
             _FONT Control(__UI_FormID).Font
 
             TempCaption$ = "Hold Ctrl to bypass snapping"
@@ -1222,7 +1223,8 @@ SUB __UI_UpdateDisplay
     ELSEIF __UI_IsResizing AND Control(__UI_ResizingID).Type = __UI_Type_Label AND Control(__UI_ResizingID).AutoSize = True THEN
         STATIC ResizeTip AS LONG, ResizeTipPanelWidth AS INTEGER
 
-        IF ResizeTip = 0 THEN
+        IF ResizeTip = 0 OR __UI_ForceRedraw THEN 'rebuilt on a forced redraw so it follows theme changes
+            IF ResizeTip <> 0 THEN _FREEIMAGE ResizeTip
             _FONT Control(__UI_FormID).Font
 
             TempCaption$ = "Can't resize a label when .AutoSize = True"
