@@ -87,6 +87,8 @@ DIM SHARED OptionsMenuSwapButtons AS LONG
 DIM SHARED OptionsMenuSaveFormOnly AS LONG
 DIM SHARED OptionsMenuEditorThemeLight AS LONG, OptionsMenuEditorThemeDark AS LONG
 DIM SHARED EditorTheme AS STRING
+DIM SHARED RestoringSession AS _BYTE, RecoverySaved$, RecoverySavedAt AS DOUBLE
+CONST RECOVERY_FILE = "InForm/UiEditor.recovery"
 
 DIM SHARED HelpMenuHelp AS LONG, HelpMenuAbout AS LONG
 
@@ -530,14 +532,9 @@ SUB __UI_Click (id AS LONG)
         CASE HelpMenuHelp
             MessageBox "Design a form and export the resulting code to generate an event-driven QB64-PE program.", UiEditorTitle$ + " - What's all this?", MsgBox_Information
         CASE FileMenuExit
-            IF Edited THEN
-                __UI_Delay COMMDLG_DELAY: Answer = _MESSAGEBOX(UiEditorTitle$, "Save the current form before leaving?", "yesnocancel", "question", 1)
-                IF Answer = 0 THEN
-                    EXIT SUB
-                ELSEIF Answer = 1 THEN
-                    SaveForm False, False
-                END IF
-            END IF
+            'Unsaved work is kept and restored the next time the editor starts
+            IF Edited THEN SaveRecovery
+            SaveSettings
             IF _FILEEXISTS("InForm/UiEditorPreview.frmbin") THEN KILL "InForm/UiEditorPreview.frmbin"
             SYSTEM
         CASE EditMenuZOrdering
@@ -1402,6 +1399,13 @@ SUB __UI_BeforeUpdateDisplay
                 ZOrderListDirty = True
                 IF NOT FormDataReceived THEN
                     FormDataReceived = True
+                    IF RestoringSession THEN
+                        RestoringSession = False
+                        Edited = True
+                        RecoverySaved$ = LastFormData$
+                        Caption(StatusBar) = "Restored the unsaved changes from your last session."
+                        BlinkStatusBar = TIMER
+                    END IF
                 ELSE
                     Edited = True
                     IF __UI_Focus > 0 THEN
@@ -1416,6 +1420,15 @@ SUB __UI_BeforeUpdateDisplay
     LOOP
 
     IF NOT FormDataReceived THEN EXIT SUB
+
+    'Keep a copy of unsaved work, so it can be restored if the editor closes
+    IF Edited THEN
+        IF LastFormData$ <> RecoverySaved$ THEN
+            IF TIMER(.001) - RecoverySavedAt > 2 OR TIMER(.001) < RecoverySavedAt THEN SaveRecovery
+        END IF
+    ELSEIF LEN(RecoverySaved$) THEN
+        DiscardRecovery
+    END IF
 
     IF LEN(InitialControlSet) = 0 THEN
         InitialControlSet = CHR$(1)
@@ -2490,18 +2503,8 @@ SUB __UI_BeforeUpdateDisplay
 END SUB
 
 SUB __UI_BeforeUnload
-    DIM Answer AS _BYTE
-    IF Edited THEN
-        __UI_Delay COMMDLG_DELAY: Answer = _MESSAGEBOX(UiEditorTitle$, "Save the current form before leaving?", "yesnocancel", "question", 1)
-        IF Answer = 0 THEN
-            __UI_UnloadSignal = False
-        ELSEIF Answer = 1 THEN
-            IF LEN(ThisFileName$) = 0 THEN
-                ThisFileName$ = "untitled"
-            END IF
-            SaveForm False, False
-        END IF
-    END IF
+    'Unsaved work is kept and restored the next time the editor starts
+    IF Edited THEN SaveRecovery
     SaveSettings
 END SUB
 
@@ -2726,7 +2729,19 @@ SUB __UI_OnLoad
     b$ = "Parsing command line..."
     GOSUB ShowMessage
 
-    IF _FILEEXISTS(COMMAND$) THEN
+    'Unsaved work from the last session?
+    IF _FILEEXISTS(RECOVERY_FILE) THEN
+        DIM RestoreIt AS _BYTE
+        RestoreIt = True
+        IF _FILEEXISTS(COMMAND$) THEN
+            __UI_Delay COMMDLG_DELAY
+            RestoreIt = (_MESSAGEBOX(UiEditorTitle$, "There are unsaved changes from your last session. Restore them instead of opening " + COMMAND$ + "?", "yesno", "question", 1) = 1)
+        END IF
+        IF RestoreIt THEN RestoringSession = LoadRecovery
+        IF NOT RestoringSession THEN DiscardRecovery
+    END IF
+
+    IF _FILEEXISTS(COMMAND$) AND NOT RestoringSession THEN
         SELECT CASE LCASE$(RIGHT$(COMMAND$, 4))
             CASE ".bas"
                 'Does this .bas $include a .frm?
@@ -3850,6 +3865,83 @@ SUB ZOrderItemDropped (From AS LONG, Dest AS LONG)
     ZOrderListDirty = True 'check against the preview once it settles
 END SUB
 
+'---------------------------------------------------------------------------------
+'Session recovery
+'
+'While a form has unsaved changes, a copy is kept in RECOVERY_FILE. Closing the
+'editor keeps it, and the next session starts with that work restored.
+'File layout: "InFormRecovery" + CHR$(1), then length-prefixed (MKL$) fields:
+'file name, path, initial control set, gif extension flags, form data.
+
+SUB SaveRecovery
+    DIM f AS INTEGER, b$
+    IF LEN(LastFormData$) = 0 OR _DIREXISTS("InForm") = 0 THEN EXIT SUB
+    b$ = "InFormRecovery" + CHR$(1)
+    b$ = b$ + MKL$(LEN(ThisFileName$)) + ThisFileName$
+    b$ = b$ + MKL$(LEN(CurrentPath$)) + CurrentPath$
+    b$ = b$ + MKL$(LEN(InitialControlSet)) + InitialControlSet
+    b$ = b$ + MKL$(4) + MKI$(AddGifExtension) + MKI$(LoadedWithGifExtension)
+    b$ = b$ + MKL$(LEN(LastFormData$)) + LastFormData$
+    IF _FILEEXISTS(RECOVERY_FILE) THEN KILL RECOVERY_FILE
+    f = FREEFILE
+    OPEN RECOVERY_FILE FOR BINARY AS #f
+    PUT #f, 1, b$
+    CLOSE #f
+    RecoverySaved$ = LastFormData$
+    RecoverySavedAt = TIMER(.001)
+END SUB
+
+SUB DiscardRecovery
+    IF _FILEEXISTS(RECOVERY_FILE) THEN KILL RECOVERY_FILE
+    RecoverySaved$ = ""
+END SUB
+
+FUNCTION RecoveryField$ (b$)
+    'Reads the next length-prefixed field (b$ is consumed)
+    DIM l AS LONG
+    IF LEN(b$) < 4 THEN b$ = "": EXIT FUNCTION
+    l = CVL(LEFT$(b$, 4))
+    IF l < 0 OR l > LEN(b$) - 4 THEN b$ = "": EXIT FUNCTION
+    RecoveryField$ = MID$(b$, 5, l)
+    b$ = MID$(b$, 5 + l)
+END FUNCTION
+
+'Gets the preview ready to load the recovered form. Returns False if there's
+'nothing usable to restore.
+FUNCTION LoadRecovery%%
+    DIM f AS INTEGER, b$, fileName$, filePath$, controlSet$, flags$, formData$
+
+    f = FREEFILE
+    OPEN RECOVERY_FILE FOR BINARY AS #f
+    b$ = SPACE$(LOF(f))
+    GET #f, 1, b$
+    CLOSE #f
+
+    IF LEFT$(b$, 15) <> "InFormRecovery" + CHR$(1) THEN EXIT FUNCTION
+    b$ = MID$(b$, 16)
+    fileName$ = RecoveryField$(b$)
+    filePath$ = RecoveryField$(b$)
+    controlSet$ = RecoveryField$(b$)
+    flags$ = RecoveryField$(b$)
+    formData$ = RecoveryField$(b$)
+    IF LEN(formData$) = 0 OR LEN(flags$) <> 4 THEN EXIT FUNCTION
+
+    'The preview loads this file when it starts
+    f = FREEFILE
+    OPEN "InForm/UiEditorPreview.frmbin" FOR BINARY AS #f
+    b$ = "InForm" + CHR$(1) + formData$
+    PUT #f, 1, b$
+    CLOSE #f
+
+    ThisFileName$ = fileName$
+    CurrentPath$ = filePath$
+    InitialControlSet = controlSet$
+    AddGifExtension = CVI(LEFT$(flags$, 2))
+    LoadedWithGifExtension = CVI(MID$(flags$, 3, 2))
+    Control(AddGifExtensionToggle).Value = (AddGifExtension OR LoadedWithGifExtension = True)
+    LoadRecovery = True
+END FUNCTION
+
 SUB SendData (b$, Property AS INTEGER)
     'IF PreviewSelectionRectangle THEN EXIT SUB
     b$ = "PROPERTY>" + MKI$(Property) + b$ + "<END>"
@@ -4694,6 +4786,8 @@ SUB SaveForm (ExitToQB64 AS _BYTE, SaveOnlyFrm AS _BYTE)
     END IF
 
     AddToRecentList BaseOutputFileName + ".frm"
+    Edited = False
+    DiscardRecovery
 
     b$ = "Exporting successful. Files output:" + CHR$(10)
     IF NOT SaveOnlyFrm THEN b$ = b$ + "    " + MID$(BaseOutputFileName, LEN(CurrentPath$) + 1) + ".bas" + CHR$(10)
