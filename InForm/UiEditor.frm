@@ -251,7 +251,16 @@ SUB __UI_LoadForm
     $END IF
 
     __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "OptionsMenuSaveFormOnly", 126, 20, 0, 44, __UI_GetID("OptionsMenu"))
-    SetCaption __UI_NewID, "Save &form only"
+    SetCaption __UI_NewID, "Save &form only-"
+
+    __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "OptionsMenuEditorThemeLight", 0, 0, 0, 0, __UI_GetID("OptionsMenu"))
+    SetCaption __UI_NewID, "Editor theme: &Light"
+    Control(__UI_NewID).BulletStyle = __UI_Bullet
+    Control(__UI_NewID).Value = -1
+
+    __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "OptionsMenuEditorThemeDark", 0, 0, 0, 0, __UI_GetID("OptionsMenu"))
+    SetCaption __UI_NewID, "Editor theme: &Dark"
+    Control(__UI_NewID).BulletStyle = __UI_Bullet
 
     __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "HelpMenuHelp", 0, 0, 0, 0, __UI_GetID("HelpMenu"))
     SetCaption __UI_NewID, "&What's all this?-"
@@ -875,6 +884,8 @@ SUB __UI_AssignIDs
     OptionsMenuAutoName = __UI_GetID("OptionsMenuAutoName")
     OptionsMenuSwapButtons = __UI_GetID("OptionsMenuSwapButtons")
     OptionsMenuSaveFormOnly = __UI_GetID("OptionsMenuSaveFormOnly")
+    OptionsMenuEditorThemeLight = __UI_GetID("OptionsMenuEditorThemeLight")
+    OptionsMenuEditorThemeDark = __UI_GetID("OptionsMenuEditorThemeDark")
     HelpMenuHelp = __UI_GetID("HelpMenuHelp")
     HelpMenuAbout = __UI_GetID("HelpMenuAbout")
     AddButton = __UI_GetID("AddButton")

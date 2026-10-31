@@ -85,6 +85,8 @@ DIM SHARED AlignMenuDistributeH AS LONG
 DIM SHARED OptionsMenuAutoName AS LONG
 DIM SHARED OptionsMenuSwapButtons AS LONG
 DIM SHARED OptionsMenuSaveFormOnly AS LONG
+DIM SHARED OptionsMenuEditorThemeLight AS LONG, OptionsMenuEditorThemeDark AS LONG
+DIM SHARED EditorTheme AS STRING
 
 DIM SHARED HelpMenuHelp AS LONG, HelpMenuAbout AS LONG
 
@@ -316,6 +318,12 @@ SUB __UI_Click (id AS LONG)
         CASE OptionsMenuSaveFormOnly
             SaveFrmOnly = NOT SaveFrmOnly
             Control(id).Value = SaveFrmOnly
+        CASE OptionsMenuEditorThemeLight
+            SetEditorTheme "light"
+            SaveSettings
+        CASE OptionsMenuEditorThemeDark
+            SetEditorTheme "dark"
+            SaveSettings
 
         CASE EditMenuConvertType
             b$ = MKI$(0)
@@ -843,6 +851,8 @@ SUB __UI_MouseEnter (id AS LONG)
             Caption(StatusBar) = "Automatically sets control names based on caption and type."
         CASE OptionsMenuSaveFormOnly
             Caption(StatusBar) = "Saves only the .frm file."
+        CASE OptionsMenuEditorThemeLight, OptionsMenuEditorThemeDark
+            Caption(StatusBar) = "Changes the look of the editor (not of the form you're designing)."
         CASE OptionsMenuSwapButtons
             Caption(StatusBar) = "Toggles left/right mouse buttons."
         CASE FontLB, FontListLB
@@ -1678,7 +1688,7 @@ SUB __UI_BeforeUpdateDisplay
         Control(InputBox(i).LabelID).Hidden = False
         IF __UI_Focus = InputBox(i).ID THEN
             Control(InputBox(i).ID).Height = 22
-            Control(InputBox(i).ID).BorderColor = _RGB32(0, 0, 0)
+            Control(InputBox(i).ID).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 1)
             Control(InputBox(i).ID).BorderSize = 2
         ELSE
             Control(InputBox(i).ID).Height = 23
@@ -2520,6 +2530,8 @@ SUB SaveSettings
 
     IF __UI_MouseButtonsSwap THEN value$ = "True" ELSE value$ = "False"
     Ini_WriteSetting "InForm/InForm.ini", "InForm Settings", "Swap mouse buttons", value$
+
+    IF LEN(EditorTheme) THEN Ini_WriteSetting "InForm/InForm.ini", "InForm Settings", "Editor theme", EditorTheme
 END SUB
 
 SUB __UI_BeforeInit
@@ -2570,6 +2582,11 @@ END SUB
 
 SUB __UI_OnLoad
     DIM i AS LONG, b$
+
+    'Editor theme (also draws the icons)
+    b$ = LCASE$(Ini_ReadSetting("InForm/InForm.ini", "InForm Settings", "Editor theme"))
+    IF b$ <> "dark" THEN b$ = "light"
+    SetEditorTheme b$
 
     __UI_KeepScreenHidden = False
     _SCREENSHOW
@@ -2873,17 +2890,10 @@ SUB __UI_OnLoad
     ToolTip(ColorPreview) = "Click to copy the current color's hex value to the clipboard."
     ToolTip(KeyboardComboBT) = "Click to assign a key combination to the selected control"
 
-    StatusBarBackColor = Darken(__UI_DefaultColor(__UI_Type_Form, 2), 90)
-    Control(StatusBar).BackColor = StatusBarBackColor
 
     FOR i = 1 TO 9
         RecentMenuItem(i) = __UI_GetID("FileMenuRecent" + LTRIM$(STR$(i)))
     NEXT
-
-    b$ = "Loading images..."
-    GOSUB ShowMessage
-
-    DrawEditorIcons
 
     b$ = "Launching Preview component..."
     GOSUB ShowMessage
@@ -2925,7 +2935,7 @@ SUB __UI_OnLoad
     _DEST 0
     _FONT Control(__UI_FormID).Font
     IF tempIcon < -1 THEN
-        CLS , _RGB32(255, 255, 255)
+        CLS , __UI_DefaultColor(__UI_Type_Form, 2)
         _PUTIMAGE (_WIDTH / 2 - _WIDTH(tempIcon) / 2, _HEIGHT / 2 - _HEIGHT(tempIcon) / 2), tempIcon
         COLOR __UI_DefaultColor(__UI_Type_Form, 1), _RGBA32(0, 0, 0, 0)
         __UI_PrintString _WIDTH \ 2 - _PRINTWIDTH(b$) \ 2, _HEIGHT / 2 + _HEIGHT(tempIcon) / 2 + _FONTHEIGHT, b$
@@ -3151,6 +3161,23 @@ END SUB
 'editor's theme, so they suit both light and dark themes. Shapes are drawn with
 'anti-aliased edges, in pixel coordinates (the pixel at 0,0 spans 0 to 1).
 'Call DrawEditorIcons again after changing the editor's theme.
+
+''' @brief Switches the editor's own theme ("light" or "dark") and redraws what depends on it.
+SUB SetEditorTheme (themeName AS STRING)
+    DIM blinking AS _BYTE
+    EditorTheme = LCASE$(themeName)
+    blinking = (StatusBarBackColor <> 0 AND Control(StatusBar).BackColor <> StatusBarBackColor)
+    IF LCASE$(GetTheme$) <> EditorTheme THEN SetTheme EditorTheme
+
+    'The status bar is a shade darker than the form
+    StatusBarBackColor = Darken(__UI_DefaultColor(__UI_Type_Form, 2), 90)
+    IF NOT blinking THEN Control(StatusBar).BackColor = StatusBarBackColor
+
+    DrawEditorIcons
+    Control(OptionsMenuEditorThemeLight).Value = (EditorTheme = "light")
+    Control(OptionsMenuEditorThemeDark).Value = (EditorTheme = "dark")
+    __UI_ForceRedraw = True
+END SUB
 
 SUB DrawEditorIcons
     DIM prevDest AS LONG, i AS LONG, x AS SINGLE, ink AS _UNSIGNED LONG
