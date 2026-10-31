@@ -108,6 +108,7 @@ DIM SHARED AddToggleSwitch AS LONG, AddTabControl AS LONG
 DIM SHARED Stretch AS LONG, HasBorder AS LONG
 DIM SHARED ShowPercentage AS LONG, PasswordMaskCB AS LONG, MultilineCB AS LONG, SearchableCB AS LONG, FuzzyCB AS LONG
 DIM SHARED ReorderableCB AS LONG
+DIM SHARED AnchorLB AS LONG, AnchorLeftCB AS LONG, AnchorTopCB AS LONG, AnchorRightCB AS LONG, AnchorBottomCB AS LONG
 DIM SHARED WordWrap AS LONG, CanHaveFocus AS LONG
 DIM SHARED Disabled AS LONG, Transparent AS LONG
 DIM SHARED Hidden AS LONG, CenteredWindow AS LONG
@@ -429,6 +430,16 @@ SUB __UI_Click (id AS LONG)
         CASE ReorderableCB
             b$ = MKI$(Control(id).Value)
             SendData b$, 48
+        CASE AnchorLeftCB, AnchorTopCB, AnchorRightCB, AnchorBottomCB
+            'Sends which edge changed and whether it's on, so each selected control keeps its other edges
+            SELECT CASE id
+                CASE AnchorLeftCB: b$ = MKI$(__UI_Anchor_Left)
+                CASE AnchorTopCB: b$ = MKI$(__UI_Anchor_Top)
+                CASE AnchorRightCB: b$ = MKI$(__UI_Anchor_Right)
+                CASE AnchorBottomCB: b$ = MKI$(__UI_Anchor_Bottom)
+            END SELECT
+            b$ = b$ + MKI$(Control(id).Value)
+            SendData b$, 49
         CASE AutoScroll
             b$ = MKI$(Control(id).Value)
             SendData b$, 38
@@ -1174,6 +1185,7 @@ SUB __UI_BeforeUpdateDisplay
     DIM i AS LONG, j AS LONG, Answer AS _BYTE
     DIM incomingData$, Signal$
     DIM thisData$, thisCommand$
+    DIM AnchorFlags AS LONG
     STATIC OriginalImageWidth AS INTEGER, OriginalImageHeight AS INTEGER
     STATIC PrevFirstSelected AS LONG, PreviewHasMenuActive AS INTEGER
     STATIC ThisControlTurnsInto AS INTEGER
@@ -2148,6 +2160,12 @@ SUB __UI_BeforeUpdateDisplay
     Control(SearchableCB).Value = PreviewControls(FirstSelected).Searchable
     Control(FuzzyCB).Value = PreviewControls(FirstSelected).Fuzzy
     Control(ReorderableCB).Value = PreviewControls(FirstSelected).Reorderable
+    AnchorFlags = PreviewControls(FirstSelected).Anchor
+    IF AnchorFlags = 0 THEN AnchorFlags = __UI_Anchor_Left OR __UI_Anchor_Top
+    Control(AnchorLeftCB).Value = ((AnchorFlags AND __UI_Anchor_Left) <> 0)
+    Control(AnchorTopCB).Value = ((AnchorFlags AND __UI_Anchor_Top) <> 0)
+    Control(AnchorRightCB).Value = ((AnchorFlags AND __UI_Anchor_Right) <> 0)
+    Control(AnchorBottomCB).Value = ((AnchorFlags AND __UI_Anchor_Bottom) <> 0)
     Control(AutoSize).Value = PreviewControls(FirstSelected).AutoSize
     Control(HideTicks).Value = (PreviewControls(FirstSelected).Height = __UI_Type(__UI_Type_TrackBar).MinimumHeight)
     Control(AutoPlayGif).Value = PreviewAutoPlayGif(FirstSelected)
@@ -2412,6 +2430,8 @@ SUB __UI_BeforeUpdateDisplay
                 Control(Disabled).Disabled = False
             CASE __UI_Type_Frame, __UI_Type_TabControl, __UI_Type_Button, __UI_Type_CheckBox, __UI_Type_RadioButton, __UI_Type_TextBox, __UI_Type_ListBox, __UI_Type_DropdownList, __UI_Type_TrackBar, __UI_Type_Label, __UI_Type_ProgressBar, __UI_Type_PictureBox
                 Control(Hidden).Disabled = False
+            CASE __UI_Type_Frame, __UI_Type_TabControl, __UI_Type_Button, __UI_Type_CheckBox, __UI_Type_RadioButton, __UI_Type_TextBox, __UI_Type_ListBox, __UI_Type_DropdownList, __UI_Type_TrackBar, __UI_Type_Label, __UI_Type_ProgressBar, __UI_Type_PictureBox, __UI_Type_ToggleSwitch
+                Control(AnchorLeftCB).Disabled = False
             CASE __UI_Type_Label
                 Control(AlignOptions).Disabled = False
                 Control(VAlignOptions).Disabled = False
@@ -2473,6 +2493,19 @@ SUB __UI_BeforeUpdateDisplay
             Control(Toggles(i)).Top = LastTopForInputBox
         END IF
     NEXT
+
+    'The anchor checkboxes share one row: AnchorLeftCB is in Toggles() and the rest follow it
+    Control(AnchorLB).Hidden = Control(AnchorLeftCB).Hidden
+    Control(AnchorLB).Top = Control(AnchorLeftCB).Top
+    Control(AnchorTopCB).Disabled = Control(AnchorLeftCB).Disabled
+    Control(AnchorTopCB).Hidden = Control(AnchorLeftCB).Hidden
+    Control(AnchorTopCB).Top = Control(AnchorLeftCB).Top
+    Control(AnchorRightCB).Disabled = Control(AnchorLeftCB).Disabled
+    Control(AnchorRightCB).Hidden = Control(AnchorLeftCB).Hidden
+    Control(AnchorRightCB).Top = Control(AnchorLeftCB).Top
+    Control(AnchorBottomCB).Disabled = Control(AnchorLeftCB).Disabled
+    Control(AnchorBottomCB).Hidden = Control(AnchorLeftCB).Hidden
+    Control(AnchorBottomCB).Top = Control(AnchorLeftCB).Top
 
     'Custom cases
     Control(AutoPlayGif).Disabled = NOT Control(AddGifExtensionToggle).Value
@@ -2974,6 +3007,7 @@ SUB __UI_OnLoad
     i = i + 1: Toggles(i) = SearchableCB
     i = i + 1: Toggles(i) = FuzzyCB
     i = i + 1: Toggles(i) = ReorderableCB
+    i = i + 1: Toggles(i) = AnchorLeftCB
     i = i + 1: Toggles(i) = AutoSize
     i = i + 1: Toggles(i) = HideTicks
     i = i + 1: Toggles(i) = AutoPlayGif
@@ -2982,6 +3016,11 @@ SUB __UI_OnLoad
 
     ToolTip(FontTB) = "Multiple fonts can be specified by separating them with a question mark (?)." + CHR$(10) + "The first font that can be found/loaded is used."
     ToolTip(FontList) = "System fonts may not be available in all computers. To specify a local font file, right-click 'Font' to the left of this list and disable 'Show system fonts list'."
+    ToolTip(AnchorLB) = "Edges of the form (or of the frame/tab control it's in) the control follows when that gets resized." + CHR$(10) + "Left + right: the control stretches. Right only: it moves along."
+    ToolTip(AnchorLeftCB) = "Anchor to the left edge"
+    ToolTip(AnchorTopCB) = "Anchor to the top edge"
+    ToolTip(AnchorRightCB) = "Anchor to the right edge"
+    ToolTip(AnchorBottomCB) = "Anchor to the bottom edge"
     ToolTip(ColorPreview) = "Click to copy the current color's hex value to the clipboard."
     ToolTip(KeyboardComboBT) = "Click to assign a key combination to the selected control"
 
@@ -3714,6 +3753,9 @@ SUB LoadPreview
                     PreviewControls(Dummy).Fuzzy = True
                 CASE -54
                     PreviewControls(Dummy).Reorderable = True
+                CASE -55
+                    b$ = ReadSequential$(FormData$, 2)
+                    PreviewControls(Dummy).Anchor = CVI(b$)
                 CASE -34
                     b$ = ReadSequential$(FormData$, 4)
                     PreviewControls(Dummy).Encoding = CVL(b$)
@@ -4538,6 +4580,9 @@ SUB SaveForm (ExitToQB64 AS _BYTE, SaveOnlyFrm AS _BYTE)
                 IF PreviewControls(i).Reorderable AND PreviewControls(i).Type = __UI_Type_ListBox THEN
                     PRINT #TextFileNum, "    Control(__UI_NewID).Reorderable = True"
                 END IF
+                IF PreviewControls(i).Anchor <> 0 AND PreviewControls(i).Anchor <> (__UI_Anchor_Left OR __UI_Anchor_Top) THEN
+                    PRINT #TextFileNum, "    Control(__UI_NewID).Anchor = " + AnchorFlagsCode$(PreviewControls(i).Anchor)
+                END IF
                 IF PreviewControls(i).AutoSize THEN
                     PRINT #TextFileNum, "    Control(__UI_NewID).AutoSize = True"
                 END IF
@@ -5066,4 +5111,14 @@ FUNCTION PreviewBoundProperty$ (i AS LONG, other$)
         p = p + 2 + LEN(prop$)
         IF n$ = other$ THEN PreviewBoundProperty$ = prop$: EXIT FUNCTION
     LOOP
+END FUNCTION
+
+'Anchor flags as code, e.g. "__UI_Anchor_Left OR __UI_Anchor_Right"
+FUNCTION AnchorFlagsCode$ (Flags AS _BYTE)
+    DIM a$
+    IF (Flags AND __UI_Anchor_Left) THEN a$ = a$ + " OR __UI_Anchor_Left"
+    IF (Flags AND __UI_Anchor_Top) THEN a$ = a$ + " OR __UI_Anchor_Top"
+    IF (Flags AND __UI_Anchor_Right) THEN a$ = a$ + " OR __UI_Anchor_Right"
+    IF (Flags AND __UI_Anchor_Bottom) THEN a$ = a$ + " OR __UI_Anchor_Bottom"
+    AnchorFlagsCode$ = MID$(a$, 5)
 END FUNCTION
