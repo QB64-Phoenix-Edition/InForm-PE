@@ -455,10 +455,12 @@ SUB __UI_LoadForm
     __UI_NewID = __UI_NewControl(__UI_Type_DropdownList, "FontList", 180, 23, 129, 362, __UI_GetID("ControlProperties"))
     Control(__UI_NewID).HasBorder = True
     Control(__UI_NewID).CanHaveFocus = True
+    Control(__UI_NewID).Searchable = True
 
     __UI_NewID = __UI_NewControl(__UI_Type_DropdownList, "FontSizeList", 50, 23, 309, 362, __UI_GetID("ControlProperties"))
     Control(__UI_NewID).HasBorder = True
     Control(__UI_NewID).CanHaveFocus = True
+    Control(__UI_NewID).Searchable = True
 
     __UI_NewID = __UI_NewControl(__UI_Type_TextBox, "TooltipTB", 230, 23, 129, 208, __UI_GetID("ControlProperties"))
     Control(__UI_NewID).HasBorder = True
