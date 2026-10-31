@@ -1038,6 +1038,27 @@ SUB __UI_UpdateDisplay
         _DEST 0
     END IF
 
+    'Anchor markers: controls that don't keep the default left + top anchors show a
+    'pin on each edge they follow (part of "Show invisible elements" in the editor)
+    IF __UI_DesignMode AND __UI_ShowInvisibleControls AND Control(__UI_FormID).Width > 0 AND Control(__UI_FormID).Height > 0 THEN
+        FOR i = 1 TO UBOUND(Control)
+            IF Control(i).ID = 0 OR Control(i).Anchor = 0 OR Control(i).Anchor = (__UI_Anchor_Left OR __UI_Anchor_Top) THEN _CONTINUE
+            IF __UI_IsOnHiddenTab(i) THEN _CONTINUE
+            IF OverlayReset = False THEN
+                OverlayReset = True
+                IF Control(__UI_FormID).HelperCanvas <> 0 THEN _FREEIMAGE Control(__UI_FormID).HelperCanvas
+                Control(__UI_FormID).HelperCanvas = _NEWIMAGE(Control(__UI_FormID).Width, Control(__UI_FormID).Height, 32)
+                _DEST Control(__UI_FormID).HelperCanvas
+                CLS , _RGBA32(0, 0, 0, 0)
+            ELSE
+                _DEST Control(__UI_FormID).HelperCanvas
+            END IF
+            OverlayIsVisible = True
+            __UI_DrawAnchorMarkers i
+            _DEST 0
+        NEXT
+    END IF
+
     'Size and position indicator:
     IF __UI_TotalSelectedControls > 0 AND __UI_Snapped = False AND __UI_ShowPositionAndSize THEN
         IF Control(__UI_FormID).Width > 0 AND Control(__UI_FormID).Height > 0 THEN
@@ -5874,6 +5895,39 @@ SUB __UI_ApplyAnchors (dW AS LONG, dH AS LONG)
             END IF
         NEXT
     NEXT
+END SUB
+
+'Design mode: draws a pin just outside each edge control id is anchored to
+SUB __UI_DrawAnchorMarkers (id AS LONG)
+    CONST PinLength = 6, CapHalf = 4
+    DIM a AS LONG, x1 AS LONG, y1 AS LONG, x2 AS LONG, y2 AS LONG, cx AS LONG, cy AS LONG
+    DIM c AS _UNSIGNED LONG
+
+    a = Control(id).Anchor
+    IF a = 0 THEN a = __UI_Anchor_Left OR __UI_Anchor_Top
+    x1 = Control(Control(id).ParentID).Left + Control(id).Left
+    y1 = Control(Control(id).ParentID).Top + Control(id).Top
+    x2 = x1 + Control(id).Width - 1
+    y2 = y1 + Control(id).Height - 1
+    cx = (x1 + x2) \ 2: cy = (y1 + y2) \ 2
+    c = __UI_ThemeColor(__UI_ThemeColor_Accent)
+
+    IF (a AND __UI_Anchor_Left) THEN
+        LINE (x1 - PinLength - 1, cy - 1)-(x1 - 2, cy + 1), c, BF
+        LINE (x1 - PinLength - 2, cy - CapHalf)-(x1 - PinLength - 1, cy + CapHalf), c, BF
+    END IF
+    IF (a AND __UI_Anchor_Right) THEN
+        LINE (x2 + 2, cy - 1)-(x2 + PinLength + 1, cy + 1), c, BF
+        LINE (x2 + PinLength + 1, cy - CapHalf)-(x2 + PinLength + 2, cy + CapHalf), c, BF
+    END IF
+    IF (a AND __UI_Anchor_Top) THEN
+        LINE (cx - 1, y1 - PinLength - 1)-(cx + 1, y1 - 2), c, BF
+        LINE (cx - CapHalf, y1 - PinLength - 2)-(cx + CapHalf, y1 - PinLength - 1), c, BF
+    END IF
+    IF (a AND __UI_Anchor_Bottom) THEN
+        LINE (cx - 1, y2 + 2)-(cx + 1, y2 + PinLength + 1), c, BF
+        LINE (cx - CapHalf, y2 + PinLength + 1)-(cx + CapHalf, y2 + PinLength + 2), c, BF
+    END IF
 END SUB
 
 'Applies one anchor setting to a position and the size the anchors aim for (also used by the tests).
