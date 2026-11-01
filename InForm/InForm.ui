@@ -626,6 +626,7 @@ SUB __UI_UpdateDisplay
     __UI_IsDrawing = True
 
     __UI_BeforeUpdateDisplay
+    __UI_PropertyGridsUpdate
 
     IF _SCREENX = -32000 _ANDALSO _SCREENY = -32000 THEN
         'Window was minimized
@@ -3315,6 +3316,7 @@ SUB __UI_EventDispatcher
     END IF
 
     IF __UI_Focus > 0 AND __UI_KeyHit <> 0 AND __UI_DesignMode = False THEN
+        __UI_PropertyGridKey
         __UI_KeyPress __UI_Focus
         __UI_KeyboardFocus = True
 
@@ -9929,3 +9931,4 @@ $END IF
 
 '$INCLUDE:'InFormTheme.bm'
 '$INCLUDE:'InFormTabControl.bm'
+'$INCLUDE:'InFormPropertyGrid.bm'

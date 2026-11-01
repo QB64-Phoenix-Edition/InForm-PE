@@ -174,7 +174,7 @@ DIM SHARED PreviewFormID AS LONG, PreviewSelectionRectangle AS INTEGER
 DIM SHARED PreviewAttached AS _BYTE, AutoNameControls AS _BYTE
 DIM SHARED LastKeyPress AS DOUBLE, SaveFrmOnly AS _BYTE
 DIM SHARED UiEditorTitle$, Edited AS _BYTE, ZOrderingDialogOpen AS _BYTE
-DIM SHARED PropertySent AS _BYTE, RevertEdit AS _BYTE, OldColor AS _UNSIGNED LONG
+DIM SHARED PropertySent AS _BYTE, OldColor AS _UNSIGNED LONG
 DIM SHARED ColorPreviewWord$, BlinkStatusBar AS SINGLE, StatusBarBackColor AS _UNSIGNED LONG
 DIM SHARED InstanceHost AS LONG, InstanceClient AS LONG
 DIM SHARED HostPort AS STRING, Host AS LONG, Client AS LONG
@@ -188,15 +188,6 @@ DIM SHARED LoadedWithGifExtension AS _BYTE, AddGifExtension AS _BYTE
 DIM SHARED TotalGifLoaded AS LONG, SetBindingDialogOpen AS _BYTE
 DIM SHARED InitialControlSet AS STRING
 DIM SHARED Answer AS LONG
-
-TYPE newInputBox
-    ID AS LONG
-    LabelID AS LONG
-    Signal AS INTEGER
-    LastEdited AS SINGLE
-    DataType AS INTEGER
-    Sent AS _BYTE
-END TYPE
 
 CONST UIEDITOR_TCP_PORT = "49374" ' TCP port # used by UIEditor
 CONST COMMDLG_DELAY! = 0.2! ' amount of time to wait to let the UI refresh before opening a common dialog window
@@ -222,9 +213,6 @@ REDIM SHARED PreviewAnimatedGif(0) AS _BYTE
 REDIM SHARED PreviewAutoPlayGif(0) AS _BYTE
 REDIM SHARED zOrderIDs(0) AS LONG
 DIM SHARED ZOrderLastMove AS DOUBLE, ZOrderListDirty AS _BYTE
-REDIM SHARED InputBox(1 TO 100) AS newInputBox
-REDIM SHARED Toggles(1 TO 100) AS LONG
-REDIM SHARED InputBoxText(1 TO 100) AS STRING
 DIM SHARED PreviewDefaultButtonID AS LONG
 
 DIM SHARED HasFontList AS _BYTE, ShowFontList AS _BYTE
@@ -808,8 +796,7 @@ SUB __UI_Click (id AS LONG)
             END IF
             IF LEN(ImageFile$) THEN
                 Text(TextTB) = ImageFile$
-                InputBox(GetInputBoxFromID(TextTB)).Sent = False
-                ConfirmEdits TextTB
+                PropertyGrid_Commit ControlProperties, "text"
                 Caption(StatusBar) = "Image file set."
             END IF
         CASE KeyboardComboBT
@@ -912,10 +899,6 @@ END SUB
 SUB __UI_FocusIn (id AS LONG)
     SELECT CASE id
         CASE NameTB, CaptionTB, TextTB, MaskTB, TopTB, LeftTB, WidthTB, HeightTB, FontTB, TooltipTB, ValueTB, MinTB, MaxTB, IntervalTB, PaddingTB, MinIntervalTB, SizeTB
-            DIM ThisInputBox AS LONG
-            ThisInputBox = GetInputBoxFromID(id)
-            InputBoxText(ThisInputBox) = Text(id)
-            InputBox(ThisInputBox).Sent = False
             Caption(StatusBar) = "Editing property"
 
         CASE ControlList
@@ -938,9 +921,8 @@ SUB __UI_FocusIn (id AS LONG)
 END SUB
 
 SUB __UI_FocusOut (id AS LONG)
+    'Property boxes commit their edits on their own (see InFormPropertyGrid.bm)
     SELECT CASE id
-        CASE NameTB, CaptionTB, TextTB, MaskTB, TopTB, LeftTB, WidthTB, HeightTB, FontTB, TooltipTB, ValueTB, MinTB, MaxTB, IntervalTB, PaddingTB, MinIntervalTB, SizeTB
-            ConfirmEdits id
         CASE KeyboardComboBT
             __UI_BypassKeyCombos = False
             Caption(KeyboardComboBT) = "Click to assign"
@@ -1092,12 +1074,6 @@ SUB SendNewRGB
     b$ = _MK$(_UNSIGNED LONG, NewColor)
     SendData b$, Control(ColorPropertiesList).Value + 22
 END SUB
-
-FUNCTION PropertyFullySelected%% (id AS LONG)
-PropertyFullySelected%% = Control(id).TextIsSelected AND _
-Control(id).SelectionStart = 0 AND _
-Control(id).Cursor = LEN(Text(id))
-END FUNCTION
 
 SUB SelectPropertyFully (id AS LONG)
     Control(id).TextIsSelected = True
@@ -1771,32 +1747,10 @@ SUB __UI_BeforeUpdateDisplay
 
     IF FirstSelected = 0 THEN FirstSelected = PreviewFormID
 
-    FOR i = 1 TO UBOUND(InputBox)
-        Control(InputBox(i).ID).Disabled = False
-        Control(InputBox(i).ID).Hidden = False
-        Control(InputBox(i).LabelID).Hidden = False
-        IF __UI_Focus = InputBox(i).ID THEN
-            Control(InputBox(i).ID).Height = 22
-            Control(InputBox(i).ID).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 1)
-            Control(InputBox(i).ID).BorderSize = 2
-        ELSE
-            Control(InputBox(i).ID).Height = 23
-            Control(InputBox(i).ID).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 5)
-            Control(InputBox(i).ID).BorderSize = 1
-        END IF
-    NEXT
-    Control(FontSizeList).Hidden = True
-
-    FOR i = 1 TO UBOUND(Toggles)
-        Control(Toggles(i)).Disabled = True
-        Control(Toggles(i)).Hidden = False
-    NEXT
+    'Every property row starts shown and every toggle hidden; what doesn't apply is sorted out below
+    PropertyGrid_ShowAll ControlProperties, True
+    PropertyGrid_ShowAll ControlToggles, False
     Control(AnchorPicker).Disabled = True
-
-    CONST ShadeOfGreen~& = _RGB32(28, 150, 50)
-    CONST ShadeOfRed~& = _RGB32(233, 44, 0)
-
-    CONST PropertyUpdateDelay = .1
 
     'Pasting into the Text field keeps line breaks as \n for multiline textboxes,
     'and for list boxes and dropdowns, where each line becomes an item
@@ -1811,318 +1765,47 @@ SUB __UI_BeforeUpdateDisplay
     END IF
 
     IF FirstSelected > 0 THEN
-        DIM ThisInputBox AS LONG
-        ThisInputBox = GetInputBoxFromID(__UI_Focus)
+        'Values shown in the property boxes (a box being edited keeps its text until Enter, Esc or leaving it)
+        PropertyGrid_SetValue ControlProperties, "name", RTRIM$(PreviewControls(FirstSelected).Name)
+        PropertyGrid_SetValue ControlProperties, "caption", Replace(__UI_TrimAt0$(PreviewCaptions(FirstSelected)), CHR$(10), "\n", False, 0)
 
-        IF __UI_Focus <> NameTB OR (__UI_Focus = NameTB AND RevertEdit = True) THEN
-            Text(NameTB) = RTRIM$(PreviewControls(FirstSelected).Name)
-            IF (__UI_Focus = NameTB AND RevertEdit = True) THEN RevertEdit = False: SelectPropertyFully __UI_Focus
-        ELSEIF __UI_Focus = NameTB THEN
-            IF PropertyFullySelected(NameTB) THEN
-                IF Text(NameTB) = RTRIM$(PreviewControls(FirstSelected).Name) THEN
-                    Control(__UI_Focus).BorderColor = ShadeOfGreen
-                ELSE
-                    IF TIMER - InputBox(ThisInputBox).LastEdited < PropertyUpdateDelay THEN
-                        Control(__UI_Focus).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 5)
-                    ELSE
-                        Control(__UI_Focus).BorderColor = ShadeOfRed
-                    END IF
-                END IF
-            END IF
-        END IF
-
-        IF __UI_Focus <> CaptionTB OR (__UI_Focus = CaptionTB AND RevertEdit = True) THEN
-            Text(CaptionTB) = Replace(__UI_TrimAt0$(PreviewCaptions(FirstSelected)), CHR$(10), "\n", False, 0)
-            IF (__UI_Focus = CaptionTB AND RevertEdit = True) THEN RevertEdit = False: SelectPropertyFully __UI_Focus
-        ELSEIF __UI_Focus = CaptionTB THEN
-            IF PropertyFullySelected(CaptionTB) THEN
-                IF Text(CaptionTB) = Replace(__UI_TrimAt0$(PreviewCaptions(FirstSelected)), CHR$(10), "\n", False, 0) THEN
-                    Control(__UI_Focus).BorderColor = ShadeOfGreen
-                ELSE
-                    IF TIMER - InputBox(ThisInputBox).LastEdited < PropertyUpdateDelay THEN
-                        Control(__UI_Focus).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 5)
-                    ELSE
-                        Control(__UI_Focus).BorderColor = ShadeOfRed
-                    END IF
-                END IF
-            END IF
-        END IF
-
-        IF __UI_Focus <> TextTB OR (__UI_Focus = TextTB AND RevertEdit = True) THEN
-            IF PreviewControls(FirstSelected).Type = __UI_Type_ListBox OR PreviewControls(FirstSelected).Type = __UI_Type_DropdownList OR (PreviewControls(FirstSelected).Type = __UI_Type_TextBox AND PreviewControls(FirstSelected).Multiline) THEN
-                Text(TextTB) = Replace(PreviewTexts(FirstSelected), CHR$(10), "\n", False, 0)
-            ELSE
-                Text(TextTB) = PreviewTexts(FirstSelected)
+        IF PreviewControls(FirstSelected).Type = __UI_Type_ListBox OR PreviewControls(FirstSelected).Type = __UI_Type_DropdownList OR (PreviewControls(FirstSelected).Type = __UI_Type_TextBox AND PreviewControls(FirstSelected).Multiline) THEN
+            PropertyGrid_SetValue ControlProperties, "text", Replace(PreviewTexts(FirstSelected), CHR$(10), "\n", False, 0)
+            IF __UI_Focus <> TextTB THEN Mask(TextTB) = ""
+        ELSE
+            PropertyGrid_SetValue ControlProperties, "text", PreviewTexts(FirstSelected)
+            IF __UI_Focus <> TextTB THEN
                 IF LEN(PreviewMasks(FirstSelected)) > 0 AND PreviewControls(FirstSelected).Type = __UI_Type_TextBox THEN
                     Mask(TextTB) = PreviewMasks(FirstSelected)
                 ELSE
                     Mask(TextTB) = ""
                 END IF
             END IF
-            IF (__UI_Focus = TextTB AND RevertEdit = True) THEN RevertEdit = False: SelectPropertyFully __UI_Focus
-        ELSEIF __UI_Focus = TextTB THEN
-            Control(TextTB).NumericOnly = PreviewControls(FirstSelected).NumericOnly
-            IF PropertyFullySelected(TextTB) THEN
-                IF Text(TextTB) = Replace(PreviewTexts(FirstSelected), CHR$(10), "\n", False, 0) AND (PreviewControls(FirstSelected).Type = __UI_Type_ListBox OR PreviewControls(FirstSelected).Type = __UI_Type_DropdownList OR (PreviewControls(FirstSelected).Type = __UI_Type_TextBox AND PreviewControls(FirstSelected).Multiline)) THEN
-                    Control(__UI_Focus).BorderColor = ShadeOfGreen
-                ELSEIF ((PreviewControls(FirstSelected).Type <> __UI_Type_ListBox AND PreviewControls(FirstSelected).Type <> __UI_Type_DropdownList) AND Text(TextTB) = PreviewTexts(FirstSelected)) THEN
-                    Control(__UI_Focus).BorderColor = ShadeOfGreen
-                ELSE
-                    IF TIMER - InputBox(ThisInputBox).LastEdited < PropertyUpdateDelay THEN
-                        Control(__UI_Focus).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 5)
-                    ELSE
-                        Control(__UI_Focus).BorderColor = ShadeOfRed
-                    END IF
-                END IF
-            END IF
         END IF
+        IF __UI_Focus = TextTB THEN Control(TextTB).NumericOnly = PreviewControls(FirstSelected).NumericOnly
 
-        IF __UI_Focus <> MaskTB OR (__UI_Focus = MaskTB AND RevertEdit = True) THEN
-            Text(MaskTB) = PreviewMasks(FirstSelected)
-            IF (__UI_Focus = MaskTB AND RevertEdit = True) THEN RevertEdit = False: SelectPropertyFully __UI_Focus
-        ELSEIF __UI_Focus = MaskTB THEN
-            IF PropertyFullySelected(MaskTB) THEN
-                IF Text(MaskTB) = PreviewMasks(FirstSelected) THEN
-                    Control(__UI_Focus).BorderColor = ShadeOfGreen
-                ELSE
-                    IF TIMER - InputBox(ThisInputBox).LastEdited < PropertyUpdateDelay THEN
-                        Control(__UI_Focus).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 5)
-                    ELSE
-                        Control(__UI_Focus).BorderColor = ShadeOfRed
-                    END IF
-                END IF
-            END IF
-        END IF
-
-        IF __UI_Focus <> TopTB OR (__UI_Focus = TopTB AND RevertEdit = True) THEN
-            Text(TopTB) = LTRIM$(STR$(PreviewControls(FirstSelected).Top))
-            IF (__UI_Focus = TopTB AND RevertEdit = True) THEN RevertEdit = False: SelectPropertyFully __UI_Focus
-        ELSEIF __UI_Focus = TopTB THEN
-            IF PropertyFullySelected(TopTB) THEN
-                IF Text(TopTB) = LTRIM$(STR$(PreviewControls(FirstSelected).Top)) THEN
-                    Control(__UI_Focus).BorderColor = ShadeOfGreen
-                ELSE
-                    IF TIMER - InputBox(ThisInputBox).LastEdited < PropertyUpdateDelay THEN
-                        Control(__UI_Focus).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 5)
-                    ELSE
-                        Control(__UI_Focus).BorderColor = ShadeOfRed
-                    END IF
-                END IF
-            END IF
-        END IF
-
-        IF __UI_Focus <> LeftTB OR (__UI_Focus = LeftTB AND RevertEdit = True) THEN
-            Text(LeftTB) = LTRIM$(STR$(PreviewControls(FirstSelected).Left))
-            IF (__UI_Focus = LeftTB AND RevertEdit = True) THEN RevertEdit = False: SelectPropertyFully __UI_Focus
-        ELSEIF __UI_Focus = LeftTB THEN
-            IF PropertyFullySelected(LeftTB) THEN
-                IF Text(LeftTB) = LTRIM$(STR$(PreviewControls(FirstSelected).Left)) THEN
-                    Control(__UI_Focus).BorderColor = ShadeOfGreen
-                ELSE
-                    IF TIMER - InputBox(ThisInputBox).LastEdited < PropertyUpdateDelay THEN
-                        Control(__UI_Focus).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 5)
-                    ELSE
-                        Control(__UI_Focus).BorderColor = ShadeOfRed
-                    END IF
-                END IF
-            END IF
-        END IF
-
-        IF __UI_Focus <> WidthTB OR (__UI_Focus = WidthTB AND RevertEdit = True) THEN
-            Text(WidthTB) = LTRIM$(STR$(PreviewControls(FirstSelected).Width))
-            IF (__UI_Focus = WidthTB AND RevertEdit = True) THEN RevertEdit = False: SelectPropertyFully __UI_Focus
-        ELSEIF __UI_Focus = WidthTB THEN
-            IF PropertyFullySelected(WidthTB) THEN
-                IF Text(WidthTB) = LTRIM$(STR$(PreviewControls(FirstSelected).Width)) THEN
-                    Control(__UI_Focus).BorderColor = ShadeOfGreen
-                ELSE
-                    IF TIMER - InputBox(ThisInputBox).LastEdited < PropertyUpdateDelay THEN
-                        Control(__UI_Focus).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 5)
-                    ELSE
-                        Control(__UI_Focus).BorderColor = ShadeOfRed
-                    END IF
-                END IF
-            END IF
-        END IF
-
-        IF __UI_Focus <> HeightTB OR (__UI_Focus = HeightTB AND RevertEdit = True) THEN
-            Text(HeightTB) = LTRIM$(STR$(PreviewControls(FirstSelected).Height))
-            IF (__UI_Focus = HeightTB AND RevertEdit = True) THEN RevertEdit = False: SelectPropertyFully __UI_Focus
-        ELSEIF __UI_Focus = HeightTB THEN
-            IF PropertyFullySelected(HeightTB) THEN
-                IF Text(HeightTB) = LTRIM$(STR$(PreviewControls(FirstSelected).Height)) THEN
-                    Control(__UI_Focus).BorderColor = ShadeOfGreen
-                ELSE
-                    IF TIMER - InputBox(ThisInputBox).LastEdited < PropertyUpdateDelay THEN
-                        Control(__UI_Focus).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 5)
-                    ELSE
-                        Control(__UI_Focus).BorderColor = ShadeOfRed
-                    END IF
-                END IF
-            END IF
-        END IF
-
-        IF __UI_Focus <> FontTB OR (__UI_Focus = FontTB AND RevertEdit = True) THEN
-            IF LEN(PreviewFonts(FirstSelected)) > 0 THEN
-                Text(FontTB) = PreviewFonts(FirstSelected)
-            ELSE
-                Text(FontTB) = PreviewFonts(PreviewFormID)
-            END IF
-            IF (__UI_Focus = FontTB AND RevertEdit = True) THEN RevertEdit = False: SelectPropertyFully __UI_Focus
-        ELSEIF __UI_Focus = FontTB THEN
-            IF PropertyFullySelected(FontTB) THEN
-                IF Text(FontTB) = PreviewFonts(FirstSelected) OR Text(FontTB) = PreviewFonts(PreviewFormID) THEN
-                    Control(__UI_Focus).BorderColor = ShadeOfGreen
-                ELSE
-                    IF TIMER - InputBox(ThisInputBox).LastEdited < PropertyUpdateDelay THEN
-                        Control(__UI_Focus).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 5)
-                    ELSE
-                        Control(__UI_Focus).BorderColor = ShadeOfRed
-                    END IF
-                END IF
-            END IF
-        END IF
+        PropertyGrid_SetValue ControlProperties, "mask", PreviewMasks(FirstSelected)
+        PropertyGrid_SetValue ControlProperties, "top", LTRIM$(STR$(PreviewControls(FirstSelected).Top))
+        PropertyGrid_SetValue ControlProperties, "left", LTRIM$(STR$(PreviewControls(FirstSelected).Left))
+        PropertyGrid_SetValue ControlProperties, "width", LTRIM$(STR$(PreviewControls(FirstSelected).Width))
+        PropertyGrid_SetValue ControlProperties, "height", LTRIM$(STR$(PreviewControls(FirstSelected).Height))
 
         IF LEN(PreviewFonts(FirstSelected)) > 0 THEN
+            PropertyGrid_SetValue ControlProperties, "font", PreviewFonts(FirstSelected)
             SelectFontInList PreviewActualFonts(FirstSelected)
         ELSE
+            PropertyGrid_SetValue ControlProperties, "font", PreviewFonts(PreviewFormID)
             SelectFontInList PreviewActualFonts(PreviewFormID)
         END IF
 
-        IF __UI_Focus <> TooltipTB OR (__UI_Focus = TooltipTB AND RevertEdit = True) THEN
-            Text(TooltipTB) = Replace(PreviewTips(FirstSelected), CHR$(10), "\n", False, 0)
-            IF (__UI_Focus = TooltipTB AND RevertEdit = True) THEN RevertEdit = False: SelectPropertyFully __UI_Focus
-        ELSEIF __UI_Focus = TooltipTB THEN
-            IF PropertyFullySelected(FontTB) THEN
-                IF Text(TooltipTB) = Replace(PreviewTips(FirstSelected), CHR$(10), "\n", False, 0) THEN
-                    Control(__UI_Focus).BorderColor = ShadeOfGreen
-                ELSE
-                    IF TIMER - InputBox(ThisInputBox).LastEdited < PropertyUpdateDelay THEN
-                        Control(__UI_Focus).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 5)
-                    ELSE
-                        Control(__UI_Focus).BorderColor = ShadeOfRed
-                    END IF
-                END IF
-            END IF
-        END IF
-
-        IF __UI_Focus <> ValueTB OR (__UI_Focus = ValueTB AND RevertEdit = True) THEN
-            Text(ValueTB) = LTRIM$(STR$(PreviewControls(FirstSelected).Value))
-            IF (__UI_Focus = ValueTB AND RevertEdit = True) THEN RevertEdit = False: SelectPropertyFully __UI_Focus
-        ELSEIF __UI_Focus = ValueTB THEN
-            IF PropertyFullySelected(ValueTB) THEN
-                IF Text(ValueTB) = LTRIM$(STR$(PreviewControls(FirstSelected).Value)) THEN
-                    Control(__UI_Focus).BorderColor = ShadeOfGreen
-                ELSE
-                    IF TIMER - InputBox(ThisInputBox).LastEdited < PropertyUpdateDelay THEN
-                        Control(__UI_Focus).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 5)
-                    ELSE
-                        Control(__UI_Focus).BorderColor = ShadeOfRed
-                    END IF
-                END IF
-            END IF
-        END IF
-
-        IF __UI_Focus <> MinTB OR (__UI_Focus = MinTB AND RevertEdit = True) THEN
-            Text(MinTB) = LTRIM$(STR$(PreviewControls(FirstSelected).Min))
-            IF (__UI_Focus = MinTB AND RevertEdit = True) THEN RevertEdit = False: SelectPropertyFully __UI_Focus
-        ELSEIF __UI_Focus = MinTB THEN
-            IF PropertyFullySelected(MinTB) THEN
-                IF Text(MinTB) = LTRIM$(STR$(PreviewControls(FirstSelected).Min)) THEN
-                    Control(__UI_Focus).BorderColor = ShadeOfGreen
-                ELSE
-                    IF TIMER - InputBox(ThisInputBox).LastEdited < PropertyUpdateDelay THEN
-                        Control(__UI_Focus).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 5)
-                    ELSE
-                        Control(__UI_Focus).BorderColor = ShadeOfRed
-                    END IF
-                END IF
-            END IF
-        END IF
-
-        IF __UI_Focus <> MaxTB OR (__UI_Focus = MaxTB AND RevertEdit = True) THEN
-            Text(MaxTB) = LTRIM$(STR$(PreviewControls(FirstSelected).Max))
-            IF (__UI_Focus = MaxTB AND RevertEdit = True) THEN RevertEdit = False: SelectPropertyFully __UI_Focus
-        ELSEIF __UI_Focus = MaxTB THEN
-            IF PropertyFullySelected(MaxTB) THEN
-                IF Text(MaxTB) = LTRIM$(STR$(PreviewControls(FirstSelected).Max)) THEN
-                    Control(__UI_Focus).BorderColor = ShadeOfGreen
-                ELSE
-                    IF TIMER - InputBox(ThisInputBox).LastEdited < PropertyUpdateDelay THEN
-                        Control(__UI_Focus).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 5)
-                    ELSE
-                        Control(__UI_Focus).BorderColor = ShadeOfRed
-                    END IF
-                END IF
-            END IF
-        END IF
-
-        IF __UI_Focus <> IntervalTB OR (__UI_Focus = IntervalTB AND RevertEdit = True) THEN
-            Text(IntervalTB) = LTRIM$(STR$(PreviewControls(FirstSelected).Interval))
-            IF (__UI_Focus = IntervalTB AND RevertEdit = True) THEN RevertEdit = False: SelectPropertyFully __UI_Focus
-        ELSEIF __UI_Focus = IntervalTB THEN
-            IF PropertyFullySelected(IntervalTB) THEN
-                IF Text(IntervalTB) = LTRIM$(STR$(PreviewControls(FirstSelected).Interval)) THEN
-                    Control(__UI_Focus).BorderColor = ShadeOfGreen
-                ELSE
-                    IF TIMER - InputBox(ThisInputBox).LastEdited < PropertyUpdateDelay THEN
-                        Control(__UI_Focus).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 5)
-                    ELSE
-                        Control(__UI_Focus).BorderColor = ShadeOfRed
-                    END IF
-                END IF
-            END IF
-        END IF
-
-        IF __UI_Focus <> MinIntervalTB OR (__UI_Focus = MinIntervalTB AND RevertEdit = True) THEN
-            Text(MinIntervalTB) = LTRIM$(STR$(PreviewControls(FirstSelected).MinInterval))
-        ELSEIF __UI_Focus = MinIntervalTB THEN
-            IF PropertyFullySelected(MinIntervalTB) THEN
-                IF Text(MinIntervalTB) = LTRIM$(STR$(PreviewControls(FirstSelected).MinInterval)) THEN
-                    Control(__UI_Focus).BorderColor = ShadeOfGreen
-                ELSE
-                    IF TIMER - InputBox(ThisInputBox).LastEdited < PropertyUpdateDelay THEN
-                        Control(__UI_Focus).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 5)
-                    ELSE
-                        Control(__UI_Focus).BorderColor = ShadeOfRed
-                    END IF
-                END IF
-            END IF
-        END IF
-
-        IF __UI_Focus <> PaddingTB OR (__UI_Focus = PaddingTB AND RevertEdit = True) THEN
-            Text(PaddingTB) = LTRIM$(STR$(PreviewControls(FirstSelected).Padding))
-            IF (__UI_Focus = PaddingTB AND RevertEdit = True) THEN RevertEdit = False: SelectPropertyFully __UI_Focus
-        ELSEIF __UI_Focus = PaddingTB THEN
-            IF PropertyFullySelected(PaddingTB) THEN
-                IF Text(PaddingTB) = LTRIM$(STR$(PreviewControls(FirstSelected).Padding)) THEN
-                    Control(__UI_Focus).BorderColor = ShadeOfGreen
-                ELSE
-                    IF TIMER - InputBox(ThisInputBox).LastEdited < PropertyUpdateDelay THEN
-                        Control(__UI_Focus).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 5)
-                    ELSE
-                        Control(__UI_Focus).BorderColor = ShadeOfRed
-                    END IF
-                END IF
-            END IF
-        END IF
-
-        IF __UI_Focus <> SizeTB OR (__UI_Focus = SizeTB AND RevertEdit = True) THEN
-            Text(SizeTB) = LTRIM$(STR$(PreviewControls(FirstSelected).BorderSize))
-            IF (__UI_Focus = SizeTB AND RevertEdit = True) THEN RevertEdit = False: SelectPropertyFully __UI_Focus
-        ELSEIF __UI_Focus = SizeTB THEN
-            IF PropertyFullySelected(SizeTB) THEN
-                IF Text(SizeTB) = LTRIM$(STR$(PreviewControls(FirstSelected).BorderSize)) THEN
-                    Control(__UI_Focus).BorderColor = ShadeOfGreen
-                ELSE
-                    IF TIMER - InputBox(ThisInputBox).LastEdited < PropertyUpdateDelay THEN
-                        Control(__UI_Focus).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 5)
-                    ELSE
-                        Control(__UI_Focus).BorderColor = ShadeOfRed
-                    END IF
-                END IF
-            END IF
-        END IF
+        PropertyGrid_SetValue ControlProperties, "tooltip", Replace(PreviewTips(FirstSelected), CHR$(10), "\n", False, 0)
+        PropertyGrid_SetValue ControlProperties, "value", LTRIM$(STR$(PreviewControls(FirstSelected).Value))
+        PropertyGrid_SetValue ControlProperties, "min", LTRIM$(STR$(PreviewControls(FirstSelected).Min))
+        PropertyGrid_SetValue ControlProperties, "max", LTRIM$(STR$(PreviewControls(FirstSelected).Max))
+        PropertyGrid_SetValue ControlProperties, "interval", LTRIM$(STR$(PreviewControls(FirstSelected).Interval))
+        PropertyGrid_SetValue ControlProperties, "mininterval", LTRIM$(STR$(PreviewControls(FirstSelected).MinInterval))
+        PropertyGrid_SetValue ControlProperties, "padding", LTRIM$(STR$(PreviewControls(FirstSelected).Padding))
+        PropertyGrid_SetValue ControlToggles, "bordersize", LTRIM$(STR$(PreviewControls(FirstSelected).BorderSize))
     END IF
 
     Control(TextTB).Max = 0
@@ -2175,7 +1858,7 @@ SUB __UI_BeforeUpdateDisplay
     END IF
 
     STATIC ShowInvalidValueWarning AS _BYTE
-    IF Control(__UI_Focus).BorderColor = ShadeOfRed THEN
+    IF PropertyGrid_RowState(PropertyGrid_GridOf(__UI_Focus), PropertyGrid_RowOf$(__UI_Focus)) = __UI_PropertyGrid_Rejected THEN
         IF ShowInvalidValueWarning = False THEN
             ShowInvalidValueWarning = True
             Caption(StatusBar) = "Invalid value; ESC for previous or adjusted value"
@@ -2185,311 +1868,146 @@ SUB __UI_BeforeUpdateDisplay
         ShowInvalidValueWarning = False
     END IF
 
-    'Disable properties that don't apply
-    Control(AlignOptions).Disabled = True
-    Control(BooleanOptions).Disabled = True
-    Control(VAlignOptions).Disabled = True
-    Control(BulletOptions).Disabled = True
-    Caption(TextLB) = "Text"
-    Caption(ValueLB) = "Value"
-    Caption(MaxLB) = "Max"
-    Control(SizeTB).Disabled = True
-    Control(SizeTB).Hidden = True
+    'Hide the properties that don't apply
+    PropertyGrid_ShowRows ControlProperties, "align,boolean,valign,bullet", False
+    PropertyGrid_SetLabel ControlProperties, "text", "Text"
+    PropertyGrid_SetLabel ControlProperties, "value", "Value"
+    PropertyGrid_SetLabel ControlProperties, "max", "Max"
     IF TotalSelected > 0 THEN
         SELECT EVERYCASE PreviewControls(FirstSelected).Type
             CASE __UI_Type_ToggleSwitch
-                Control(CanHaveFocus).Disabled = False
-                Control(Disabled).Disabled = False
-                Control(Hidden).Disabled = False
-                Control(CaptionTB).Disabled = True
-                Control(BooleanOptions).Disabled = False
-                Control(TextTB).Disabled = True
-                Control(FontTB).Disabled = True
-                Control(FontList).Disabled = True
-                Control(MinTB).Disabled = True
-                Control(MaxTB).Disabled = True
-                Control(IntervalTB).Disabled = True
-                Control(MinIntervalTB).Disabled = True
-                Control(PaddingTB).Disabled = True
-                Control(BulletOptions).Disabled = True
+                PropertyGrid_ShowRows ControlToggles, "canhavefocus,disabled,hidden", True
+                PropertyGrid_ShowRows ControlProperties, "caption,text,font,fontlist,min,max,interval,mininterval,padding,bullet", False
+                PropertyGrid_ShowRow ControlProperties, "boolean", True
             CASE __UI_Type_MenuBar, __UI_Type_MenuItem
-                Control(Disabled).Disabled = False
-                Control(Hidden).Disabled = False
+                PropertyGrid_ShowRows ControlToggles, "disabled,hidden", True
             CASE __UI_Type_MenuBar
-                'Check if this is the last menu bar item so that Align options can be enabled
-                FOR i = UBOUND(PreviewControls) TO 1 STEP -1
-                    IF PreviewControls(i).ID > 0 AND PreviewControls(i).Type = __UI_Type_MenuBar THEN
-                        EXIT FOR
-                    END IF
-                NEXT
-                IF i = FirstSelected THEN
-                    Control(AlignOptions).Disabled = False
-                END IF
-
-                FOR i = 1 TO UBOUND(InputBox)
-                    SELECT CASE InputBox(i).ID
-                        CASE NameTB, CaptionTB, TooltipTB, AlignOptions
-                            Control(InputBox(i).ID).Disabled = False
-                        CASE ELSE
-                            Control(InputBox(i).ID).Disabled = True
-                    END SELECT
-                NEXT
+                PropertyGrid_ShowOnly ControlProperties, "name,caption,tooltip,align"
             CASE __UI_Type_ContextMenu
-                FOR i = 1 TO UBOUND(InputBox)
-                    SELECT CASE InputBox(i).ID
-                        CASE NameTB
-                            Control(InputBox(i).ID).Disabled = False
-                        CASE ELSE
-                            Control(InputBox(i).ID).Disabled = True
-                    END SELECT
-                NEXT
+                PropertyGrid_ShowOnly ControlProperties, "name"
             CASE __UI_Type_MenuItem
-                FOR i = 1 TO UBOUND(InputBox)
-                    SELECT CASE InputBox(i).ID
-                        CASE NameTB, CaptionTB, TextTB, TooltipTB, BulletOptions, BooleanOptions, KeyboardComboBT
-                            Control(InputBox(i).ID).Disabled = False
-                        CASE ELSE
-                            Control(InputBox(i).ID).Disabled = True
-                    END SELECT
-                NEXT
+                PropertyGrid_ShowOnly ControlProperties, "name,caption,text,tooltip,bullet,boolean,keycombo"
             CASE __UI_Type_PictureBox
-                Caption(TextLB) = "Image file"
-                Control(AlignOptions).Disabled = False
-                Control(VAlignOptions).Disabled = False
-                Control(Stretch).Disabled = False
-                Control(Transparent).Disabled = False
-                IF PreviewAnimatedGif(FirstSelected) THEN
-                    Control(AutoPlayGif).Disabled = False
-                END IF
-                FOR i = 1 TO UBOUND(InputBox)
-                    SELECT CASE InputBox(i).ID
-                        CASE NameTB, TextTB, TopTB, LeftTB, WidthTB, HeightTB, TooltipTB, AlignOptions, VAlignOptions
-                            Control(InputBox(i).ID).Disabled = False
-                        CASE ELSE
-                            Control(InputBox(i).ID).Disabled = True
-                    END SELECT
-                NEXT
+                PropertyGrid_SetLabel ControlProperties, "text", "Image file"
+                PropertyGrid_ShowRows ControlToggles, "stretch,transparent", True
+                IF PreviewAnimatedGif(FirstSelected) THEN PropertyGrid_ShowRow ControlToggles, "autoplaygif", True
+                PropertyGrid_ShowOnly ControlProperties, "name,text,top,left,width,height,tooltip,align,valign"
             CASE __UI_Type_Label
-                Control(Transparent).Disabled = False
-                Control(AutoSize).Disabled = False
-                FOR i = 1 TO UBOUND(InputBox)
-                    SELECT CASE InputBox(i).ID
-                        CASE NameTB, CaptionTB, TopTB, LeftTB, WidthTB, HeightTB, FontTB, TooltipTB, PaddingTB, AlignOptions, VAlignOptions, FontList
-                            Control(InputBox(i).ID).Disabled = False
-                        CASE ELSE
-                            Control(InputBox(i).ID).Disabled = True
-                    END SELECT
-                NEXT
+                PropertyGrid_ShowRows ControlToggles, "transparent,autosize", True
+                PropertyGrid_ShowOnly ControlProperties, "name,caption,top,left,width,height,font,tooltip,padding,align,valign,fontlist"
             CASE __UI_Type_Frame
-                Control(Transparent).Disabled = True
-                FOR i = 1 TO UBOUND(InputBox)
-                    SELECT CASE InputBox(i).ID
-                        CASE NameTB, CaptionTB, TopTB, LeftTB, WidthTB, HeightTB, FontTB, TooltipTB, FontList
-                            Control(InputBox(i).ID).Disabled = False
-                        CASE ELSE
-                            Control(InputBox(i).ID).Disabled = True
-                    END SELECT
-                NEXT
+                PropertyGrid_ShowRow ControlToggles, "transparent", False
+                PropertyGrid_ShowOnly ControlProperties, "name,caption,top,left,width,height,font,tooltip,fontlist"
             CASE __UI_Type_TextBox
                 STATIC PreviousNumericState AS _BYTE
-                Control(Transparent).Disabled = False
-                Control(PasswordMaskCB).Disabled = (PreviewControls(FirstSelected).NumericOnly <> False) OR PreviewControls(FirstSelected).Multiline
-                Control(MultilineCB).Disabled = (PreviewControls(FirstSelected).NumericOnly <> False) OR PreviewControls(FirstSelected).PasswordField OR LEN(PreviewMasks(FirstSelected)) > 0
+                PropertyGrid_ShowRow ControlToggles, "transparent", True
+                PropertyGrid_ShowRow ControlToggles, "password", NOT ((PreviewControls(FirstSelected).NumericOnly <> False) OR PreviewControls(FirstSelected).Multiline)
+                PropertyGrid_ShowRow ControlToggles, "multiline", NOT ((PreviewControls(FirstSelected).NumericOnly <> False) OR PreviewControls(FirstSelected).PasswordField OR LEN(PreviewMasks(FirstSelected)) > 0)
                 IF PreviousNumericState <> PreviewControls(FirstSelected).NumericOnly THEN
                     PreviousNumericState = PreviewControls(FirstSelected).NumericOnly
                     __UI_ForceRedraw = True
                 END IF
+                PropertyGrid_ShowAll ControlProperties, True
                 IF PreviewControls(FirstSelected).NumericOnly = True THEN
-                    FOR i = 1 TO UBOUND(InputBox)
-                        SELECT CASE InputBox(i).ID
-                            CASE ValueTB, MinTB, MaxTB, MaskTB, IntervalTB, PaddingTB, AlignOptions, VAlignOptions, MinIntervalTB, BulletOptions, BooleanOptions, KeyboardComboBT
-                                Control(InputBox(i).ID).Disabled = True
-                            CASE ELSE
-                                Control(InputBox(i).ID).Disabled = False
-                        END SELECT
-                    NEXT
+                    PropertyGrid_ShowRows ControlProperties, "value,min,max,mask,interval,padding,align,valign,mininterval,bullet,boolean,keycombo", False
                 ELSEIF PreviewControls(FirstSelected).NumericOnly = __UI_NumericWithBounds THEN
-                    FOR i = 1 TO UBOUND(InputBox)
-                        SELECT CASE InputBox(i).ID
-                            CASE ValueTB, MaskTB, IntervalTB, PaddingTB, AlignOptions, VAlignOptions, MinIntervalTB, BulletOptions, BooleanOptions, KeyboardComboBT
-                                Control(InputBox(i).ID).Disabled = True
-                            CASE ELSE
-                                Control(InputBox(i).ID).Disabled = False
-                        END SELECT
-                    NEXT
+                    PropertyGrid_ShowRows ControlProperties, "value,mask,interval,padding,align,valign,mininterval,bullet,boolean,keycombo", False
                 ELSE
-                    Caption(MaxLB) = "Max length"
-                    FOR i = 1 TO UBOUND(InputBox)
-                        SELECT CASE InputBox(i).ID
-                            CASE ValueTB, MinTB, IntervalTB, PaddingTB, AlignOptions, VAlignOptions, MinIntervalTB, BulletOptions, BooleanOptions, KeyboardComboBT
-                                Control(InputBox(i).ID).Disabled = True
-                            CASE ELSE
-                                Control(InputBox(i).ID).Disabled = False
-                        END SELECT
-                    NEXT
+                    PropertyGrid_SetLabel ControlProperties, "max", "Max length"
+                    PropertyGrid_ShowRows ControlProperties, "value,min,interval,padding,align,valign,mininterval,bullet,boolean,keycombo", False
                 END IF
             CASE __UI_Type_Button, __UI_Type_MenuItem
-                Caption(TextLB) = "Image file"
+                PropertyGrid_SetLabel ControlProperties, "text", "Image file"
             CASE __UI_Type_Button
-                FOR i = 1 TO UBOUND(InputBox)
-                    SELECT CASE InputBox(i).ID
-                        CASE ValueTB, MinTB, MaxTB, IntervalTB, PaddingTB, MaskTB, AlignOptions, VAlignOptions, MinIntervalTB, BulletOptions, BooleanOptions
-                            Control(InputBox(i).ID).Disabled = True
-                        CASE ELSE
-                            Control(InputBox(i).ID).Disabled = False
-                    END SELECT
-                NEXT
+                PropertyGrid_ShowAll ControlProperties, True
+                PropertyGrid_ShowRows ControlProperties, "value,min,max,interval,padding,mask,align,valign,mininterval,bullet,boolean", False
             CASE __UI_Type_CheckBox, __UI_Type_RadioButton
-                Control(Transparent).Disabled = False
-                FOR i = 1 TO UBOUND(InputBox)
-                    SELECT CASE InputBox(i).ID
-                        CASE TextTB, MinTB, MaxTB, IntervalTB, PaddingTB, MaskTB, AlignOptions, VAlignOptions, MinIntervalTB, BulletOptions, ValueTB
-                            Control(InputBox(i).ID).Disabled = True
-                        CASE ELSE
-                            Control(InputBox(i).ID).Disabled = False
-                    END SELECT
-                NEXT
+                PropertyGrid_ShowRow ControlToggles, "transparent", True
+                PropertyGrid_ShowAll ControlProperties, True
+                PropertyGrid_ShowRows ControlProperties, "text,min,max,interval,padding,mask,align,valign,mininterval,bullet,value", False
             CASE __UI_Type_ToggleSwitch
-                Control(Transparent).Disabled = True
-                FOR i = 1 TO UBOUND(InputBox)
-                    SELECT CASE InputBox(i).ID
-                        CASE WidthTB, HeightTB, TextTB, MinTB, MaxTB, IntervalTB, PaddingTB, MaskTB, AlignOptions, VAlignOptions, MinIntervalTB, BulletOptions, ValueTB, FontTB, FontList
-                            Control(InputBox(i).ID).Disabled = True
-                        CASE ELSE
-                            Control(InputBox(i).ID).Disabled = False
-                    END SELECT
-                NEXT
+                PropertyGrid_ShowRow ControlToggles, "transparent", False
+                PropertyGrid_ShowAll ControlProperties, True
+                PropertyGrid_ShowRows ControlProperties, "width,height,text,min,max,interval,padding,mask,align,valign,mininterval,bullet,value,font,fontlist", False
             CASE __UI_Type_ProgressBar
-                FOR i = 1 TO UBOUND(InputBox)
-                    SELECT CASE InputBox(i).ID
-                        CASE TextTB, IntervalTB, PaddingTB, MaskTB, AlignOptions, VAlignOptions, MinIntervalTB, BulletOptions, BooleanOptions, KeyboardComboBT
-                            Control(InputBox(i).ID).Disabled = True
-                        CASE ELSE
-                            Control(InputBox(i).ID).Disabled = False
-                    END SELECT
-                NEXT
+                PropertyGrid_ShowAll ControlProperties, True
+                PropertyGrid_ShowRows ControlProperties, "text,interval,padding,mask,align,valign,mininterval,bullet,boolean,keycombo", False
             CASE __UI_Type_TrackBar
-                Control(HideTicks).Disabled = False
-                FOR i = 1 TO UBOUND(InputBox)
-                    SELECT CASE InputBox(i).ID
-                        CASE CaptionTB, TextTB, FontTB, PaddingTB, MaskTB, AlignOptions, VAlignOptions, BulletOptions, BooleanOptions, FontList, KeyboardComboBT
-                            Control(InputBox(i).ID).Disabled = True
-                        CASE ELSE
-                            Control(InputBox(i).ID).Disabled = False
-                    END SELECT
-                NEXT
+                PropertyGrid_ShowRow ControlToggles, "hideticks", True
+                PropertyGrid_ShowAll ControlProperties, True
+                PropertyGrid_ShowRows ControlProperties, "caption,text,font,padding,mask,align,valign,bullet,boolean,fontlist,keycombo", False
             CASE __UI_Type_ListBox, __UI_Type_DropdownList
-                Caption(TextLB) = "List items"
-                Caption(ValueLB) = "Selected item"
-                Control(Transparent).Disabled = False
-                FOR i = 1 TO UBOUND(InputBox)
-                    SELECT CASE InputBox(i).ID
-                        CASE CaptionTB, MinTB, MaxTB, IntervalTB, PaddingTB, MaskTB, AlignOptions, VAlignOptions, MinIntervalTB, BulletOptions, BooleanOptions, KeyboardComboBT
-                            Control(InputBox(i).ID).Disabled = True
-                        CASE ELSE
-                            Control(InputBox(i).ID).Disabled = False
-                    END SELECT
-                NEXT
+                PropertyGrid_SetLabel ControlProperties, "text", "List items"
+                PropertyGrid_SetLabel ControlProperties, "value", "Selected item"
+                PropertyGrid_ShowRow ControlToggles, "transparent", True
+                PropertyGrid_ShowAll ControlProperties, True
+                PropertyGrid_ShowRows ControlProperties, "caption,min,max,interval,padding,mask,align,valign,mininterval,bullet,boolean,keycombo", False
             CASE __UI_Type_ListBox
-                Control(AutoScroll).Disabled = False
-                Control(ReorderableCB).Disabled = False
+                PropertyGrid_ShowRows ControlToggles, "autoscroll,reorderable", True
             CASE __UI_Type_DropdownList
-                Control(SearchableCB).Disabled = False
-                Control(FuzzyCB).Disabled = (PreviewControls(FirstSelected).Searchable = False)
+                PropertyGrid_ShowRow ControlToggles, "searchable", True
+                PropertyGrid_ShowRow ControlToggles, "fuzzy", PreviewControls(FirstSelected).Searchable
             CASE __UI_Type_TabControl
-                Caption(TextLB) = "Tabs"
-                Caption(ValueLB) = "Active tab"
-                Control(Transparent).Disabled = True
-                FOR i = 1 TO UBOUND(InputBox)
-                    SELECT CASE InputBox(i).ID
-                        CASE NameTB, TextTB, ValueTB, TopTB, LeftTB, WidthTB, HeightTB, FontTB, TooltipTB, FontList
-                            Control(InputBox(i).ID).Disabled = False
-                        CASE ELSE
-                            Control(InputBox(i).ID).Disabled = True
-                    END SELECT
-                NEXT
+                PropertyGrid_SetLabel ControlProperties, "text", "Tabs"
+                PropertyGrid_SetLabel ControlProperties, "value", "Active tab"
+                PropertyGrid_ShowRow ControlToggles, "transparent", False
+                PropertyGrid_ShowOnly ControlProperties, "name,text,value,top,left,width,height,font,tooltip,fontlist"
             CASE __UI_Type_Frame, __UI_Type_Label, __UI_Type_TextBox, __UI_Type_ListBox, __UI_Type_DropdownList, __UI_Type_PictureBox
-                Control(HasBorder).Disabled = False
+                PropertyGrid_ShowRow ControlToggles, "hasborder", True
             CASE __UI_Type_ProgressBar
-                Control(ShowPercentage).Disabled = False
+                PropertyGrid_ShowRow ControlToggles, "showpercentage", True
             CASE __UI_Type_Label
-                Control(WordWrap).Disabled = False
+                PropertyGrid_ShowRow ControlToggles, "wordwrap", True
             CASE __UI_Type_Button, __UI_Type_CheckBox, __UI_Type_RadioButton, __UI_Type_TextBox, __UI_Type_ListBox, __UI_Type_DropdownList, __UI_Type_TrackBar, __UI_Type_TabControl
-                Control(CanHaveFocus).Disabled = False
+                PropertyGrid_ShowRow ControlToggles, "canhavefocus", True
             CASE __UI_Type_Button, __UI_Type_CheckBox, __UI_Type_RadioButton, __UI_Type_TextBox, __UI_Type_ListBox, __UI_Type_DropdownList, __UI_Type_TrackBar, __UI_Type_Label, __UI_Type_ProgressBar, __UI_Type_TabControl
-                Control(Disabled).Disabled = False
+                PropertyGrid_ShowRow ControlToggles, "disabled", True
             CASE __UI_Type_Frame, __UI_Type_TabControl, __UI_Type_Button, __UI_Type_CheckBox, __UI_Type_RadioButton, __UI_Type_TextBox, __UI_Type_ListBox, __UI_Type_DropdownList, __UI_Type_TrackBar, __UI_Type_Label, __UI_Type_ProgressBar, __UI_Type_PictureBox
-                Control(Hidden).Disabled = False
+                PropertyGrid_ShowRow ControlToggles, "hidden", True
             CASE __UI_Type_Frame, __UI_Type_TabControl, __UI_Type_Button, __UI_Type_CheckBox, __UI_Type_RadioButton, __UI_Type_TextBox, __UI_Type_ListBox, __UI_Type_DropdownList, __UI_Type_TrackBar, __UI_Type_Label, __UI_Type_ProgressBar, __UI_Type_PictureBox, __UI_Type_ToggleSwitch
                 Control(AnchorPicker).Disabled = False
             CASE __UI_Type_Label
-                Control(AlignOptions).Disabled = False
-                Control(VAlignOptions).Disabled = False
+                PropertyGrid_ShowRows ControlProperties, "align,valign", True
         END SELECT
     ELSE
         'Properties relative to the form
-        Control(CenteredWindow).Disabled = False
-        Control(Resizable).Disabled = False
-        Control(AddGifExtensionToggle).Disabled = False
-        Caption(TextLB) = "Icon file"
-
-        FOR i = 1 TO UBOUND(InputBox)
-            SELECT CASE InputBox(i).ID
-                CASE NameTB, CaptionTB, TextTB, WidthTB, HeightTB, FontTB, FontList
-                    Control(InputBox(i).ID).Disabled = False
-                CASE ELSE
-                    Control(InputBox(i).ID).Disabled = True
-            END SELECT
-        NEXT
+        PropertyGrid_ShowRows ControlToggles, "centered,resizable,addgifextension", True
+        PropertyGrid_SetLabel ControlProperties, "text", "Icon file"
+        PropertyGrid_ShowOnly ControlProperties, "name,caption,text,width,height,font,fontlist"
     END IF
 
-    IF TotalSelected > 1 THEN Control(NameTB).Disabled = True
+    IF TotalSelected > 1 THEN PropertyGrid_ShowRow ControlProperties, "name", False
 
     IF HasFontList AND (ShowFontList = True AND BypassShowFontList = False) THEN
-        Control(FontTB).Disabled = True
+        PropertyGrid_ShowRow ControlProperties, "font", False
     ELSE
-        Control(FontList).Disabled = True
+        PropertyGrid_ShowRow ControlProperties, "fontlist", False
     END IF
 
-    IF PreviewControls(FirstSelected).Type = __UI_Type_ContextMenu OR PreviewControls(FirstSelected).Type = __UI_Type_MenuBar OR PreviewControls(FirstSelected).Type = __UI_Type_MenuItem THEN
-        Control(ContextMenuControlsList).Disabled = True
-    ELSE
-        Control(ContextMenuControlsList).Disabled = False
+    SELECT CASE PreviewControls(FirstSelected).Type
+        CASE __UI_Type_ContextMenu, __UI_Type_MenuBar, __UI_Type_MenuItem
+            PropertyGrid_ShowRow ControlProperties, "contextmenu", False
+        CASE ELSE
+            PropertyGrid_ShowRow ControlProperties, "contextmenu", True
+    END SELECT
+
+    'Border size sits beside "Has border"
+    IF Control(HasBorder).Value = True AND PreviewControls(FirstSelected).Type <> __UI_Type_Frame AND PreviewControls(FirstSelected).Type <> __UI_Type_TabControl THEN
+        PropertyGrid_ShowRow ControlToggles, "bordersize", PropertyGrid_RowShown(ControlToggles, "hasborder")
+        Caption(HasBorder) = "Has border     Size"
     END IF
 
-    DIM LastTopForInputBox AS INTEGER
-    LastTopForInputBox = -12
-    CONST TopIncrementForInputBox = 22
-    FOR i = 1 TO UBOUND(InputBox)
-        'Exception for SizeTB:
-        IF InputBox(i).ID = SizeTB THEN _CONTINUE
-
-        IF Control(InputBox(i).ID).Disabled THEN
-            Control(InputBox(i).ID).Hidden = True
-            Control(InputBox(i).LabelID).Hidden = True
-        ELSE
-            LastTopForInputBox = LastTopForInputBox + TopIncrementForInputBox
-            Control(InputBox(i).ID).Top = LastTopForInputBox
-            Control(InputBox(i).LabelID).Top = LastTopForInputBox
-        END IF
-    NEXT
-
-    LastTopForInputBox = -12
-    FOR i = 1 TO UBOUND(Toggles)
-        IF Control(Toggles(i)).Disabled THEN
-            Control(Toggles(i)).Hidden = True
-        ELSE
-            LastTopForInputBox = LastTopForInputBox + TopIncrementForInputBox
-            Control(Toggles(i)).Top = LastTopForInputBox
-        END IF
-    NEXT
+    'Stack the rows now, so the controls placed next to them below get their final positions
+    PropertyGrid_Layout ControlProperties
+    PropertyGrid_Layout ControlToggles
+    Control(SizeTB).Top = Control(HasBorder).Top
 
     'The anchor picker goes below the toggles, with its description under it
     Control(AnchorPicker).Hidden = Control(AnchorPicker).Disabled
     Control(AnchorLB).Hidden = Control(AnchorPicker).Hidden
     Control(AnchorInfoLB).Hidden = Control(AnchorPicker).Hidden
     IF NOT Control(AnchorPicker).Hidden THEN
-        Control(AnchorPicker).Top = LastTopForInputBox + TopIncrementForInputBox + 6
+        Control(AnchorPicker).Top = PropertyGrid_NextTop(ControlToggles) + 6
         Control(AnchorLB).Top = Control(AnchorPicker).Top
         Control(AnchorInfoLB).Top = Control(AnchorPicker).Top + Control(AnchorPicker).Height + 2
         UpdateAnchorPicker
@@ -2498,23 +2016,13 @@ SUB __UI_BeforeUpdateDisplay
     'Custom cases
     Control(AutoPlayGif).Disabled = NOT Control(AddGifExtensionToggle).Value
     Control(AutoSize).Disabled = Control(WordWrap).Value
-    IF Control(HasBorder).Value = True AND PreviewControls(FirstSelected).Type <> __UI_Type_Frame AND PreviewControls(FirstSelected).Type <> __UI_Type_TabControl THEN
-        Control(SizeTB).Disabled = False
-        Control(SizeTB).Hidden = False
-        Control(SizeTB).Height = 22
-        Control(SizeTB).Top = Control(HasBorder).Top
-        Caption(HasBorder) = "Has border     Size"
-    END IF
 
-    Control(FontSizeList).Disabled = Control(FontList).Disabled
-    Control(FontSizeList).Hidden = Control(FontList).Hidden
-    Control(FontSizeList).Top = Control(FontList).Top
     Control(PasteListBT).Hidden = True
     Control(BrowseImageBT).Hidden = True
 
     SELECT CASE PreviewControls(FirstSelected).Type
         CASE __UI_Type_PictureBox, __UI_Type_Button, __UI_Type_MenuItem, __UI_Type_Form
-            IF Control(TextTB).Hidden = False AND Control(TextTB).Disabled = False THEN
+            IF PropertyGrid_RowShown(ControlProperties, "text") THEN
                 Control(BrowseImageBT).Top = Control(TextTB).Top
                 Control(BrowseImageBT).Hidden = False
             END IF
@@ -2947,59 +2455,57 @@ SUB __UI_OnLoad
     GOSUB ShowMessage
     LoadFontList
 
-    'Assign InputBox IDs:
-    i = 0
-    i = i + 1: InputBox(i).ID = NameTB: InputBox(i).LabelID = NameLB: InputBox(i).Signal = 1: InputBox(i).DataType = DT_Text
-    i = i + 1: InputBox(i).ID = CaptionTB: InputBox(i).LabelID = CaptionLB: InputBox(i).Signal = 2: InputBox(i).DataType = DT_Text
-    i = i + 1: InputBox(i).ID = TextTB: InputBox(i).LabelID = TextLB: InputBox(i).Signal = 3: InputBox(i).DataType = DT_Text
-    i = i + 1: InputBox(i).ID = MaskTB: InputBox(i).LabelID = MaskLB: InputBox(i).Signal = 35: InputBox(i).DataType = DT_Text
-    i = i + 1: InputBox(i).ID = TopTB: InputBox(i).LabelID = TopLB: InputBox(i).Signal = 4: InputBox(i).DataType = DT_Integer
-    i = i + 1: InputBox(i).ID = LeftTB: InputBox(i).LabelID = LeftLB: InputBox(i).Signal = 5: InputBox(i).DataType = DT_Integer
-    i = i + 1: InputBox(i).ID = WidthTB: InputBox(i).LabelID = WidthLB: InputBox(i).Signal = 6: InputBox(i).DataType = DT_Integer
-    i = i + 1: InputBox(i).ID = HeightTB: InputBox(i).LabelID = HeightLB: InputBox(i).Signal = 7: InputBox(i).DataType = DT_Integer
-    i = i + 1: InputBox(i).ID = FontTB: InputBox(i).LabelID = FontLB: InputBox(i).Signal = 8: InputBox(i).DataType = DT_Text
-    i = i + 1: InputBox(i).ID = FontList: InputBox(i).LabelID = FontListLB: InputBox(i).Signal = 8: InputBox(i).DataType = DT_Text
-    i = i + 1: InputBox(i).ID = TooltipTB: InputBox(i).LabelID = TooltipLB: InputBox(i).Signal = 9: InputBox(i).DataType = DT_Text
-    i = i + 1: InputBox(i).ID = ValueTB: InputBox(i).LabelID = ValueLB: InputBox(i).Signal = 10: InputBox(i).DataType = DT_Float
-    i = i + 1: InputBox(i).ID = BooleanOptions: InputBox(i).LabelID = BooleanLB: InputBox(i).Signal = 10: InputBox(i).DataType = DT_Float
-    i = i + 1: InputBox(i).ID = MinTB: InputBox(i).LabelID = MinLB: InputBox(i).Signal = 11: InputBox(i).DataType = DT_Float
-    i = i + 1: InputBox(i).ID = MaxTB: InputBox(i).LabelID = MaxLB: InputBox(i).Signal = 12: InputBox(i).DataType = DT_Float
-    i = i + 1: InputBox(i).ID = IntervalTB: InputBox(i).LabelID = IntervalLB: InputBox(i).Signal = 13: InputBox(i).DataType = DT_Float
-    i = i + 1: InputBox(i).ID = MinIntervalTB: InputBox(i).LabelID = MinIntervalLB: InputBox(i).Signal = 36: InputBox(i).DataType = DT_Float
-    i = i + 1: InputBox(i).ID = PaddingTB: InputBox(i).LabelID = PaddingLeftrightLB: InputBox(i).Signal = 31: InputBox(i).DataType = DT_Integer
-    i = i + 1: InputBox(i).ID = AlignOptions: InputBox(i).LabelID = TextAlignLB
-    i = i + 1: InputBox(i).ID = VAlignOptions: InputBox(i).LabelID = VerticalAlignLB
-    i = i + 1: InputBox(i).ID = BulletOptions: InputBox(i).LabelID = BulletOptionsLB
-    i = i + 1: InputBox(i).ID = SizeTB: InputBox(i).Signal = 40: InputBox(i).DataType = DT_Integer
-    i = i + 1: InputBox(i).ID = ContextMenuControlsList: InputBox(i).LabelID = ContextMenuLB: InputBox(i).DataType = DT_Text
-    i = i + 1: InputBox(i).ID = KeyboardComboBT: InputBox(i).LabelID = KeyboardComboLB: InputBox(i).DataType = DT_Text
+    'The Control properties frame is a property grid: rows are stacked in this order,
+    'and only the ones that apply to the selected control are shown (see __UI_BeforeUpdateDisplay)
+    PropertyGrid_AdoptRow ControlProperties, "name", NameLB, NameTB
+    PropertyGrid_AdoptRow ControlProperties, "caption", CaptionLB, CaptionTB
+    PropertyGrid_AdoptRow ControlProperties, "text", TextLB, TextTB
+    PropertyGrid_AdoptRow ControlProperties, "mask", MaskLB, MaskTB
+    PropertyGrid_AdoptRow ControlProperties, "top", TopLB, TopTB
+    PropertyGrid_AdoptRow ControlProperties, "left", LeftLB, LeftTB
+    PropertyGrid_AdoptRow ControlProperties, "width", WidthLB, WidthTB
+    PropertyGrid_AdoptRow ControlProperties, "height", HeightLB, HeightTB
+    PropertyGrid_AdoptRow ControlProperties, "font", FontLB, FontTB
+    PropertyGrid_AdoptRow ControlProperties, "fontlist", FontListLB, FontList
+    PropertyGrid_AttachControl ControlProperties, "fontlist", FontSizeList
+    PropertyGrid_AdoptRow ControlProperties, "tooltip", TooltipLB, TooltipTB
+    PropertyGrid_AdoptRow ControlProperties, "value", ValueLB, ValueTB
+    PropertyGrid_AdoptRow ControlProperties, "boolean", BooleanLB, BooleanOptions
+    PropertyGrid_AdoptRow ControlProperties, "min", MinLB, MinTB
+    PropertyGrid_AdoptRow ControlProperties, "max", MaxLB, MaxTB
+    PropertyGrid_AdoptRow ControlProperties, "interval", IntervalLB, IntervalTB
+    PropertyGrid_AdoptRow ControlProperties, "mininterval", MinIntervalLB, MinIntervalTB
+    PropertyGrid_AdoptRow ControlProperties, "padding", PaddingLeftrightLB, PaddingTB
+    PropertyGrid_AdoptRow ControlProperties, "align", TextAlignLB, AlignOptions
+    PropertyGrid_AdoptRow ControlProperties, "valign", VerticalAlignLB, VAlignOptions
+    PropertyGrid_AdoptRow ControlProperties, "bullet", BulletOptionsLB, BulletOptions
+    PropertyGrid_AdoptRow ControlProperties, "contextmenu", ContextMenuLB, ContextMenuControlsList
+    PropertyGrid_AdoptRow ControlProperties, "keycombo", KeyboardComboLB, KeyboardComboBT
 
-    REDIM _PRESERVE InputBox(1 TO i) AS newInputBox
-    REDIM InputBoxText(1 TO i) AS STRING
-
-    'Assign Toggles IDs:
-    i = 0
-    i = i + 1: Toggles(i) = Stretch
-    i = i + 1: Toggles(i) = HasBorder
-    i = i + 1: Toggles(i) = ShowPercentage
-    i = i + 1: Toggles(i) = PasswordMaskCB
-    i = i + 1: Toggles(i) = MultilineCB
-    i = i + 1: Toggles(i) = WordWrap
-    i = i + 1: Toggles(i) = CanHaveFocus
-    i = i + 1: Toggles(i) = Disabled
-    i = i + 1: Toggles(i) = Transparent
-    i = i + 1: Toggles(i) = Hidden
-    i = i + 1: Toggles(i) = CenteredWindow
-    i = i + 1: Toggles(i) = Resizable
-    i = i + 1: Toggles(i) = AutoScroll
-    i = i + 1: Toggles(i) = SearchableCB
-    i = i + 1: Toggles(i) = FuzzyCB
-    i = i + 1: Toggles(i) = ReorderableCB
-    i = i + 1: Toggles(i) = AutoSize
-    i = i + 1: Toggles(i) = HideTicks
-    i = i + 1: Toggles(i) = AutoPlayGif
-    i = i + 1: Toggles(i) = AddGifExtensionToggle
-    REDIM _PRESERVE Toggles(1 TO i) AS LONG
+    'The toggles frame is another one, with check boxes and no labels
+    PropertyGrid_AdoptRow ControlToggles, "stretch", 0, Stretch
+    PropertyGrid_AdoptRow ControlToggles, "hasborder", 0, HasBorder
+    PropertyGrid_AdoptRow ControlToggles, "showpercentage", 0, ShowPercentage
+    PropertyGrid_AdoptRow ControlToggles, "password", 0, PasswordMaskCB
+    PropertyGrid_AdoptRow ControlToggles, "multiline", 0, MultilineCB
+    PropertyGrid_AdoptRow ControlToggles, "wordwrap", 0, WordWrap
+    PropertyGrid_AdoptRow ControlToggles, "canhavefocus", 0, CanHaveFocus
+    PropertyGrid_AdoptRow ControlToggles, "disabled", 0, Disabled
+    PropertyGrid_AdoptRow ControlToggles, "transparent", 0, Transparent
+    PropertyGrid_AdoptRow ControlToggles, "hidden", 0, Hidden
+    PropertyGrid_AdoptRow ControlToggles, "centered", 0, CenteredWindow
+    PropertyGrid_AdoptRow ControlToggles, "resizable", 0, Resizable
+    PropertyGrid_AdoptRow ControlToggles, "autoscroll", 0, AutoScroll
+    PropertyGrid_AdoptRow ControlToggles, "searchable", 0, SearchableCB
+    PropertyGrid_AdoptRow ControlToggles, "fuzzy", 0, FuzzyCB
+    PropertyGrid_AdoptRow ControlToggles, "reorderable", 0, ReorderableCB
+    PropertyGrid_AdoptRow ControlToggles, "autosize", 0, AutoSize
+    PropertyGrid_AdoptRow ControlToggles, "hideticks", 0, HideTicks
+    PropertyGrid_AdoptRow ControlToggles, "autoplaygif", 0, AutoPlayGif
+    PropertyGrid_AdoptRow ControlToggles, "addgifextension", 0, AddGifExtensionToggle
+    'The border size box sits next to "Has border", so it's left out of the stacking
+    PropertyGrid_AdoptRow ControlToggles, "bordersize", 0, SizeTB
+    PropertyGrid_SetFloating ControlToggles, "bordersize", True
 
     ToolTip(FontTB) = "Multiple fonts can be specified by separating them with a question mark (?)." + CHR$(10) + "The first font that can be found/loaded is used."
     ToolTip(FontList) = "System fonts may not be available in all computers. To specify a local font file, right-click 'Font' to the left of this list and disable 'Show system fonts list'."
@@ -3103,23 +2609,16 @@ SUB __UI_KeyPress (id AS LONG)
                 __UI_Click CloseZOrderingBT
             END IF
         CASE NameTB, CaptionTB, TextTB, MaskTB, TopTB, LeftTB, WidthTB, HeightTB, FontTB, TooltipTB, ValueTB, MinTB, MaxTB, IntervalTB, PaddingTB, MinIntervalTB, SizeTB
+            'Enter and Esc were already handled by the property grid
             IF __UI_KeyHit = 13 THEN
-                'Send the preview the new property value
-                ConfirmEdits id
-            ELSEIF __UI_KeyHit = 32 THEN
-                IF id = NameTB THEN
-                    __UI_KeyHit = 0
-                    Caption(StatusBar) = "Control names cannot contain spaces"
-                    BlinkStatusBar = TIMER
-                ELSE
-                    InputBox(GetInputBoxFromID(id)).Sent = False
-                    Send Client, "LOCKCONTROLS><END>"
-                END IF
+                'The new value was sent to the preview (see SendPropertyEdit)
+            ELSEIF __UI_KeyHit = 32 AND id = NameTB THEN
+                __UI_KeyHit = 0
+                Caption(StatusBar) = "Control names cannot contain spaces"
+                BlinkStatusBar = TIMER
             ELSEIF __UI_KeyHit = 27 THEN
-                RevertEdit = True
                 Caption(StatusBar) = "Previous property value restored."
             ELSE
-                InputBox(GetInputBoxFromID(id)).Sent = False
                 Send Client, "LOCKCONTROLS><END>"
             END IF
         CASE KeyboardComboBT
@@ -3158,44 +2657,49 @@ SUB __UI_KeyPress (id AS LONG)
     END SELECT
 END SUB
 
-SUB ConfirmEdits (id AS LONG)
-    DIM b$, TempValue AS LONG
+''' @brief Sends the preview a property that was just edited in the Control properties or toggles frame.
+SUB SendPropertyEdit (GridID AS LONG)
+    DIM b$, Key$, NewValue$, id AS LONG, Signal AS INTEGER, DataType AS INTEGER
 
-    IF InputBoxText(GetInputBoxFromID(id)) <> Text(id) AND _
-        InputBox(GetInputBoxFromID(id)).Sent = False THEN
-        SELECT CASE InputBox(GetInputBoxFromID(id)).DataType
-            CASE DT_Text
-                b$ = MKL$(LEN(Text(id))) + Text(id)
-            CASE DT_Integer
-                b$ = MKI$(VAL(Text(id)))
-            CASE DT_Float
-                b$ = _MK$(_FLOAT, VAL(Text(id)))
-        END SELECT
-        TempValue = GetPropertySignal(id)
-        SendData b$, TempValue
-        PropertySent = True
-        Text(id) = RestoreCHR(Text(id))
-        SelectPropertyFully id
-        InputBoxText(GetInputBoxFromID(id)) = Text(id)
-        InputBox(GetInputBoxFromID(id)).LastEdited = TIMER
-        InputBox(GetInputBoxFromID(id)).Sent = True
-        Caption(StatusBar) = "Ready."
-    END IF
+    Key$ = PropertyGrid_ChangedRow$(GridID)
+    SELECT CASE Key$
+        CASE "name": Signal = 1: DataType = DT_Text
+        CASE "caption": Signal = 2: DataType = DT_Text
+        CASE "text": Signal = 3: DataType = DT_Text
+        CASE "top": Signal = 4: DataType = DT_Integer
+        CASE "left": Signal = 5: DataType = DT_Integer
+        CASE "width": Signal = 6: DataType = DT_Integer
+        CASE "height": Signal = 7: DataType = DT_Integer
+        CASE "font": Signal = 8: DataType = DT_Text
+        CASE "tooltip": Signal = 9: DataType = DT_Text
+        CASE "value": Signal = 10: DataType = DT_Float
+        CASE "min": Signal = 11: DataType = DT_Float
+        CASE "max": Signal = 12: DataType = DT_Float
+        CASE "interval": Signal = 13: DataType = DT_Float
+        CASE "padding": Signal = 31: DataType = DT_Integer
+        CASE "mask": Signal = 35: DataType = DT_Text
+        CASE "mininterval": Signal = 36: DataType = DT_Float
+        CASE "bordersize": Signal = 40: DataType = DT_Integer
+        CASE ELSE: EXIT SUB
+    END SELECT
+
+    NewValue$ = PropertyGrid_Value$(GridID, Key$)
+    SELECT CASE DataType
+        CASE DT_Text
+            b$ = MKL$(LEN(NewValue$)) + NewValue$
+        CASE DT_Integer
+            b$ = MKI$(VAL(NewValue$))
+        CASE DT_Float
+            b$ = _MK$(_FLOAT, VAL(NewValue$))
+    END SELECT
+    SendData b$, Signal
+    PropertySent = True
+
+    'Character codes typed as \65; become the characters themselves, the way the preview stores them
+    id = PropertyGrid_Control(GridID, Key$)
+    Text(id) = RestoreCHR(Text(id))
+    Caption(StatusBar) = "Ready."
 END SUB
-
-FUNCTION GetPropertySignal& (id AS LONG)
-    DIM i AS LONG
-    FOR i = 1 TO UBOUND(InputBox)
-        IF InputBox(i).ID = id THEN GetPropertySignal& = InputBox(i).Signal: EXIT FUNCTION
-    NEXT
-END FUNCTION
-
-FUNCTION GetInputBoxFromID& (id AS LONG)
-    DIM i AS LONG
-    FOR i = 1 TO UBOUND(InputBox)
-        IF InputBox(i).ID = id THEN GetInputBoxFromID& = i: EXIT FUNCTION
-    NEXT
-END FUNCTION
 
 SUB __UI_TextChanged (id AS LONG)
     SELECT CASE id
@@ -3212,6 +2716,8 @@ SUB __UI_ValueChanged (id AS LONG)
 
     DIM b$, i AS LONG
     SELECT EVERYCASE id
+        CASE ControlProperties, ControlToggles
+            SendPropertyEdit id
         CASE AlignOptions
             IF __UI_Focus <> id THEN EXIT SUB
             b$ = MKI$(Control(AlignOptions).Value - 1)
@@ -3229,7 +2735,7 @@ SUB __UI_ValueChanged (id AS LONG)
             PropertySent = True
         CASE BooleanOptions
             b$ = _MK$(_FLOAT, -(Control(BooleanOptions).Value - 1))
-            SendData b$, GetPropertySignal(BooleanOptions)
+            SendData b$, 10
             PropertySent = True
         CASE ContextMenuControlsList
             i = Control(ContextMenuControlsList).Value

@@ -1,0 +1,614 @@
+'-----------------------------------------------------------------------------------------------------------------------
+' InForm-PE PropertyGrid
+' Copyright (c) 2026 Fellippe Heitor
+'
+' A PropertyGrid turns a frame into a list of "label | value" rows, like the editor's Control properties panel.
+'   - Each row has a key (any text, e.g. "width") that the program uses to talk about it.
+'   - Rows can be created by the grid (PropertyGrid_AddText, ...) or adopted from controls the form already has.
+'   - Shown rows are stacked from the top of the frame; hidden rows leave no gap.
+'   - Textbox rows: Enter (or leaving the box) commits the text, Esc puts back the row's value.
+'     While a box has focus, its border turns green when the text is the row's value and red when
+'     an entered value was replaced by another one (see PropertyGrid_SetValue).
+'   - A committed or changed row fires __UI_ValueChanged with the frame's ID; PropertyGrid_ChangedRow$ says which row.
+'-----------------------------------------------------------------------------------------------------------------------
+
+$INCLUDEONCE
+
+'$INCLUDE:'InFormCommon.bi'
+
+'-----------------------------------------------------------------------------------------------------------------------
+' Internal helpers
+'-----------------------------------------------------------------------------------------------------------------------
+
+''' @brief Index of the grid attached to a frame, or 0.
+FUNCTION __UI_PGFind& (frameID AS LONG)
+    DIM g AS LONG
+    FOR g = 1 TO __UI_TotalPropertyGrids
+        IF __UI_PropertyGrids(g).FrameID = frameID THEN __UI_PGFind = g: EXIT FUNCTION
+    NEXT
+END FUNCTION
+
+''' @brief Index of a row, given its frame and key (keys ignore case), or 0.
+FUNCTION __UI_PGRow& (frameID AS LONG, rowKey AS STRING)
+    DIM r AS LONG, g AS LONG, k AS STRING
+    g = __UI_PGFind(frameID)
+    IF g = 0 THEN EXIT FUNCTION
+    k = UCASE$(_TRIM$(rowKey))
+    FOR r = 1 TO __UI_TotalPropertyGridRows
+        IF __UI_PropertyGridRows(r).Grid = g _ANDALSO UCASE$(__UI_PropertyGridKeys(r)) = k THEN __UI_PGRow = r: EXIT FUNCTION
+    NEXT
+END FUNCTION
+
+''' @brief Adds a row to a frame's grid (attaching the grid first if needed) and returns its index.
+FUNCTION __UI_PGNewRow& (frameID AS LONG, rowKey AS STRING)
+    DIM r AS LONG
+    PropertyGrid_Attach frameID
+    r = __UI_PGRow(frameID, rowKey)
+    IF r = 0 THEN
+        __UI_TotalPropertyGridRows = __UI_TotalPropertyGridRows + 1
+        r = __UI_TotalPropertyGridRows
+        IF r > UBOUND(__UI_PropertyGridRows) THEN
+            REDIM _PRESERVE __UI_PropertyGridRows(0 TO r + 15) AS __UI_PropertyGridRowTYPE
+            REDIM _PRESERVE __UI_PropertyGridKeys(0 TO r + 15) AS STRING
+            REDIM _PRESERVE __UI_PropertyGridValues(0 TO r + 15) AS STRING
+            REDIM _PRESERVE __UI_PropertyGridSeen(0 TO r + 15) AS STRING
+        END IF
+    END IF
+    __UI_PropertyGridRows(r).Grid = __UI_PGFind(frameID)
+    __UI_PropertyGridRows(r).Shown = _TRUE
+    __UI_PropertyGridRows(r).Floating = _FALSE
+    __UI_PropertyGridRows(r).Dirty = _FALSE
+    __UI_PropertyGridKeys(r) = _TRIM$(rowKey)
+    __UI_PropertyGridValues(r) = _STR_EMPTY
+    __UI_PropertyGridSeen(r) = _STR_EMPTY
+    __UI_PGNewRow = r
+END FUNCTION
+
+''' @brief A control name made from the frame's name and the row's key.
+FUNCTION __UI_PGControlName$ (frameID AS LONG, rowKey AS STRING, suffix AS STRING)
+    DIM i AS LONG, c AS STRING, n AS STRING
+    FOR i = 1 TO LEN(rowKey)
+        c = MID$(rowKey, i, 1)
+        IF INSTR("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", c) THEN n = n + c
+    NEXT
+    __UI_PGControlName = LEFT$(RTRIM$(Control(frameID).Name), 16) + LEFT$(n, 16) + suffix
+END FUNCTION
+
+''' @brief Creates a row's label (left column) and returns its ID.
+FUNCTION __UI_PGNewLabel& (frameID AS LONG, rowKey AS STRING, rowLabel AS STRING)
+    DIM id AS LONG
+    id = __UI_NewControl(__UI_Type_Label, __UI_PGControlName(frameID, rowKey, "LB"), 120, 23, 10, 10, frameID)
+    SetCaption id, rowLabel
+    Control(id).HasBorder = _TRUE
+    Control(id).VAlign = __UI_Middle
+    __UI_PGNewLabel = id
+END FUNCTION
+
+''' @brief _TRUE for rows edited in a textbox.
+FUNCTION __UI_PGIsTextRow%% (r AS LONG)
+    SELECT CASE __UI_PropertyGridRows(r).Kind
+        CASE __UI_PropertyGrid_Text, __UI_PropertyGrid_Integer, __UI_PropertyGrid_Float
+            __UI_PGIsTextRow = _TRUE
+    END SELECT
+END FUNCTION
+
+''' @brief _TRUE when a textbox's whole text is selected.
+FUNCTION __UI_PGFullySelected%% (id AS LONG)
+    __UI_PGFullySelected = Control(id).TextIsSelected _ANDALSO Control(id).SelectionStart = 0 _ANDALSO Control(id).Cursor = LEN(Text(id))
+END FUNCTION
+
+SUB __UI_PGSelectAll (id AS LONG)
+    Control(id).TextIsSelected = _TRUE
+    Control(id).SelectionStart = 0
+    Control(id).Cursor = LEN(Text(id))
+END SUB
+
+''' @brief Tells the program a row changed: fires __UI_ValueChanged with the frame's ID.
+SUB __UI_PGFire (r AS LONG)
+    DIM g AS LONG
+    g = __UI_PropertyGridRows(r).Grid
+    __UI_PropertyGrids(g).ChangedRow = r
+    __UI_StateHasChanged = _FALSE
+    __UI_ValueChanged __UI_PropertyGrids(g).FrameID
+END SUB
+
+''' @brief Makes a textbox row's text its value and tells the program, if the text was edited.
+SUB __UI_PGCommit (r AS LONG)
+    DIM id AS LONG, t AS STRING
+    id = __UI_PropertyGridRows(r).ControlID
+    IF Text(id) <> __UI_PropertyGridSeen(r) THEN __UI_PropertyGridRows(r).Dirty = _TRUE
+    IF NOT __UI_PropertyGridRows(r).Dirty THEN EXIT SUB
+    __UI_PropertyGridRows(r).Dirty = _FALSE
+
+    t = Text(id)
+    IF __UI_PropertyGridRows(r).Owned THEN
+        SELECT CASE __UI_PropertyGridRows(r).Kind
+            CASE __UI_PropertyGrid_Integer: t = _TRIM$(STR$(_ROUND(VAL(t))))
+            CASE __UI_PropertyGrid_Float: t = _TRIM$(STR$(VAL(t)))
+        END SELECT
+        Text(id) = t
+    END IF
+    __UI_PropertyGridSeen(r) = t
+    IF t = __UI_PropertyGridValues(r) THEN EXIT SUB
+
+    __UI_PropertyGridValues(r) = t
+    __UI_PropertyGridRows(r).CommitTime = TIMER
+    __UI_PGFire r
+    'The program may have changed the text (e.g. to show it the way it's stored)
+    __UI_PropertyGridSeen(r) = Text(id)
+    IF __UI_Focus = id THEN __UI_PGSelectAll id
+END SUB
+
+''' @brief Stacks a grid's shown rows and hides the others.
+SUB __UI_PGLayout (g AS LONG)
+    DIM r AS LONG, a AS LONG, top AS INTEGER, frameID AS LONG, editLeft AS INTEGER, editWidth AS INTEGER
+    DIM ctrl AS LONG, lbl AS LONG
+
+    frameID = __UI_PropertyGrids(g).FrameID
+    editLeft = __UI_PropertyGrids(g).RowLeft + __UI_PropertyGrids(g).LabelWidth - 1
+    editWidth = Control(frameID).Width - editLeft - 7
+    top = __UI_PropertyGrids(g).FirstTop
+
+    FOR r = 1 TO __UI_TotalPropertyGridRows
+        IF __UI_PropertyGridRows(r).Grid <> g THEN _CONTINUE
+        ctrl = __UI_PropertyGridRows(r).ControlID
+        lbl = __UI_PropertyGridRows(r).LabelID
+
+        IF ctrl > 0 THEN Control(ctrl).Hidden = NOT __UI_PropertyGridRows(r).Shown
+        IF lbl > 0 THEN Control(lbl).Hidden = NOT __UI_PropertyGridRows(r).Shown
+
+        IF __UI_PropertyGridRows(r).Owned THEN
+            IF lbl > 0 THEN
+                Control(lbl).Left = __UI_PropertyGrids(g).RowLeft
+                Control(lbl).Width = __UI_PropertyGrids(g).LabelWidth
+                Control(ctrl).Left = editLeft
+                Control(ctrl).Width = editWidth
+            ELSE
+                Control(ctrl).Left = __UI_PropertyGrids(g).RowLeft
+                Control(ctrl).Width = editLeft + editWidth - __UI_PropertyGrids(g).RowLeft
+            END IF
+        END IF
+
+        IF __UI_PropertyGridRows(r).Shown _ANDALSO NOT __UI_PropertyGridRows(r).Floating THEN
+            IF ctrl > 0 THEN Control(ctrl).Top = top
+            IF lbl > 0 THEN Control(lbl).Top = top
+            FOR a = 1 TO __UI_TotalPropertyGridAttached
+                IF __UI_PropertyGridAttachedRow(a) = r THEN Control(__UI_PropertyGridAttachedID(a)).Top = top
+            NEXT
+            IF ctrl > 0 _ANDALSO Control(ctrl).Height - 1 > __UI_PropertyGrids(g).RowSpacing THEN
+                top = top + Control(ctrl).Height - 1
+            ELSE
+                top = top + __UI_PropertyGrids(g).RowSpacing
+            END IF
+        END IF
+
+        FOR a = 1 TO __UI_TotalPropertyGridAttached
+            IF __UI_PropertyGridAttachedRow(a) = r THEN Control(__UI_PropertyGridAttachedID(a)).Hidden = NOT __UI_PropertyGridRows(r).Shown
+        NEXT
+    NEXT
+
+    __UI_PropertyGrids(g).NextTop = top
+END SUB
+
+''' @brief Called by __UI_UpdateDisplay (after __UI_BeforeUpdateDisplay): keeps every grid's rows up to date.
+SUB __UI_PropertyGridsUpdate
+    CONST CommitEchoDelay = 0.1 ' a just-committed row isn't shown as rejected before this many seconds
+    DIM g AS LONG, r AS LONG, id AS LONG, focusRow AS LONG, prevRow AS LONG
+
+    IF __UI_TotalPropertyGrids = 0 THEN EXIT SUB
+
+    FOR g = 1 TO __UI_TotalPropertyGrids
+        IF __UI_PropertyGrids(g).FrameID = 0 THEN _CONTINUE
+
+        'Commit a row whose textbox just lost focus; take note of one that just got it
+        focusRow = 0
+        IF __UI_Focus > 0 THEN
+            FOR r = 1 TO __UI_TotalPropertyGridRows
+                IF __UI_PropertyGridRows(r).Grid = g _ANDALSO __UI_PropertyGridRows(r).ControlID = __UI_Focus _ANDALSO __UI_PGIsTextRow(r) THEN focusRow = r: EXIT FOR
+            NEXT
+        END IF
+        prevRow = __UI_PropertyGrids(g).FocusRow
+        IF prevRow <> focusRow THEN
+            __UI_PropertyGrids(g).FocusRow = focusRow
+            IF prevRow > 0 THEN __UI_PGCommit prevRow
+            IF focusRow > 0 THEN
+                id = __UI_PropertyGridRows(focusRow).ControlID
+                __UI_PropertyGridSeen(focusRow) = Text(id)
+                __UI_PropertyGridRows(focusRow).Dirty = Text(id) <> __UI_PropertyGridValues(focusRow)
+            END IF
+        END IF
+
+        FOR r = 1 TO __UI_TotalPropertyGridRows
+            IF __UI_PropertyGridRows(r).Grid <> g THEN _CONTINUE
+            id = __UI_PropertyGridRows(r).ControlID
+            IF id = 0 THEN _CONTINUE
+
+            SELECT CASE __UI_PropertyGridRows(r).Kind
+                CASE __UI_PropertyGrid_Text, __UI_PropertyGrid_Integer, __UI_PropertyGrid_Float
+                    IF id <> __UI_Focus THEN
+                        IF Text(id) <> __UI_PropertyGridValues(r) THEN Text(id) = __UI_PropertyGridValues(r)
+                        Control(id).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 5)
+                        Control(id).BorderSize = 1
+                        IF NOT __UI_PropertyGridRows(r).Floating THEN Control(id).Height = 23
+                    ELSE
+                        IF Text(id) <> __UI_PropertyGridSeen(r) THEN
+                            __UI_PropertyGridSeen(r) = Text(id)
+                            __UI_PropertyGridRows(r).Dirty = _TRUE
+                        END IF
+                        Control(id).BorderColor = __UI_DefaultColor(__UI_Type_TextBox, 1)
+                        Control(id).BorderSize = 2
+                        IF NOT __UI_PropertyGridRows(r).Floating THEN Control(id).Height = 22
+                        IF __UI_PGFullySelected(id) THEN
+                            IF Text(id) = __UI_PropertyGridValues(r) THEN
+                                Control(id).BorderColor = _RGB32(28, 150, 50)
+                            ELSEIF NOT __UI_PropertyGridRows(r).Dirty _ANDALSO TIMER - __UI_PropertyGridRows(r).CommitTime >= CommitEchoDelay THEN
+                                Control(id).BorderColor = _RGB32(233, 44, 0)
+                            END IF
+                        END IF
+                    END IF
+
+                CASE __UI_PropertyGrid_Choice, __UI_PropertyGrid_Toggle
+                    IF __UI_PropertyGridRows(r).Owned _ANDALSO Control(id).Value <> __UI_PropertyGridRows(r).LastValue THEN
+                        __UI_PropertyGridRows(r).LastValue = Control(id).Value
+                        __UI_PropertyGridValues(r) = _TRIM$(STR$(Control(id).Value))
+                        __UI_PGFire r
+                    END IF
+            END SELECT
+        NEXT
+
+        __UI_PGLayout g
+    NEXT
+END SUB
+
+''' @brief Called by the event dispatcher before __UI_KeyPress: Enter commits a textbox row, Esc puts its value back.
+SUB __UI_PropertyGridKey
+    DIM r AS LONG, id AS LONG
+
+    IF __UI_TotalPropertyGrids = 0 THEN EXIT SUB
+    IF __UI_KeyHit <> 13 _ANDALSO __UI_KeyHit <> 27 THEN EXIT SUB
+
+    id = __UI_Focus
+    IF Control(id).Type <> __UI_Type_TextBox _ORELSE Control(id).Multiline THEN EXIT SUB
+    FOR r = 1 TO __UI_TotalPropertyGridRows
+        IF __UI_PropertyGridRows(r).ControlID = id _ANDALSO __UI_PGIsTextRow(r) THEN EXIT FOR
+    NEXT
+    IF r > __UI_TotalPropertyGridRows THEN EXIT SUB
+
+    IF __UI_KeyHit = 13 THEN
+        __UI_PGCommit r
+    ELSE
+        Text(id) = __UI_PropertyGridValues(r)
+        __UI_PropertyGridSeen(r) = Text(id)
+        __UI_PropertyGridRows(r).Dirty = _FALSE
+    END IF
+    __UI_PGSelectAll id
+END SUB
+
+'-----------------------------------------------------------------------------------------------------------------------
+' Public API
+'-----------------------------------------------------------------------------------------------------------------------
+
+''' @brief Makes a frame a property grid. Adding a row does this too, so it's only needed to call PropertyGrid_SetLayout first.
+SUB PropertyGrid_Attach (frameID AS LONG)
+    DIM g AS LONG
+    IF frameID <= 0 _ORELSE frameID > UBOUND(Control) THEN EXIT SUB
+    IF __UI_PGFind(frameID) > 0 THEN EXIT SUB
+
+    __UI_TotalPropertyGrids = __UI_TotalPropertyGrids + 1
+    g = __UI_TotalPropertyGrids
+    IF g > UBOUND(__UI_PropertyGrids) THEN REDIM _PRESERVE __UI_PropertyGrids(0 TO g + 3) AS __UI_PropertyGridTYPE
+    __UI_PropertyGrids(g).FrameID = frameID
+    __UI_PropertyGrids(g).RowLeft = 10
+    __UI_PropertyGrids(g).FirstTop = 10
+    __UI_PropertyGrids(g).RowSpacing = 22
+    __UI_PropertyGrids(g).LabelWidth = 120
+    __UI_PropertyGrids(g).FocusRow = 0
+    __UI_PropertyGrids(g).ChangedRow = 0
+END SUB
+
+''' @brief Where rows go: left edge, top of the first row, distance between rows and width of the label column.
+SUB PropertyGrid_SetLayout (frameID AS LONG, rowLeft AS INTEGER, firstTop AS INTEGER, rowSpacing AS INTEGER, labelWidth AS INTEGER)
+    DIM g AS LONG
+    PropertyGrid_Attach frameID
+    g = __UI_PGFind(frameID)
+    IF g = 0 THEN EXIT SUB
+    __UI_PropertyGrids(g).RowLeft = rowLeft
+    __UI_PropertyGrids(g).FirstTop = firstTop
+    __UI_PropertyGrids(g).RowSpacing = rowSpacing
+    __UI_PropertyGrids(g).LabelWidth = labelWidth
+END SUB
+
+''' @brief Adds a row with a text box.
+SUB PropertyGrid_AddText (frameID AS LONG, rowKey AS STRING, rowLabel AS STRING)
+    __UI_PGAddTextBox frameID, rowKey, rowLabel, __UI_PropertyGrid_Text
+END SUB
+
+''' @brief Adds a row with a box that takes whole numbers.
+SUB PropertyGrid_AddInteger (frameID AS LONG, rowKey AS STRING, rowLabel AS STRING)
+    __UI_PGAddTextBox frameID, rowKey, rowLabel, __UI_PropertyGrid_Integer
+END SUB
+
+''' @brief Adds a row with a box that takes numbers.
+SUB PropertyGrid_AddFloat (frameID AS LONG, rowKey AS STRING, rowLabel AS STRING)
+    __UI_PGAddTextBox frameID, rowKey, rowLabel, __UI_PropertyGrid_Float
+END SUB
+
+SUB __UI_PGAddTextBox (frameID AS LONG, rowKey AS STRING, rowLabel AS STRING, kind AS _BYTE)
+    DIM r AS LONG, id AS LONG
+    r = __UI_PGNewRow(frameID, rowKey)
+    id = __UI_NewControl(__UI_Type_TextBox, __UI_PGControlName(frameID, rowKey, "TB"), 120, 23, 10, 10, frameID)
+    IF kind <> __UI_PropertyGrid_Text THEN
+        Control(id).NumericOnly = __UI_NumericWithoutBounds
+        __UI_PropertyGridValues(r) = "0"
+        Text(id) = "0"
+    END IF
+    __UI_PropertyGridRows(r).Kind = kind
+    __UI_PropertyGridRows(r).Owned = _TRUE
+    __UI_PropertyGridRows(r).LabelID = __UI_PGNewLabel(frameID, rowKey, rowLabel)
+    __UI_PropertyGridRows(r).ControlID = id
+END SUB
+
+''' @brief Adds a row with a dropdown list. Items are separated by "|". The row's value is the chosen item's number (from 1).
+SUB PropertyGrid_AddChoice (frameID AS LONG, rowKey AS STRING, rowLabel AS STRING, itemList AS STRING)
+    DIM r AS LONG, id AS LONG, p AS LONG, s AS LONG
+    r = __UI_PGNewRow(frameID, rowKey)
+    id = __UI_NewControl(__UI_Type_DropdownList, __UI_PGControlName(frameID, rowKey, "DD"), 120, 23, 10, 10, frameID)
+    s = 1
+    DO
+        p = INSTR(s, itemList, "|")
+        IF p = 0 THEN AddItem id, MID$(itemList, s): EXIT DO
+        AddItem id, MID$(itemList, s, p - s)
+        s = p + 1
+    LOOP
+    Control(id).Value = 1
+    __UI_PropertyGridRows(r).Kind = __UI_PropertyGrid_Choice
+    __UI_PropertyGridRows(r).Owned = _TRUE
+    __UI_PropertyGridRows(r).LabelID = __UI_PGNewLabel(frameID, rowKey, rowLabel)
+    __UI_PropertyGridRows(r).ControlID = id
+    __UI_PropertyGridRows(r).LastValue = 1
+    __UI_PropertyGridValues(r) = "1"
+END SUB
+
+''' @brief Adds a row with a check box (no label column). The row's value is "-1" when checked and "0" when not.
+SUB PropertyGrid_AddToggle (frameID AS LONG, rowKey AS STRING, rowCaption AS STRING)
+    DIM r AS LONG, id AS LONG
+    r = __UI_PGNewRow(frameID, rowKey)
+    id = __UI_NewControl(__UI_Type_CheckBox, __UI_PGControlName(frameID, rowKey, "CB"), 120, 23, 10, 10, frameID)
+    SetCaption id, rowCaption
+    __UI_PropertyGridRows(r).Kind = __UI_PropertyGrid_Toggle
+    __UI_PropertyGridRows(r).Owned = _TRUE
+    __UI_PropertyGridRows(r).LabelID = 0
+    __UI_PropertyGridRows(r).ControlID = id
+    __UI_PropertyGridRows(r).LastValue = 0
+    __UI_PropertyGridValues(r) = "0"
+END SUB
+
+''' @brief Adds a row with a button. Clicks go to __UI_Click as usual (PropertyGrid_RowOf$ tells which row it was).
+SUB PropertyGrid_AddButton (frameID AS LONG, rowKey AS STRING, rowLabel AS STRING, rowCaption AS STRING)
+    DIM r AS LONG, id AS LONG
+    r = __UI_PGNewRow(frameID, rowKey)
+    id = __UI_NewControl(__UI_Type_Button, __UI_PGControlName(frameID, rowKey, "BT"), 120, 23, 10, 10, frameID)
+    SetCaption id, rowCaption
+    __UI_PropertyGridRows(r).Kind = __UI_PropertyGrid_Button
+    __UI_PropertyGridRows(r).Owned = _TRUE
+    __UI_PropertyGridRows(r).LabelID = __UI_PGNewLabel(frameID, rowKey, rowLabel)
+    __UI_PropertyGridRows(r).ControlID = id
+END SUB
+
+''' @brief Makes a row out of controls the form already has (labelID can be 0). Their left and width are kept.
+''' A textbox gets the grid's editing (Enter, Esc, border colors); other controls are only stacked and hidden.
+SUB PropertyGrid_AdoptRow (frameID AS LONG, rowKey AS STRING, labelID AS LONG, controlID AS LONG)
+    DIM r AS LONG
+    r = __UI_PGNewRow(frameID, rowKey)
+    __UI_PropertyGridRows(r).Owned = _FALSE
+    __UI_PropertyGridRows(r).LabelID = labelID
+    __UI_PropertyGridRows(r).ControlID = controlID
+    IF Control(controlID).Type = __UI_Type_TextBox THEN
+        __UI_PropertyGridRows(r).Kind = __UI_PropertyGrid_Text
+        __UI_PropertyGridValues(r) = Text(controlID)
+    ELSE
+        __UI_PropertyGridRows(r).Kind = __UI_PropertyGrid_Other
+    END IF
+END SUB
+
+''' @brief Keeps another control (e.g. a small "..." button) on a row: same top, hidden with the row.
+''' A control can be attached to one row at a time; attaching it again moves it.
+SUB PropertyGrid_AttachControl (frameID AS LONG, rowKey AS STRING, controlID AS LONG)
+    DIM r AS LONG, a AS LONG
+    r = __UI_PGRow(frameID, rowKey)
+    IF r = 0 _ORELSE controlID <= 0 THEN EXIT SUB
+    FOR a = 1 TO __UI_TotalPropertyGridAttached
+        IF __UI_PropertyGridAttachedID(a) = controlID THEN __UI_PropertyGridAttachedRow(a) = r: EXIT SUB
+    NEXT
+    __UI_TotalPropertyGridAttached = __UI_TotalPropertyGridAttached + 1
+    a = __UI_TotalPropertyGridAttached
+    IF a > UBOUND(__UI_PropertyGridAttachedID) THEN
+        REDIM _PRESERVE __UI_PropertyGridAttachedID(0 TO a + 7) AS LONG
+        REDIM _PRESERVE __UI_PropertyGridAttachedRow(0 TO a + 7) AS LONG
+    END IF
+    __UI_PropertyGridAttachedID(a) = controlID
+    __UI_PropertyGridAttachedRow(a) = r
+END SUB
+
+''' @brief Stops keeping a control on a row. The control stays where and as it is.
+SUB PropertyGrid_DetachControl (controlID AS LONG)
+    DIM a AS LONG
+    FOR a = 1 TO __UI_TotalPropertyGridAttached
+        IF __UI_PropertyGridAttachedID(a) = controlID THEN
+            __UI_PropertyGridAttachedID(a) = __UI_PropertyGridAttachedID(__UI_TotalPropertyGridAttached)
+            __UI_PropertyGridAttachedRow(a) = __UI_PropertyGridAttachedRow(__UI_TotalPropertyGridAttached)
+            __UI_TotalPropertyGridAttached = __UI_TotalPropertyGridAttached - 1
+            EXIT SUB
+        END IF
+    NEXT
+END SUB
+
+''' @brief Sets a row's value. A textbox that has focus keeps what's being typed; its border then shows whether that is the value.
+SUB PropertyGrid_SetValue (frameID AS LONG, rowKey AS STRING, newValue AS STRING)
+    DIM r AS LONG, id AS LONG
+    r = __UI_PGRow(frameID, rowKey)
+    IF r = 0 THEN EXIT SUB
+    __UI_PropertyGridValues(r) = newValue
+    id = __UI_PropertyGridRows(r).ControlID
+    SELECT CASE __UI_PropertyGridRows(r).Kind
+        CASE __UI_PropertyGrid_Text, __UI_PropertyGrid_Integer, __UI_PropertyGrid_Float
+            'A box that just lost focus keeps its text until the next update commits it
+            IF id <> __UI_Focus _ANDALSO __UI_PropertyGrids(__UI_PropertyGridRows(r).Grid).FocusRow <> r THEN Text(id) = newValue
+        CASE __UI_PropertyGrid_Choice, __UI_PropertyGrid_Toggle
+            IF __UI_PropertyGridRows(r).Owned THEN
+                Control(id).Value = VAL(newValue)
+                __UI_PropertyGridRows(r).LastValue = Control(id).Value
+            END IF
+    END SELECT
+END SUB
+
+''' @brief Commits a textbox row's text now, as if Enter had been pressed (e.g. after the program filled the box itself).
+SUB PropertyGrid_Commit (frameID AS LONG, rowKey AS STRING)
+    DIM r AS LONG
+    r = __UI_PGRow(frameID, rowKey)
+    IF r = 0 THEN EXIT SUB
+    IF NOT __UI_PGIsTextRow(r) THEN EXIT SUB
+    __UI_PropertyGridRows(r).Dirty = _TRUE
+    __UI_PGCommit r
+END SUB
+
+''' @brief A row's value: for a textbox, the last committed text (not what's being typed).
+FUNCTION PropertyGrid_Value$ (frameID AS LONG, rowKey AS STRING)
+    DIM r AS LONG
+    r = __UI_PGRow(frameID, rowKey)
+    IF r > 0 THEN PropertyGrid_Value = __UI_PropertyGridValues(r)
+END FUNCTION
+
+''' @brief Key of the row that last fired __UI_ValueChanged for this frame.
+FUNCTION PropertyGrid_ChangedRow$ (frameID AS LONG)
+    DIM g AS LONG
+    g = __UI_PGFind(frameID)
+    IF g = 0 THEN EXIT FUNCTION
+    IF __UI_PropertyGrids(g).ChangedRow > 0 THEN PropertyGrid_ChangedRow = __UI_PropertyGridKeys(__UI_PropertyGrids(g).ChangedRow)
+END FUNCTION
+
+''' @brief Shows or hides a row. Shown rows close up so there are no gaps.
+SUB PropertyGrid_ShowRow (frameID AS LONG, rowKey AS STRING, isShown AS _BYTE)
+    DIM r AS LONG
+    r = __UI_PGRow(frameID, rowKey)
+    IF r > 0 THEN __UI_PropertyGridRows(r).Shown = (isShown <> 0)
+END SUB
+
+''' @brief Shows or hides several rows, given as a comma-separated list of keys.
+SUB PropertyGrid_ShowRows (frameID AS LONG, keyList AS STRING, isShown AS _BYTE)
+    DIM p AS LONG, s AS LONG
+    s = 1
+    DO
+        p = INSTR(s, keyList, ",")
+        IF p = 0 THEN PropertyGrid_ShowRow frameID, MID$(keyList, s), isShown: EXIT DO
+        PropertyGrid_ShowRow frameID, MID$(keyList, s, p - s), isShown
+        s = p + 1
+    LOOP
+END SUB
+
+''' @brief Shows or hides every row of a frame.
+SUB PropertyGrid_ShowAll (frameID AS LONG, isShown AS _BYTE)
+    DIM r AS LONG, g AS LONG
+    g = __UI_PGFind(frameID)
+    IF g = 0 THEN EXIT SUB
+    FOR r = 1 TO __UI_TotalPropertyGridRows
+        IF __UI_PropertyGridRows(r).Grid = g THEN __UI_PropertyGridRows(r).Shown = (isShown <> 0)
+    NEXT
+END SUB
+
+''' @brief Shows the listed rows (comma-separated keys) and hides all others.
+SUB PropertyGrid_ShowOnly (frameID AS LONG, keyList AS STRING)
+    PropertyGrid_ShowAll frameID, _FALSE
+    PropertyGrid_ShowRows frameID, keyList, _TRUE
+END SUB
+
+FUNCTION PropertyGrid_RowShown%% (frameID AS LONG, rowKey AS STRING)
+    DIM r AS LONG
+    r = __UI_PGRow(frameID, rowKey)
+    IF r > 0 THEN PropertyGrid_RowShown = __UI_PropertyGridRows(r).Shown
+END FUNCTION
+
+''' @brief Changes a row's label (a toggle row's caption).
+SUB PropertyGrid_SetLabel (frameID AS LONG, rowKey AS STRING, rowLabel AS STRING)
+    DIM r AS LONG
+    r = __UI_PGRow(frameID, rowKey)
+    IF r = 0 THEN EXIT SUB
+    IF __UI_PropertyGridRows(r).LabelID > 0 THEN
+        IF Caption(__UI_PropertyGridRows(r).LabelID) <> rowLabel THEN SetCaption __UI_PropertyGridRows(r).LabelID, rowLabel
+    ELSEIF __UI_PropertyGridRows(r).ControlID > 0 THEN
+        IF Caption(__UI_PropertyGridRows(r).ControlID) <> rowLabel THEN SetCaption __UI_PropertyGridRows(r).ControlID, rowLabel
+    END IF
+END SUB
+
+''' @brief A floating row is left out of the stacking, so the program can place it anywhere. It's still shown and hidden by the grid.
+SUB PropertyGrid_SetFloating (frameID AS LONG, rowKey AS STRING, isFloating AS _BYTE)
+    DIM r AS LONG
+    r = __UI_PGRow(frameID, rowKey)
+    IF r > 0 THEN __UI_PropertyGridRows(r).Floating = (isFloating <> 0)
+END SUB
+
+''' @brief ID of a row's control (textbox, dropdown list, check box or button).
+FUNCTION PropertyGrid_Control& (frameID AS LONG, rowKey AS STRING)
+    DIM r AS LONG
+    r = __UI_PGRow(frameID, rowKey)
+    IF r > 0 THEN PropertyGrid_Control = __UI_PropertyGridRows(r).ControlID
+END FUNCTION
+
+''' @brief ID of a row's label, or 0.
+FUNCTION PropertyGrid_LabelControl& (frameID AS LONG, rowKey AS STRING)
+    DIM r AS LONG
+    r = __UI_PGRow(frameID, rowKey)
+    IF r > 0 THEN PropertyGrid_LabelControl = __UI_PropertyGridRows(r).LabelID
+END FUNCTION
+
+''' @brief Key of the row a control (or label) belongs to, in any grid; empty if none.
+FUNCTION PropertyGrid_RowOf$ (controlID AS LONG)
+    DIM r AS LONG
+    IF controlID <= 0 THEN EXIT FUNCTION
+    FOR r = 1 TO __UI_TotalPropertyGridRows
+        IF __UI_PropertyGridRows(r).ControlID = controlID _ORELSE __UI_PropertyGridRows(r).LabelID = controlID THEN
+            PropertyGrid_RowOf = __UI_PropertyGridKeys(r)
+            EXIT FUNCTION
+        END IF
+    NEXT
+END FUNCTION
+
+''' @brief The frame of the grid a control (or label) belongs to, or 0.
+FUNCTION PropertyGrid_GridOf& (controlID AS LONG)
+    DIM r AS LONG
+    IF controlID <= 0 THEN EXIT FUNCTION
+    FOR r = 1 TO __UI_TotalPropertyGridRows
+        IF __UI_PropertyGridRows(r).ControlID = controlID _ORELSE __UI_PropertyGridRows(r).LabelID = controlID THEN
+            PropertyGrid_GridOf = __UI_PropertyGrids(__UI_PropertyGridRows(r).Grid).FrameID
+            EXIT FUNCTION
+        END IF
+    NEXT
+END FUNCTION
+
+''' @brief How a textbox row's border shows its text: __UI_PropertyGrid_Normal, _Confirmed or _Rejected.
+FUNCTION PropertyGrid_RowState%% (frameID AS LONG, rowKey AS STRING)
+    DIM r AS LONG, id AS LONG
+    r = __UI_PGRow(frameID, rowKey)
+    IF r = 0 THEN EXIT FUNCTION
+    id = __UI_PropertyGridRows(r).ControlID
+    IF NOT __UI_PGIsTextRow(r) _ORELSE id <> __UI_Focus THEN EXIT FUNCTION
+    IF Control(id).BorderColor = _RGB32(28, 150, 50) THEN
+        PropertyGrid_RowState = __UI_PropertyGrid_Confirmed
+    ELSEIF Control(id).BorderColor = _RGB32(233, 44, 0) THEN
+        PropertyGrid_RowState = __UI_PropertyGrid_Rejected
+    END IF
+END FUNCTION
+
+''' @brief Stacks the rows now (it also happens on every screen update). Useful to read rows' positions right after showing or hiding some.
+SUB PropertyGrid_Layout (frameID AS LONG)
+    DIM g AS LONG
+    g = __UI_PGFind(frameID)
+    IF g > 0 THEN __UI_PGLayout g
+END SUB
+
+''' @brief The top of the space below the last shown row.
+FUNCTION PropertyGrid_NextTop% (frameID AS LONG)
+    DIM g AS LONG
+    g = __UI_PGFind(frameID)
+    IF g > 0 THEN PropertyGrid_NextTop = __UI_PropertyGrids(g).NextTop
+END FUNCTION
