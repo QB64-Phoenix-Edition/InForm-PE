@@ -9,6 +9,7 @@ $INCLUDEONCE
 '$INCLUDE:'Resource.bi'
 '$INCLUDE:'StringFile.bi'
 '$INCLUDE:'Time.bi'
+'$INCLUDE:'../InFormCommon.bi'
 
 ' This is the master animation type that holds info about a complete animation
 TYPE __GIFPlayType
@@ -61,56 +62,12 @@ REDIM __GIFPlay(0 TO 0) AS __GIFPlayType ' main GIFPlay array - each array eleme
 REDIM __GIFPlayFrame(0 TO 0) AS __GIFPlayFrameType ' shared GIF frame array - this holds GIF frame and frame information for all loaded GIFs
 DIM __GIF_FirstFreeFrame AS LONG ' index of the lowest free frame in __GIFPlayFrame
 
-'-------------------------------------------------------------------------------------------------------------------
-' Test code for debugging the library
-'-------------------------------------------------------------------------------------------------------------------
-'DEFLNG A-Z
-'OPTION _EXPLICIT
-'$RESIZE:SMOOTH
-
-'CONST GIF_ID = 1
-
-'DO
-'    DIM gifFileName AS STRING: gifFileName = _OPENFILEDIALOG$("Open GIF", , "*.gif|*.GIF|*.Gif", "GIF Files")
-'    IF LEN(gifFileName) = 0 THEN EXIT DO
-
-'    IF GIF_LoadFromFile(GIF_ID, gifFileName) THEN
-'        DIM surface AS LONG: surface = _NEWIMAGE(GIF_GetWidth(GIF_ID), GIF_GetHeight(GIF_ID), 32)
-'        SCREEN surface
-'        _ALLOWFULLSCREEN _SQUAREPIXELS , _SMOOTH
-
-'        GIF_Play GIF_ID
-
-'        DO
-'            DIM k AS LONG: k = _KEYHIT
-
-'            IF k = _ASC_SPACE THEN
-'                IF GIF_IsPlaying(GIF_ID) THEN GIF_Pause (GIF_ID) ELSE GIF_Play (GIF_ID)
-'            END IF
-
-'            CLS
-'            GIF_Draw GIF_ID
-'            _DISPLAY
-
-'            _LIMIT 30
-'        LOOP UNTIL k = _KEY_ESC
-
-'        SCREEN 0
-'        _FREEIMAGE surface
-'    END IF
-'LOOP
-
-'END
-'-------------------------------------------------------------------------------------------------------------------
-
 ' Opens a GIF file from a buffer in memory
 FUNCTION GIF_LoadFromMemory%% (Id AS LONG, buffer AS STRING)
-    $IF INFORM_BI = DEFINED THEN
-        IF Control(ID).Type <> __UI_Type_PictureBox THEN
-            ERROR _ERR_ILLEGAL_FUNCTION_CALL
-            EXIT FUNCTION
-        END IF
-    $END IF
+    IF Control(Id).Type <> __UI_Type_PictureBox THEN
+        ERROR _ERR_ILLEGAL_FUNCTION_CALL
+        EXIT FUNCTION
+    END IF
 
     DIM sf AS StringFile
 
@@ -122,12 +79,10 @@ END FUNCTION
 
 ' Opens a GIF file from a file on disk
 FUNCTION GIF_LoadFromFile%% (Id AS LONG, fileName AS STRING)
-    $IF INFORM_BI = DEFINED THEN
-        IF Control(ID).Type <> __UI_Type_PictureBox THEN
-            ERROR _ERR_ILLEGAL_FUNCTION_CALL
-            EXIT FUNCTION
-        END IF
-    $END IF
+    IF Control(Id).Type <> __UI_Type_PictureBox THEN
+        ERROR _ERR_ILLEGAL_FUNCTION_CALL
+        EXIT FUNCTION
+    END IF
 
     DIM sf AS StringFile
 
@@ -296,9 +251,7 @@ SUB GIF_Draw (Id AS LONG)
     SHARED __GIFPlay() AS __GIFPlayType
 
     IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
-        $IF INFORM_BI = DEFINED THEN
-            BeginDraw ID
-        $END IF
+        BeginDraw ID
 
         ' Get the rendered image handle
         DIM renderedFrame AS LONG: renderedFrame = GIF_GetFrame(Id)
@@ -319,9 +272,7 @@ SUB GIF_Draw (Id AS LONG)
             _PUTIMAGE (_SHR(_WIDTH, 1) - _SHR(_WIDTH(overlayImage), 1), _SHR(_HEIGHT, 1) - _SHR(_HEIGHT(overlayImage), 1)), overlayImage
         END IF
 
-        $IF INFORM_BI = DEFINED THEN
-            EndDraw ID
-        $END IF
+        EndDraw ID
     END IF
 END SUB
 
