@@ -4,11 +4,10 @@ The `Catch` library provides a minimalistic test framework for QB64-PE, inspired
 
 ## Usage
 
-To use the `Catch` library, include `Catch.bi`, `Catch.bm`, and optionally `CatchError.bi` in your project.
+To use the `Catch` library, include `Catch.bi` in your project.
 
 ```vb
 '$INCLUDE:'Catch.bi'
-'$INCLUDE:'CatchError.bi' ' Optional: for runtime error handling
 
 TEST_BEGIN_ALL
 
@@ -20,11 +19,9 @@ TEST_BEGIN_ALL
     TEST_CASE_END
 
 TEST_END_ALL
-
-'$INCLUDE:'Catch.bm'
 ```
 
-Including `CatchError.bi` enables runtime error handling and lets your test program exit cleanly if a runtime error occurs.
+Runtime error handling is built-in and enabled by default, allowing your test program to exit cleanly if a runtime error occurs.
 
 ## API Reference
 

@@ -4,9 +4,11 @@ The `Algo` library provides general-purpose algorithms.
 
 ## Usage
 
-To use the `Algo` library, you need to include `Algo.bm` in your project.
+To use the `Algo` library, you need to include `Algo.bi` in your project.
 
 ```vb
+'$INCLUDE:'Algo.bi'
+
 DIM names(1 TO 5) AS STRING
 names(1) = "John"
 names(2) = "jane"
@@ -28,8 +30,6 @@ END IF
 FOR i = LBOUND(names) TO UBOUND(names)
     PRINT names(i)
 NEXT
-
-'$INCLUDE:'Algo.bm'
 ```
 
 ## API Reference
