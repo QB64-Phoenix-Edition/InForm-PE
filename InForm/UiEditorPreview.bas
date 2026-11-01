@@ -149,6 +149,17 @@ FUNCTION AddNewMenuBarControl&
     AddNewMenuBarControl& = TempValue
 END FUNCTION
 
+''' @brief Leaves no control selected (a form that was just loaded or restored starts this way).
+SUB DeselectAllControls
+    DIM i AS LONG
+    FOR i = 1 TO UBOUND(Control)
+        Control(i).ControlIsSelected = False
+    NEXT
+    __UI_TotalSelectedControls = 0
+    __UI_FirstSelectedID = 0
+    __UI_ForceRedraw = True
+END SUB
+
 SUB SelectNewControl (id AS LONG)
     DIM i AS LONG
     FOR i = 1 TO UBOUND(Control)
@@ -418,6 +429,26 @@ SUB __UI_BeforeUpdateDisplay
                 NEXT
 
                 __UI_Bind __UI_GetID(BindInfo$(1)), __UI_GetID(BindInfo$(2)), BindInfo$(3), BindInfo$(4)
+            CASE "LOCKINPUT"
+                'The editor shows a dialog that works on this form (property grid rows): no editing here meanwhile
+                __UI_InputLocked = CVI(thisData$)
+                IF __UI_InputLocked THEN
+                    __UI_MouseIsDown = False
+                    __UI_MouseDownOnID = 0
+                    __UI_IsDragging = False
+                    __UI_IsResizing = False
+                END IF
+            CASE "ROWSPREVIEW"
+                'Property grid rows being edited in the editor's dialog, shown as they change. No undo step:
+                'when the dialog closes, it puts the frame's rows back and sends the result as a property.
+                TempValue = CVL(LEFT$(thisData$, 4))
+                i = __UI_GetID(MID$(thisData$, 5, TempValue))
+                IF i > 0 THEN
+                    IF Control(i).Type = __UI_Type_Frame THEN
+                        Text(i) = MID$(thisData$, 5 + TempValue)
+                        Control(i).Redraw = True
+                    END IF
+                END IF
             CASE "UNBINDCONTROLS"
                 'Two control names, separated by CHR$(10)
                 IF INSTR(thisData$, CHR$(10)) THEN
@@ -1916,6 +1947,13 @@ SUB __UI_KeyPress (id AS LONG)
             DeleteSelectedControls
         CASE 221 'Select all controls
             SelectAllControls
+        CASE 236 'Double-click on a container
+            IF __UI_TotalSelectedControls = 1 _ANDALSO Control(__UI_FirstSelectedID).Type = __UI_Type_Frame _ANDALSO LEN(_TRIM$(Replace(Text(__UI_FirstSelectedID), CHR$(10), "", False, 0))) > 0 THEN
+                'A frame with property grid rows: edit them in the editor's dialog
+                SendData "", "SHOWROWSDIALOG"
+            ELSE
+                SelectAllControls
+            END IF
         CASE 223
             AlternateNumericOnlyProperty
         CASE 224
@@ -2917,6 +2955,10 @@ SUB LoadPreview (Destination AS _BYTE)
     'if both of its controls were copied.
     LoadPendingBindings PendingBindings$
 
+    'A form opened, created or restored after a crash starts with nothing selected
+    '(the selection it was saved with is only kept by undo/redo)
+    IF Disk OR Destination = FromEditor THEN DeselectAllControls
+
     IF NOT Disk AND NOT UndoBuffer THEN
         IF NOT CorruptedData THEN
             __UI_FirstSelectedID = FirstToBeSelected
@@ -3351,6 +3393,7 @@ SUB LoadPreviewText
         LOOP UNTIL __UI_EOF
         CLOSE #BinaryFileNum
         IF LogFileLoad THEN CLOSE #LogFileNum
+        DeselectAllControls 'a form that was just opened starts with nothing selected
         __UI_AutoRefresh = True
         EXIT SUB
 

@@ -856,8 +856,8 @@ SUB __UI_LoadForm
     SetCaption __UI_NewID, "Property grid rows"
     Control(__UI_NewID).HasBorder = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "RowsDescriptionLB", 533, 40, 15, 15, __UI_GetID("EditRowsDialog"))
-    SetCaption __UI_NewID, "Each line of the table becomes a row of the frame's property grid. Click a cell twice, or press Enter or F2, to edit it. Shift or dragging selects several rows to delete or move."
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "RowsDescriptionLB", 533, 46, 15, 12, __UI_GetID("EditRowsDialog"))
+    SetCaption __UI_NewID, "Each line becomes a row of the frame's property grid, shown in the preview as you go. Click a cell twice, or press Enter or F2, to edit it. Shift or dragging selects rows; Ctrl+Z undoes."
     Control(__UI_NewID).WordWrap = True
     Control(__UI_NewID).VAlign = __UI_Middle
 

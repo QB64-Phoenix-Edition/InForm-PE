@@ -129,6 +129,10 @@ DIM SHARED RowsFirstBT AS LONG, RowsPrevBT AS LONG, RowsPositionLB AS LONG, Rows
 DIM SHARED RowsAddBT AS LONG, RowsDeleteBT AS LONG, RowsUpBT AS LONG, RowsDownBT AS LONG
 DIM SHARED RowsHintLB AS LONG, RowsOKBT AS LONG, RowsCancelBT AS LONG, RowsGrid AS LONG
 DIM SHARED RowsDialogOpen AS _BYTE
+DIM SHARED RowsFrameName$ ' the frame whose rows are being edited
+DIM SHARED RowsOriginal$, RowsShown$ ' its rows when the dialog opened, and as the preview shows them now
+REDIM SHARED RowsHistory(0) AS STRING ' the table after each change, for undo (see RowsSnapshot$)
+DIM SHARED RowsHistoryPos AS LONG, RowsHistoryCount AS LONG
 
 'Set binding dialog
 DIM SHARED SourceControlLB AS LONG
@@ -638,12 +642,15 @@ SUB __UI_Click (id AS LONG)
             RowsAdd
         CASE RowsDeleteBT
             DataGrid_RemoveSelection RowsGrid
+            RowsChanged
             __UI_Focus = RowsGrid
         CASE RowsUpBT
             DataGrid_MoveSelection RowsGrid, -1
+            RowsChanged
             __UI_Focus = RowsGrid
         CASE RowsDownBT
             DataGrid_MoveSelection RowsGrid, 1
+            RowsChanged
             __UI_Focus = RowsGrid
         CASE CloseZOrderingBT
             Caption(StatusBar) = "Ready."
@@ -1477,6 +1484,9 @@ SUB __UI_BeforeUpdateDisplay
                 END IF
             CASE "SHOWBINDCONTROLDIALOG"
                 __UI_Click EditMenuBindControls
+            CASE "SHOWROWSDIALOG"
+                'A frame with property grid rows was double-clicked in the preview
+                IF NOT RowsDialogOpen AND NOT ZOrderingDialogOpen AND NOT SetBindingDialogOpen THEN OpenRowsDialog
             CASE "ORIGINALIMAGEWIDTH"
                 OriginalImageWidth = CVI(thisData$)
             CASE "ORIGINALIMAGEHEIGHT"
@@ -1506,7 +1516,12 @@ SUB __UI_BeforeUpdateDisplay
                 ELSE
                     Edited = True
                     IF __UI_Focus > 0 THEN
-                        IF PropertySent THEN PropertySent = False ELSE LoseFocus
+                        'The rows dialog changes the preview as the user types: it keeps its focus
+                        IF PropertySent THEN
+                            PropertySent = False
+                        ELSEIF NOT RowsDialogOpen THEN
+                            LoseFocus
+                        END IF
                     END IF
                 END IF
             CASE "UNDOPOINTER"
@@ -1629,7 +1644,14 @@ SUB __UI_BeforeUpdateDisplay
     IF UndoPointer < TotalUndoImages THEN Control(EditMenuRedo).Disabled = False
 
     IF RowsDialogOpen THEN
-        'Undo/redo would change the form behind the dialog
+        'Undo/redo change the table, not the form behind the dialog (a cell being edited keeps the keys)
+        IF __UI_CtrlIsDown AND NOT DataGrid_IsEditing(RowsGrid) THEN
+            IF __UI_KeyHit = ASC("z") OR __UI_KeyHit = ASC("Z") THEN
+                RowsUndo -1
+            ELSEIF __UI_KeyHit = ASC("y") OR __UI_KeyHit = ASC("Y") THEN
+                RowsUndo 1
+            END IF
+        END IF
     ELSEIF (__UI_KeyHit = ASC("z") OR __UI_KeyHit = ASC("Z")) AND __UI_CtrlIsDown THEN
         SendSignal 214
     ELSEIF (__UI_KeyHit = ASC("y") OR __UI_KeyHit = ASC("Y")) AND __UI_CtrlIsDown THEN
@@ -2683,7 +2705,10 @@ SUB __UI_KeyPress (id AS LONG)
             IF __UI_KeyHit = 27 THEN CloseRowsDialog
             'Delete clears a cell; with several rows selected, it removes them
             IF id = RowsGrid AND __UI_KeyHit = 21248 THEN
-                IF DataGrid_SelectionLast(RowsGrid) > DataGrid_SelectionFirst(RowsGrid) THEN DataGrid_RemoveSelection RowsGrid
+                IF DataGrid_SelectionLast(RowsGrid) > DataGrid_SelectionFirst(RowsGrid) THEN
+                    DataGrid_RemoveSelection RowsGrid
+                    RowsChanged
+                END IF
             END IF
         CASE NameTB, CaptionTB, TextTB, MaskTB, TopTB, LeftTB, WidthTB, HeightTB, FontTB, TooltipTB, ValueTB, MinTB, MaxTB, IntervalTB, PaddingTB, MinIntervalTB, SizeTB
             'Enter and Esc were already handled by the property grid
@@ -2795,6 +2820,9 @@ SUB __UI_ValueChanged (id AS LONG)
     SELECT EVERYCASE id
         CASE ControlProperties, ControlToggles
             SendPropertyEdit id
+        CASE RowsGrid
+            'A cell was changed (column 0 means another cell became current)
+            IF DataGrid_ChangedColumn(RowsGrid) > 0 THEN RowsChanged
         CASE AlignOptions
             IF __UI_Focus <> id THEN EXIT SUB
             b$ = MKI$(Control(AlignOptions).Value - 1)
@@ -3454,12 +3482,22 @@ SUB OpenRowsDialog
     LOOP
     IF DataGrid_RowCount(RowsGrid) > 0 THEN DataGrid_Select RowsGrid, 1, 1
 
+    'Changes show in the preview as they're made; the rows as they were are put back when the dialog closes
+    RowsFrameName$ = RTRIM$(__UI_TrimAt0$(PreviewControls(FirstSelected).Name))
+    RowsOriginal$ = PreviewTexts(FirstSelected)
+    RowsShown$ = RowsOriginal$
+    RowsHistoryCount = 1
+    RowsHistoryPos = 1
+    REDIM RowsHistory(1 TO 16) AS STRING
+    RowsHistory(1) = RowsSnapshot$
+
     Caption(EditRowsDialog) = "Property grid rows: " + RTRIM$(__UI_TrimAt0$(PreviewControls(FirstSelected).Name))
     Control(DialogBG).Left = 0: Control(DialogBG).Top = 0
     Control(EditRowsDialog).Left = 18: Control(EditRowsDialog).Top = 70
     Control(RowsGrid).Left = Control(EditRowsDialog).Left + 15
     Control(RowsGrid).Top = Control(EditRowsDialog).Top + 62
     RowsDialogOpen = True
+    Send Client, "LOCKINPUT>" + MKI$(True) + "<END>" 'no editing in the preview while the dialog is open
     __UI_Focus = RowsGrid
     UpdateRowsDialog
     Caption(StatusBar) = "Editing property grid rows"
@@ -3470,7 +3508,12 @@ END SUB
 SUB CloseRowsDialog
     IF NOT RowsDialogOpen THEN EXIT SUB
     RowsDialogOpen = False
+    Send Client, "LOCKINPUT>" + MKI$(False) + "<END>"
     IF DataGrid_IsEditing(RowsGrid) THEN DataGrid_StopEditing RowsGrid
+    IF RowsShown$ <> RowsOriginal$ THEN ShowRowsInPreview RowsOriginal$
+    REDIM RowsHistory(0) AS STRING
+    RowsHistoryCount = 0
+    RowsHistoryPos = 0
     Control(DialogBG).Left = -600: Control(DialogBG).Top = -600
     Control(EditRowsDialog).Left = -600: Control(EditRowsDialog).Top = -600
     Control(RowsGrid).Left = -600: Control(RowsGrid).Top = -600
@@ -3481,15 +3524,13 @@ END SUB
 
 ''' @brief Writes the table back to the frame's Text (an edit that can be undone) and closes the dialog.
 SUB ApplyRowsDialog
-    DIM r AS LONG, k$, Kind$, Label$, Extra$, t$, Keys$, Row$
+    DIM r AS LONG, k$, Label$, t$, Keys$
 
     DataGrid_StopEditing RowsGrid
     Keys$ = CHR$(10)
     FOR r = 1 TO DataGrid_RowCount(RowsGrid)
         k$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 1))
-        Kind$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 2))
         Label$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 3))
-        Extra$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 4))
         IF LEN(k$) = 0 AND LEN(Label$) = 0 THEN _CONTINUE 'blank rows are left out
         IF LEN(k$) = 0 THEN k$ = Label$
 
@@ -3506,17 +3547,100 @@ SUB ApplyRowsDialog
             EXIT SUB
         END IF
         Keys$ = Keys$ + LCASE$(k$) + CHR$(10)
+    NEXT
 
+    'The preview gets its rows back as they were, then the new ones as a property: one step to undo
+    t$ = RowsTableText$
+    CloseRowsDialog
+    IF t$ <> RowsOriginal$ THEN
+        SendData MKL$(LEN(t$)) + t$, 3
+        PropertySent = True
+    END IF
+END SUB
+
+''' @brief The table as a frame's rows: key|kind|label|items, one per line. Blank rows are left out.
+FUNCTION RowsTableText$
+    DIM r AS LONG, k$, Kind$, Label$, Extra$, t$, Row$
+    FOR r = 1 TO DataGrid_RowCount(RowsGrid)
+        k$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 1))
+        Kind$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 2))
+        Label$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 3))
+        Extra$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 4))
+        IF LEN(k$) = 0 AND LEN(Label$) = 0 THEN _CONTINUE
+        IF LEN(k$) = 0 THEN k$ = Label$
         Row$ = k$ + "|" + Kind$ + "|" + Label$
         IF LEN(Extra$) THEN Row$ = Row$ + "|" + Extra$
         IF LEN(t$) THEN t$ = t$ + CHR$(10)
         t$ = t$ + Row$
     NEXT
+    RowsTableText$ = t$
+END FUNCTION
 
-    'Sent the way a property typed in the Control properties panel is
-    Text(TextTB) = Replace(t$, CHR$(10), "\n", False, 0)
-    PropertyGrid_Commit ControlProperties, "text"
-    CloseRowsDialog
+''' @brief Shows rows on the frame being edited, without an undo step (see ApplyRowsDialog).
+SUB ShowRowsInPreview (t$)
+    Send Client, "ROWSPREVIEW>" + MKL$(LEN(RowsFrameName$)) + RowsFrameName$ + t$ + "<END>"
+    RowsShown$ = t$
+END SUB
+
+''' @brief The table's cells, and the current cell, to go back to with undo.
+FUNCTION RowsSnapshot$
+    DIM r AS LONG, c AS LONG, s$
+    s$ = MKL$(DataGrid_Row(RowsGrid)) + MKL$(DataGrid_Column(RowsGrid))
+    FOR r = 1 TO DataGrid_RowCount(RowsGrid)
+        FOR c = 1 TO DataGrid_ColumnCount(RowsGrid)
+            s$ = s$ + DataGrid_Cell(RowsGrid, r, c) + CHR$(1)
+        NEXT
+        s$ = s$ + CHR$(2)
+    NEXT
+    RowsSnapshot$ = s$
+END FUNCTION
+
+''' @brief Called after every change to the table: keeps it for undo and shows it in the preview.
+SUB RowsChanged
+    DIM s$
+    IF NOT RowsDialogOpen THEN EXIT SUB
+    s$ = RowsSnapshot$
+    'Only the cells count: moving to another cell isn't a change
+    IF MID$(s$, 9) <> MID$(RowsHistory(RowsHistoryPos), 9) THEN
+        RowsHistoryPos = RowsHistoryPos + 1
+        IF RowsHistoryPos > UBOUND(RowsHistory) THEN REDIM _PRESERVE RowsHistory(1 TO RowsHistoryPos + 15) AS STRING
+        RowsHistoryCount = RowsHistoryPos 'what could be redone is gone
+    END IF
+    RowsHistory(RowsHistoryPos) = s$
+    IF RowsTableText$ <> RowsShown$ THEN ShowRowsInPreview RowsTableText$
+END SUB
+
+''' @brief Goes back (-1) or forward (1) through the changes made to the table.
+SUB RowsUndo (Direction AS LONG)
+    DIM s$, p AS LONG, r AS LONG, c AS LONG, Cells$, Row$, CurRow AS LONG, CurCol AS LONG
+
+    IF RowsHistoryPos + Direction < 1 OR RowsHistoryPos + Direction > RowsHistoryCount THEN EXIT SUB
+    'An undone change takes its place in view (the current cell is kept with it)
+    IF Direction < 0 THEN s$ = RowsHistory(RowsHistoryPos) ELSE s$ = RowsHistory(RowsHistoryPos + 1)
+    CurRow = CVL(LEFT$(s$, 4)): CurCol = CVL(MID$(s$, 5, 4))
+    RowsHistoryPos = RowsHistoryPos + Direction
+    s$ = RowsHistory(RowsHistoryPos)
+
+    DataGrid_Clear RowsGrid
+    Cells$ = MID$(s$, 9)
+    DO
+        p = INSTR(Cells$, CHR$(2))
+        IF p = 0 THEN EXIT DO
+        Row$ = LEFT$(Cells$, p - 1)
+        Cells$ = MID$(Cells$, p + 1)
+        r = DataGrid_AddRow(RowsGrid, "")
+        FOR c = 1 TO DataGrid_ColumnCount(RowsGrid)
+            p = INSTR(Row$, CHR$(1))
+            DataGrid_SetCell RowsGrid, r, c, LEFT$(Row$, p - 1)
+            Row$ = MID$(Row$, p + 1)
+        NEXT
+    LOOP
+    IF CurRow = 0 THEN CurRow = 1
+    IF CurCol = 0 THEN CurCol = 1
+    IF DataGrid_RowCount(RowsGrid) > 0 THEN DataGrid_Select RowsGrid, CurRow, CurCol
+
+    IF RowsTableText$ <> RowsShown$ THEN ShowRowsInPreview RowsTableText$
+    IF Direction < 0 THEN Caption(StatusBar) = "Undone." ELSE Caption(StatusBar) = "Redone."
 END SUB
 
 ''' @brief Makes a row current, keeping the column.
@@ -3541,6 +3665,7 @@ SUB RowsAdd
     LOOP WHILE Taken
     r = DataGrid_InsertRow(RowsGrid, DataGrid_Row(RowsGrid) + 1, k$ + "|text|Text")
     DataGrid_Select RowsGrid, r, 1
+    RowsChanged
     __UI_Focus = RowsGrid
     DataGrid_Edit RowsGrid
 END SUB

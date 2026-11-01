@@ -1387,6 +1387,14 @@ SUB __UI_EventDispatcher
         IF __UI_UnloadSignal THEN SYSTEM
     END IF
 
+    'Input locked: no clicks, keys or wheel reach the controls (the window can still be closed)
+    IF __UI_InputLocked THEN
+        __UI_KeyHit = 0
+        __UI_MouseWheel = 0
+        __UI_LastHoveringID = __UI_HoveringID
+        EXIT SUB
+    END IF
+
 
     'Hover actions
     IF __UI_LastHoveringID <> __UI_HoveringID OR __UI_HoveringID = __UI_ActiveDropdownList THEN
@@ -1967,8 +1975,9 @@ SUB __UI_EventDispatcher
                             END IF
                         ELSE
                             IF __UI_IsContainer(Control(__UI_FirstSelectedID).Type) AND (TIMER - __UI_LastMouseDownEvent < .5 AND (__UI_MouseTop = __UI_MouseDownTop AND __UI_MouseLeft = __UI_MouseDownLeft)) THEN
-                                'Select all controls inside a frame
-                                __UI_KeyPress 221
+                                'Double-click on a container: the designer selects the controls inside it
+                                '(or opens a frame's property grid rows)
+                                __UI_KeyPress 236
                             END IF
                         END IF
                     END IF
