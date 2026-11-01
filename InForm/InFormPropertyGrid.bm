@@ -140,21 +140,18 @@ SUB __UI_PGCommit (pgRow AS LONG)
     IF __UI_Focus = pgID THEN __UI_PGSelectAll pgID
 END SUB
 
-''' @brief Stacks a grid's shown rows, hides the others, and scrolls when they don't all fit.
-''' Rows scrolled out above the frame are moved far off it: out of sight and out of the mouse's reach,
-''' but still reachable with Tab (a row that gets focus is scrolled into view).
+''' @brief Stacks a grid's shown rows, hides the others, and scrolls (by pixels) when they don't all fit.
+''' Rows scrolled out of view are still reachable with Tab: a row that gets focus is scrolled into view.
 SUB __UI_PGLayout (pgGrid AS LONG)
-    CONST __UI_PG_OffView = -10000
-    DIM pgRow AS LONG, pgAtt AS LONG, pgI AS LONG, pgK AS LONG, pgCount AS LONG, pgStart AS LONG
-    DIM pgTop AS INTEGER, pgY AS INTEGER, pgAcc AS LONG, pgViewHeight AS LONG
+    DIM pgRow AS LONG, pgAtt AS LONG, pgI AS LONG, pgCount AS LONG
+    DIM pgTop AS LONG, pgY AS INTEGER, pgAcc AS LONG, pgViewHeight AS LONG, pgTotal AS LONG
     DIM frameID AS LONG, pgEditLeft AS INTEGER, pgEditWidth AS INTEGER, pgCtrl AS LONG, pgLabel AS LONG
-    DIM pgPrevScroll AS LONG
+    DIM pgPrevScroll AS LONG, pgScrolls AS _BYTE, pgRightLimit AS INTEGER
 
     frameID = __UI_PropertyGrids(pgGrid).FrameID
-    pgEditLeft = __UI_PropertyGrids(pgGrid).RowLeft + __UI_PropertyGrids(pgGrid).LabelWidth - 1
-    pgEditWidth = Control(frameID).Width - pgEditLeft - 7
     REDIM pgStackRow(1 TO __UI_TotalPropertyGridRows + 1) AS LONG, pgStepHeight(1 TO __UI_TotalPropertyGridRows + 1) AS LONG
 
+    'Shown rows, and the room each takes
     FOR pgRow = 1 TO __UI_TotalPropertyGridRows
         IF __UI_PropertyGridRows(pgRow).Grid <> pgGrid THEN _CONTINUE
         pgCtrl = __UI_PropertyGridRows(pgRow).ControlID
@@ -165,18 +162,6 @@ SUB __UI_PGLayout (pgGrid AS LONG)
         FOR pgAtt = 1 TO __UI_TotalPropertyGridAttached
             IF __UI_PropertyGridAttachedRow(pgAtt) = pgRow THEN Control(__UI_PropertyGridAttachedID(pgAtt)).Hidden = NOT __UI_PropertyGridRows(pgRow).Shown
         NEXT
-
-        IF __UI_PropertyGridRows(pgRow).Owned THEN
-            IF pgLabel > 0 THEN
-                Control(pgLabel).Left = __UI_PropertyGrids(pgGrid).RowLeft
-                Control(pgLabel).Width = __UI_PropertyGrids(pgGrid).LabelWidth
-                Control(pgCtrl).Left = pgEditLeft
-                Control(pgCtrl).Width = pgEditWidth
-            ELSE
-                Control(pgCtrl).Left = __UI_PropertyGrids(pgGrid).RowLeft
-                Control(pgCtrl).Width = pgEditLeft + pgEditWidth - __UI_PropertyGrids(pgGrid).RowLeft
-            END IF
-        END IF
 
         IF __UI_PropertyGridRows(pgRow).Shown _ANDALSO NOT __UI_PropertyGridRows(pgRow).Floating THEN
             pgCount = pgCount + 1
@@ -189,52 +174,68 @@ SUB __UI_PGLayout (pgGrid AS LONG)
         END IF
     NEXT
 
-    'How many rows can be scrolled out: enough for the last ones to fill the frame
+    'How far the rows can scroll: until the last one shows at the bottom
     pgViewHeight = Control(frameID).Height - __UI_PropertyGrids(pgGrid).FirstTop - 4
-    pgAcc = 0
-    pgStart = pgCount
-    DO WHILE pgStart >= 1
-        IF pgAcc + pgStepHeight(pgStart) > pgViewHeight THEN EXIT DO
-        pgAcc = pgAcc + pgStepHeight(pgStart)
-        pgStart = pgStart - 1
-    LOOP
-    __UI_PropertyGrids(pgGrid).MaxScroll = pgStart
-    __UI_PropertyGrids(pgGrid).StackCount = pgCount
+    FOR pgI = 1 TO pgCount
+        pgTotal = pgTotal + pgStepHeight(pgI)
+    NEXT
+    __UI_PropertyGrids(pgGrid).ViewHeight = pgViewHeight
+    __UI_PropertyGrids(pgGrid).MaxScrollY = pgTotal - pgViewHeight
+    IF __UI_PropertyGrids(pgGrid).MaxScrollY < 0 THEN __UI_PropertyGrids(pgGrid).MaxScrollY = 0
+    pgScrolls = __UI_PropertyGrids(pgGrid).MaxScrollY > 0
 
-    pgPrevScroll = __UI_PropertyGrids(pgGrid).ScrollRow
+    pgPrevScroll = __UI_PropertyGrids(pgGrid).ScrollY
     IF __UI_PropertyGrids(pgGrid).EnsureRow > 0 THEN
+        'Scroll just enough for the whole row to show
+        pgAcc = 0
         FOR pgI = 1 TO pgCount
             IF pgStackRow(pgI) = __UI_PropertyGrids(pgGrid).EnsureRow THEN EXIT FOR
+            pgAcc = pgAcc + pgStepHeight(pgI)
         NEXT
         IF pgI <= pgCount THEN
-            IF pgI <= __UI_PropertyGrids(pgGrid).ScrollRow THEN
-                __UI_PropertyGrids(pgGrid).ScrollRow = pgI - 1
-            ELSE
-                DO
-                    pgAcc = 0
-                    FOR pgK = __UI_PropertyGrids(pgGrid).ScrollRow + 1 TO pgI
-                        pgAcc = pgAcc + pgStepHeight(pgK)
-                    NEXT
-                    IF pgAcc <= pgViewHeight _ORELSE __UI_PropertyGrids(pgGrid).ScrollRow >= pgI - 1 THEN EXIT DO
-                    __UI_PropertyGrids(pgGrid).ScrollRow = __UI_PropertyGrids(pgGrid).ScrollRow + 1
-                LOOP
+            IF pgAcc < __UI_PropertyGrids(pgGrid).ScrollY THEN
+                __UI_PropertyGrids(pgGrid).ScrollY = pgAcc
+            ELSEIF pgAcc + pgStepHeight(pgI) > __UI_PropertyGrids(pgGrid).ScrollY + pgViewHeight THEN
+                __UI_PropertyGrids(pgGrid).ScrollY = pgAcc + pgStepHeight(pgI) - pgViewHeight
             END IF
         END IF
         __UI_PropertyGrids(pgGrid).EnsureRow = 0
     END IF
-    IF __UI_PropertyGrids(pgGrid).ScrollRow > __UI_PropertyGrids(pgGrid).MaxScroll THEN __UI_PropertyGrids(pgGrid).ScrollRow = __UI_PropertyGrids(pgGrid).MaxScroll
-    IF __UI_PropertyGrids(pgGrid).ScrollRow < 0 THEN __UI_PropertyGrids(pgGrid).ScrollRow = 0
-    IF __UI_PropertyGrids(pgGrid).ScrollRow <> pgPrevScroll THEN Control(frameID).Redraw = _TRUE
+    IF __UI_PropertyGrids(pgGrid).ScrollY > __UI_PropertyGrids(pgGrid).MaxScrollY THEN __UI_PropertyGrids(pgGrid).ScrollY = __UI_PropertyGrids(pgGrid).MaxScrollY
+    IF __UI_PropertyGrids(pgGrid).ScrollY < 0 THEN __UI_PropertyGrids(pgGrid).ScrollY = 0
+    IF __UI_PropertyGrids(pgGrid).ScrollY <> pgPrevScroll THEN Control(frameID).Redraw = _TRUE
 
-    pgTop = __UI_PropertyGrids(pgGrid).FirstTop
+    'Widths: rows end before the scrollbar when there is one
+    __UI_PropertyGrids(pgGrid).SbLeft = Control(frameID).Width - __UI_ScrollbarWidth - 2
+    IF pgScrolls THEN pgRightLimit = __UI_PropertyGrids(pgGrid).SbLeft - 3 ELSE pgRightLimit = Control(frameID).Width - 7
+    pgEditLeft = __UI_PropertyGrids(pgGrid).RowLeft + __UI_PropertyGrids(pgGrid).LabelWidth - 1
+    pgEditWidth = pgRightLimit - pgEditLeft
+    FOR pgRow = 1 TO __UI_TotalPropertyGridRows
+        IF __UI_PropertyGridRows(pgRow).Grid <> pgGrid THEN _CONTINUE
+        pgCtrl = __UI_PropertyGridRows(pgRow).ControlID
+        pgLabel = __UI_PropertyGridRows(pgRow).LabelID
+        IF pgCtrl = 0 THEN _CONTINUE
+        IF __UI_PropertyGridRows(pgRow).Owned THEN
+            IF pgLabel > 0 THEN
+                Control(pgLabel).Left = __UI_PropertyGrids(pgGrid).RowLeft
+                Control(pgLabel).Width = __UI_PropertyGrids(pgGrid).LabelWidth
+                Control(pgCtrl).Left = pgEditLeft
+                Control(pgCtrl).Width = pgEditWidth
+            ELSE
+                Control(pgCtrl).Left = __UI_PropertyGrids(pgGrid).RowLeft
+                Control(pgCtrl).Width = pgRightLimit - __UI_PropertyGrids(pgGrid).RowLeft
+            END IF
+        ELSE
+            __UI_PGMakeRoom pgRow, pgScrolls _ANDALSO NOT __UI_PropertyGridRows(pgRow).Floating, pgRightLimit
+        END IF
+    NEXT
+
+    'Rows above or below the view are out of the frame's area: hidden by it, and out of the mouse's reach
+    pgTop = __UI_PropertyGrids(pgGrid).FirstTop - __UI_PropertyGrids(pgGrid).ScrollY
     FOR pgI = 1 TO pgCount
         pgRow = pgStackRow(pgI)
-        IF pgI <= __UI_PropertyGrids(pgGrid).ScrollRow THEN
-            pgY = __UI_PG_OffView
-        ELSE
-            pgY = pgTop
-            pgTop = pgTop + pgStepHeight(pgI)
-        END IF
+        pgY = pgTop
+        pgTop = pgTop + pgStepHeight(pgI)
         IF __UI_PropertyGridRows(pgRow).ControlID > 0 THEN Control(__UI_PropertyGridRows(pgRow).ControlID).Top = pgY
         IF __UI_PropertyGridRows(pgRow).LabelID > 0 THEN Control(__UI_PropertyGridRows(pgRow).LabelID).Top = pgY
         FOR pgAtt = 1 TO __UI_TotalPropertyGridAttached
@@ -243,14 +244,65 @@ SUB __UI_PGLayout (pgGrid AS LONG)
     NEXT
     __UI_PropertyGrids(pgGrid).NextTop = pgTop
 
-    'Scrollbar: a thin strip along the frame's right edge
-    __UI_PropertyGrids(pgGrid).TrackTop = __UI_PropertyGrids(pgGrid).FirstTop
-    __UI_PropertyGrids(pgGrid).TrackHeight = pgViewHeight
-    IF __UI_PropertyGrids(pgGrid).MaxScroll > 0 THEN
-        __UI_PropertyGrids(pgGrid).ThumbHeight = pgViewHeight * (pgCount - __UI_PropertyGrids(pgGrid).MaxScroll) \ pgCount
-        IF __UI_PropertyGrids(pgGrid).ThumbHeight < 16 THEN __UI_PropertyGrids(pgGrid).ThumbHeight = 16
-        __UI_PropertyGrids(pgGrid).ThumbTop = __UI_PropertyGrids(pgGrid).TrackTop + (pgViewHeight - __UI_PropertyGrids(pgGrid).ThumbHeight) * __UI_PropertyGrids(pgGrid).ScrollRow \ __UI_PropertyGrids(pgGrid).MaxScroll
+    'Scrollbar parts, measured the way __UI_DrawVScrollBar draws them
+    __UI_PropertyGrids(pgGrid).SbTop = __UI_PropertyGrids(pgGrid).FirstTop - 1
+    __UI_PropertyGrids(pgGrid).SbHeight = Control(frameID).Height - __UI_PropertyGrids(pgGrid).SbTop - 3
+    __UI_PropertyGrids(pgGrid).TrackTop = __UI_PropertyGrids(pgGrid).SbTop + __UI_ScrollbarButtonHeight
+    __UI_PropertyGrids(pgGrid).TrackHeight = __UI_PropertyGrids(pgGrid).SbHeight - __UI_ScrollbarButtonHeight * 2 - 1
+    IF pgScrolls THEN
+        __UI_PropertyGrids(pgGrid).ThumbHeight = __UI_PropertyGrids(pgGrid).TrackHeight * pgViewHeight / pgTotal
+        IF __UI_PropertyGrids(pgGrid).ThumbHeight < 22 THEN __UI_PropertyGrids(pgGrid).ThumbHeight = 22
+        IF __UI_PropertyGrids(pgGrid).ThumbHeight > __UI_PropertyGrids(pgGrid).TrackHeight THEN __UI_PropertyGrids(pgGrid).ThumbHeight = __UI_PropertyGrids(pgGrid).TrackHeight
+        __UI_PropertyGrids(pgGrid).ThumbTop = __UI_PropertyGrids(pgGrid).TrackTop + (__UI_PropertyGrids(pgGrid).TrackHeight - __UI_PropertyGrids(pgGrid).ThumbHeight) * (__UI_PropertyGrids(pgGrid).ScrollY / __UI_PropertyGrids(pgGrid).MaxScrollY)
     END IF
+END SUB
+
+''' @brief Narrows an adopted row (and slides the controls attached to its right) so it ends before the scrollbar,
+''' or puts it back as it was when there is no scrollbar.
+SUB __UI_PGMakeRoom (pgRow AS LONG, pgNeedRoom AS _BYTE, pgRightLimit AS INTEGER)
+    DIM pgCtrl AS LONG, pgAtt AS LONG, pgID AS LONG, pgRight AS INTEGER, pgOver AS INTEGER
+
+    pgCtrl = __UI_PropertyGridRows(pgRow).ControlID
+
+    'Undo the last change first, so it's always measured from how the program left the controls
+    IF __UI_PropertyGridRows(pgRow).ShrunkBy THEN
+        Control(pgCtrl).Width = Control(pgCtrl).Width + __UI_PropertyGridRows(pgRow).ShrunkBy
+        Control(pgCtrl).Redraw = _TRUE
+        __UI_PropertyGridRows(pgRow).ShrunkBy = 0
+    END IF
+    FOR pgAtt = 1 TO __UI_TotalPropertyGridAttached
+        IF __UI_PropertyGridAttachedRow(pgAtt) = pgRow _ANDALSO __UI_PropertyGridAttachedShift(pgAtt) THEN
+            pgID = __UI_PropertyGridAttachedID(pgAtt)
+            Control(pgID).Left = Control(pgID).Left + __UI_PropertyGridAttachedShift(pgAtt)
+            __UI_PropertyGridAttachedShift(pgAtt) = 0
+        END IF
+    NEXT
+    IF NOT pgNeedRoom THEN EXIT SUB
+
+    'How far the row (with what's attached to the right of its control) reaches past the limit
+    pgRight = Control(pgCtrl).Left + Control(pgCtrl).Width
+    FOR pgAtt = 1 TO __UI_TotalPropertyGridAttached
+        IF __UI_PropertyGridAttachedRow(pgAtt) = pgRow THEN
+            pgID = __UI_PropertyGridAttachedID(pgAtt)
+            IF Control(pgID).Left >= Control(pgCtrl).Left _ANDALSO Control(pgID).Left + Control(pgID).Width > pgRight THEN pgRight = Control(pgID).Left + Control(pgID).Width
+        END IF
+    NEXT
+    pgOver = pgRight - pgRightLimit
+    IF pgOver > Control(pgCtrl).Width - 20 THEN pgOver = Control(pgCtrl).Width - 20
+    IF pgOver <= 0 THEN EXIT SUB
+
+    Control(pgCtrl).Width = Control(pgCtrl).Width - pgOver
+    Control(pgCtrl).Redraw = _TRUE
+    __UI_PropertyGridRows(pgRow).ShrunkBy = pgOver
+    FOR pgAtt = 1 TO __UI_TotalPropertyGridAttached
+        IF __UI_PropertyGridAttachedRow(pgAtt) = pgRow THEN
+            pgID = __UI_PropertyGridAttachedID(pgAtt)
+            IF Control(pgID).Left > Control(pgCtrl).Left THEN
+                Control(pgID).Left = Control(pgID).Left - pgOver
+                __UI_PropertyGridAttachedShift(pgAtt) = pgOver
+            END IF
+        END IF
+    NEXT
 END SUB
 
 ''' @brief Called by the mouse wheel handler: scrolls the grid under the mouse. Returns _TRUE if it did.
@@ -262,52 +314,144 @@ FUNCTION __UI_PropertyGridWheel%% (hoverID AS LONG, pgWheel AS LONG)
     pgGrid = __UI_PGFind(hoverID)
     IF pgGrid = 0 THEN pgGrid = __UI_PGFind(PropertyGrid_GridOf(hoverID))
     IF pgGrid = 0 THEN EXIT FUNCTION
-    IF __UI_PropertyGrids(pgGrid).MaxScroll = 0 THEN EXIT FUNCTION
-    __UI_PropertyGrids(pgGrid).ScrollRow = __UI_PropertyGrids(pgGrid).ScrollRow + pgWheel
+    IF __UI_PropertyGrids(pgGrid).MaxScrollY = 0 THEN EXIT FUNCTION
+    __UI_PropertyGrids(pgGrid).ScrollY = __UI_PropertyGrids(pgGrid).ScrollY + pgWheel * __UI_PropertyGrids(pgGrid).RowSpacing
     __UI_PGLayout pgGrid
     __UI_PropertyGridWheel = _TRUE
 END FUNCTION
 
-''' @brief Lets the scrollbar's thumb be dragged (or the track be clicked) with the mouse.
-SUB __UI_PGScrollbarMouse (pgGrid AS LONG)
-    DIM frameID AS LONG, pgMouseX AS LONG, pgMouseY AS LONG, pgRoom AS LONG, pgWasDragging AS _BYTE
-
-    frameID = __UI_PropertyGrids(pgGrid).FrameID
-    pgWasDragging = __UI_PropertyGrids(pgGrid).Dragging
-    IF __UI_PropertyGrids(pgGrid).MaxScroll = 0 _ORELSE NOT __UI_MouseIsDown THEN
-        __UI_PropertyGrids(pgGrid).Dragging = _FALSE
-    ELSE
-        pgMouseX = __UI_MouseLeft - Control(frameID).Left
-        pgMouseY = __UI_MouseTop - Control(frameID).Top
-        IF NOT __UI_PropertyGrids(pgGrid).Dragging _ANDALSO __UI_MouseDownOnID = frameID _ANDALSO pgMouseX >= Control(frameID).Width - 9 THEN __UI_PropertyGrids(pgGrid).Dragging = _TRUE
-        IF __UI_PropertyGrids(pgGrid).Dragging THEN
-            'The thumb's middle follows the mouse
-            pgRoom = __UI_PropertyGrids(pgGrid).TrackHeight - __UI_PropertyGrids(pgGrid).ThumbHeight
-            IF pgRoom > 0 THEN
-                __UI_PropertyGrids(pgGrid).ScrollRow = _ROUND((pgMouseY - __UI_PropertyGrids(pgGrid).TrackTop - __UI_PropertyGrids(pgGrid).ThumbHeight / 2) * __UI_PropertyGrids(pgGrid).MaxScroll / pgRoom)
-            END IF
-        END IF
-    END IF
-    IF pgWasDragging <> __UI_PropertyGrids(pgGrid).Dragging THEN Control(frameID).Redraw = _TRUE
+''' @brief Scrolls for a click on a part of the scrollbar: a row for the arrow buttons, a page for the track.
+SUB __UI_PGScrollStep (pgGrid AS LONG, pgPart AS _BYTE)
+    DIM pgRowHeight AS LONG, pgPage AS LONG
+    pgRowHeight = __UI_PropertyGrids(pgGrid).RowSpacing
+    pgPage = __UI_PropertyGrids(pgGrid).ViewHeight - pgRowHeight 'a page keeps one row in view
+    IF pgPage < pgRowHeight THEN pgPage = pgRowHeight
+    SELECT CASE pgPart
+        CASE 1: __UI_PropertyGrids(pgGrid).ScrollY = __UI_PropertyGrids(pgGrid).ScrollY - pgRowHeight
+        CASE 2: __UI_PropertyGrids(pgGrid).ScrollY = __UI_PropertyGrids(pgGrid).ScrollY + pgRowHeight
+        CASE 4: __UI_PropertyGrids(pgGrid).ScrollY = __UI_PropertyGrids(pgGrid).ScrollY - pgPage
+        CASE 5: __UI_PropertyGrids(pgGrid).ScrollY = __UI_PropertyGrids(pgGrid).ScrollY + pgPage
+    END SELECT
 END SUB
 
-''' @brief Called by __UI_DrawContainer before a frame is drawn: puts the scrollbar on the frame's canvas.
+''' @brief Which part of a grid's scrollbar is at a point given in the frame's coordinates:
+''' 0 = none, 1 = up button, 2 = down button, 3 = thumb, 4 = track above it, 5 = track below it.
+FUNCTION __UI_PGScrollbarPart%% (pgGrid AS LONG, pgX AS LONG, pgY AS LONG)
+    IF __UI_PropertyGrids(pgGrid).MaxScrollY = 0 THEN EXIT FUNCTION
+    IF pgX < __UI_PropertyGrids(pgGrid).SbLeft _ORELSE pgX >= __UI_PropertyGrids(pgGrid).SbLeft + __UI_ScrollbarWidth THEN EXIT FUNCTION
+    IF pgY < __UI_PropertyGrids(pgGrid).SbTop _ORELSE pgY >= __UI_PropertyGrids(pgGrid).SbTop + __UI_PropertyGrids(pgGrid).SbHeight THEN EXIT FUNCTION
+    IF pgY < __UI_PropertyGrids(pgGrid).TrackTop THEN
+        __UI_PGScrollbarPart = 1
+    ELSEIF pgY >= __UI_PropertyGrids(pgGrid).SbTop + __UI_PropertyGrids(pgGrid).SbHeight - __UI_ScrollbarButtonHeight - 1 THEN
+        __UI_PGScrollbarPart = 2
+    ELSEIF pgY >= __UI_PropertyGrids(pgGrid).ThumbTop _ANDALSO pgY < __UI_PropertyGrids(pgGrid).ThumbTop + __UI_PropertyGrids(pgGrid).ThumbHeight THEN
+        __UI_PGScrollbarPart = 3
+    ELSEIF pgY < __UI_PropertyGrids(pgGrid).ThumbTop THEN
+        __UI_PGScrollbarPart = 4
+    ELSE
+        __UI_PGScrollbarPart = 5
+    END IF
+END FUNCTION
+
+''' @brief Called by the event dispatcher as soon as the mouse button goes down (so a press that turns
+''' into a drag right away isn't missed): starts scrolling if it went down on a grid's scrollbar.
+SUB __UI_PropertyGridMouseDown
+    DIM pgGrid AS LONG, frameID AS LONG, pgPart AS _BYTE, pgMouseY AS LONG
+
+    IF __UI_TotalPropertyGrids = 0 _ORELSE __UI_MouseDownOnID <= 0 THEN EXIT SUB
+    pgGrid = __UI_PGFind(__UI_MouseDownOnID)
+    IF pgGrid = 0 THEN EXIT SUB
+    frameID = __UI_PropertyGrids(pgGrid).FrameID
+    pgMouseY = __UI_MouseTop - Control(frameID).Top
+    pgPart = __UI_PGScrollbarPart(pgGrid, __UI_MouseLeft - Control(frameID).Left, pgMouseY)
+    IF pgPart = 0 THEN EXIT SUB
+
+    __UI_PropertyGrids(pgGrid).PressPart = pgPart
+    __UI_PropertyGrids(pgGrid).HoverPart = pgPart
+    IF pgPart = 3 THEN
+        __UI_PropertyGrids(pgGrid).Dragging = _TRUE
+        __UI_PropertyGrids(pgGrid).GrabOffset = pgMouseY - __UI_PropertyGrids(pgGrid).ThumbTop
+    ELSE
+        __UI_PGScrollStep pgGrid, pgPart
+        __UI_PGLayout pgGrid
+        __UI_PropertyGrids(pgGrid).RepeatTime = TIMER + .35
+    END IF
+    Control(frameID).Redraw = _TRUE
+END SUB
+
+''' @brief Called on every screen update: the thumb follows the mouse from where it was grabbed, and arrow
+''' buttons and the track repeat while held, like a list box's. Presses start in __UI_PropertyGridMouseDown.
+SUB __UI_PGScrollbarMouse (pgGrid AS LONG)
+    DIM frameID AS LONG, pgMouseY AS LONG, pgRoom AS LONG, pgPart AS _BYTE
+    DIM pgPrevHover AS _BYTE, pgPrevPress AS _BYTE
+
+    frameID = __UI_PropertyGrids(pgGrid).FrameID
+    pgPrevHover = __UI_PropertyGrids(pgGrid).HoverPart
+    pgPrevPress = __UI_PropertyGrids(pgGrid).PressPart
+
+    IF __UI_PropertyGrids(pgGrid).MaxScrollY = 0 _ORELSE NOT __UI_MouseIsDown THEN
+        __UI_PropertyGrids(pgGrid).PressPart = 0
+        __UI_PropertyGrids(pgGrid).Dragging = _FALSE
+    END IF
+
+    'The part under the mouse (only when nothing else is, unless a part is being held)
+    pgMouseY = __UI_MouseTop - Control(frameID).Top
+    IF __UI_HoveringID = frameID _ORELSE __UI_PropertyGrids(pgGrid).PressPart > 0 THEN
+        pgPart = __UI_PGScrollbarPart(pgGrid, __UI_MouseLeft - Control(frameID).Left, pgMouseY)
+    END IF
+    __UI_PropertyGrids(pgGrid).HoverPart = pgPart
+
+    IF __UI_PropertyGrids(pgGrid).Dragging THEN
+        pgRoom = __UI_PropertyGrids(pgGrid).TrackHeight - __UI_PropertyGrids(pgGrid).ThumbHeight
+        IF pgRoom > 0 THEN
+            'The thumb follows the mouse pixel by pixel
+            __UI_PropertyGrids(pgGrid).ScrollY = (pgMouseY - __UI_PropertyGrids(pgGrid).GrabOffset - __UI_PropertyGrids(pgGrid).TrackTop) * __UI_PropertyGrids(pgGrid).MaxScrollY / pgRoom
+        END IF
+        'Keep the thumb looking grabbed wherever the mouse goes
+        __UI_PropertyGrids(pgGrid).HoverPart = 3
+    ELSEIF __UI_PropertyGrids(pgGrid).PressPart > 0 _ANDALSO pgPart = __UI_PropertyGrids(pgGrid).PressPart _ANDALSO TIMER >= __UI_PropertyGrids(pgGrid).RepeatTime THEN
+        'Held down: keep scrolling (the track stops once the thumb reaches the mouse)
+        __UI_PGScrollStep pgGrid, pgPart
+        __UI_PropertyGrids(pgGrid).RepeatTime = TIMER + .05
+    END IF
+
+    IF pgPrevHover <> __UI_PropertyGrids(pgGrid).HoverPart _ORELSE pgPrevPress <> __UI_PropertyGrids(pgGrid).PressPart THEN Control(frameID).Redraw = _TRUE
+END SUB
+
+''' @brief Called by __UI_DrawContainer before a frame is drawn: puts the scrollbar on the frame's canvas,
+''' drawn by __UI_DrawVScrollBar like a list box's.
 SUB __UI_PropertyGridDrawScrollbar (frameID AS LONG)
-    DIM pgGrid AS LONG, pgPrevDest AS LONG, pgX AS INTEGER, pgColor AS _UNSIGNED LONG, pgAlpha AS LONG
+    DIM pgGrid AS LONG, pgPrevDest AS LONG, pgBar AS __UI_ControlTYPE, pgState AS _BYTE
 
     pgGrid = __UI_PGFind(frameID)
     IF pgGrid = 0 THEN EXIT SUB
-    IF __UI_PropertyGrids(pgGrid).MaxScroll = 0 _ORELSE Control(frameID).Canvas = 0 THEN EXIT SUB
+    IF __UI_PropertyGrids(pgGrid).MaxScrollY = 0 _ORELSE Control(frameID).Canvas = 0 _ORELSE Control(frameID).Font = 0 THEN EXIT SUB
+
+    pgBar = Control(frameID)
+    pgBar.Left = __UI_PropertyGrids(pgGrid).SbLeft
+    pgBar.Top = __UI_PropertyGrids(pgGrid).SbTop
+    pgBar.Width = __UI_ScrollbarWidth
+    pgBar.Height = __UI_PropertyGrids(pgGrid).SbHeight
+    pgBar.Min = 0
+    pgBar.Max = __UI_PropertyGrids(pgGrid).MaxScrollY
+    pgBar.Value = __UI_PropertyGrids(pgGrid).ScrollY
+    pgBar.LastVisibleItem = __UI_PropertyGrids(pgGrid).ViewHeight
+    pgBar.HoveringVScrollbarButton = __UI_PropertyGrids(pgGrid).HoverPart
+    pgState = 1
+    IF Control(frameID).Disabled THEN pgState = 4
 
     pgPrevDest = _DEST
     _DEST Control(frameID).Canvas
-    'Drawn in the frame's text color, so it suits light and dark themes
-    pgColor = Control(frameID).ForeColor
-    pgX = Control(frameID).Width - 7
-    LINE (pgX, __UI_PropertyGrids(pgGrid).TrackTop)-(pgX + 3, __UI_PropertyGrids(pgGrid).TrackTop + __UI_PropertyGrids(pgGrid).TrackHeight - 1), _RGBA32(_RED32(pgColor), _GREEN32(pgColor), _BLUE32(pgColor), 25), BF
-    pgAlpha = 110
-    IF __UI_PropertyGrids(pgGrid).Dragging THEN pgAlpha = 170
-    LINE (pgX, __UI_PropertyGrids(pgGrid).ThumbTop)-(pgX + 3, __UI_PropertyGrids(pgGrid).ThumbTop + __UI_PropertyGrids(pgGrid).ThumbHeight - 1), _RGBA32(_RED32(pgColor), _GREEN32(pgColor), _BLUE32(pgColor), pgAlpha), BF
+
+    'Rows scrolled partly out of view are cut off at the edges of the area rows show in
+    _DONTBLEND
+    LINE (0, 0)-(Control(frameID).Width - 1, __UI_PropertyGrids(pgGrid).FirstTop - 1), Control(frameID).BackColor, BF
+    LINE (0, __UI_PropertyGrids(pgGrid).FirstTop + __UI_PropertyGrids(pgGrid).ViewHeight)-(Control(frameID).Width - 1, Control(frameID).Height - 1), Control(frameID).BackColor, BF
+    _BLEND
+
+    __UI_PGThumbDragging = __UI_PropertyGrids(pgGrid).Dragging
+    __UI_DrawVScrollBar pgBar, pgState
+    __UI_PGThumbDragging = _FALSE
     _DEST pgPrevDest
 END SUB
 
@@ -417,6 +561,12 @@ SUB __UI_PropertyGridsUpdate
 
         __UI_PGScrollbarMouse pgGrid
         __UI_PGLayout pgGrid
+
+        'However it got scrolled (thumb, wheel, code), the frame has to draw itself again
+        IF __UI_PropertyGrids(pgGrid).ScrollY <> __UI_PropertyGrids(pgGrid).DrawnScrollY THEN
+            __UI_PropertyGrids(pgGrid).DrawnScrollY = __UI_PropertyGrids(pgGrid).ScrollY
+            Control(__UI_PropertyGrids(pgGrid).FrameID).Redraw = _TRUE
+        END IF
     NEXT
 END SUB
 
@@ -730,16 +880,26 @@ SUB PropertyGrid_AttachControl (frameID AS LONG, rowKey AS STRING, controlID AS 
     pgRow = __UI_PGRow(frameID, rowKey)
     IF pgRow = 0 _ORELSE controlID <= 0 THEN EXIT SUB
     FOR pgAtt = 1 TO __UI_TotalPropertyGridAttached
-        IF __UI_PropertyGridAttachedID(pgAtt) = controlID THEN __UI_PropertyGridAttachedRow(pgAtt) = pgRow: EXIT SUB
+        IF __UI_PropertyGridAttachedID(pgAtt) = controlID THEN
+            IF __UI_PropertyGridAttachedRow(pgAtt) <> pgRow THEN
+                'Moving to another row: put it back where the program had it first
+                Control(controlID).Left = Control(controlID).Left + __UI_PropertyGridAttachedShift(pgAtt)
+                __UI_PropertyGridAttachedShift(pgAtt) = 0
+                __UI_PropertyGridAttachedRow(pgAtt) = pgRow
+            END IF
+            EXIT SUB
+        END IF
     NEXT
     __UI_TotalPropertyGridAttached = __UI_TotalPropertyGridAttached + 1
     pgAtt = __UI_TotalPropertyGridAttached
     IF pgAtt > UBOUND(__UI_PropertyGridAttachedID) THEN
         REDIM _PRESERVE __UI_PropertyGridAttachedID(0 TO pgAtt + 7) AS LONG
         REDIM _PRESERVE __UI_PropertyGridAttachedRow(0 TO pgAtt + 7) AS LONG
+        REDIM _PRESERVE __UI_PropertyGridAttachedShift(0 TO pgAtt + 7) AS INTEGER
     END IF
     __UI_PropertyGridAttachedID(pgAtt) = controlID
     __UI_PropertyGridAttachedRow(pgAtt) = pgRow
+    __UI_PropertyGridAttachedShift(pgAtt) = 0
 END SUB
 
 ''' @brief Stops keeping a control on a row. The control stays where and as it is.
@@ -747,8 +907,11 @@ SUB PropertyGrid_DetachControl (controlID AS LONG)
     DIM pgAtt AS LONG
     FOR pgAtt = 1 TO __UI_TotalPropertyGridAttached
         IF __UI_PropertyGridAttachedID(pgAtt) = controlID THEN
+            'Put it back where the program had it, if it was moved to make room for the scrollbar
+            Control(controlID).Left = Control(controlID).Left + __UI_PropertyGridAttachedShift(pgAtt)
             __UI_PropertyGridAttachedID(pgAtt) = __UI_PropertyGridAttachedID(__UI_TotalPropertyGridAttached)
             __UI_PropertyGridAttachedRow(pgAtt) = __UI_PropertyGridAttachedRow(__UI_TotalPropertyGridAttached)
+            __UI_PropertyGridAttachedShift(pgAtt) = __UI_PropertyGridAttachedShift(__UI_TotalPropertyGridAttached)
             __UI_TotalPropertyGridAttached = __UI_TotalPropertyGridAttached - 1
             EXIT SUB
         END IF

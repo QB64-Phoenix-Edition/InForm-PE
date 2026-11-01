@@ -5,7 +5,7 @@ A **PropertyGrid** turns a frame into a list of rows, each with a label on the l
 The grid takes care of the parts that are tedious to write by hand:
 
 - Rows are stacked from the top of the frame. Hide a row and the ones below move up to close the gap.
-- When the rows don't fit, the grid scrolls: with the mouse wheel anywhere over it, by dragging the thin scrollbar on its right edge, or by tabbing to a row that's out of view.
+- When the rows don't fit, a scrollbar appears on the frame's right edge, the same as a list box's. Rows get narrower to make room for it, and controls you attached to the right of a row slide left. The grid then scrolls with the scrollbar's buttons, track and thumb, with the mouse wheel anywhere over the grid, or by tabbing to a row that's out of view.
 - In a text row, **Enter** (or leaving the box) commits what was typed and **Esc** puts back the row's value.
 - While a box has focus, its border turns **green** when the text is the row's value, and **red** when a value was entered but the row ended up with another one (for example, your code kept it in range).
 - Every change arrives in one place: `__UI_ValueChanged`, with the frame's ID.

@@ -32,15 +32,24 @@ TYPE __UI_PropertyGridTYPE
     FocusRow AS LONG ' row whose textbox had focus during the last update
     ChangedRow AS LONG ' row that last fired __UI_ValueChanged
     LastFocusID AS LONG ' __UI_Focus at the last update, to notice a row getting focus
-    ScrollRow AS LONG ' stacked rows scrolled out above the frame
-    MaxScroll AS LONG ' 0 when every row fits
-    StackCount AS LONG ' rows being stacked (shown and not floating)
+    ScrollY AS LONG ' pixels the rows are scrolled up by
+    DrawnScrollY AS LONG ' ScrollY when the frame was last redrawn (frames keep a picture of themselves)
+    MaxScrollY AS LONG ' 0 when every row fits
+    ViewHeight AS LONG ' height of the area rows show in
     EnsureRow AS LONG ' a row to bring into view at the next layout
-    Dragging AS _BYTE ' the scrollbar's thumb is being dragged
-    TrackTop AS INTEGER ' scrollbar, in the frame's coordinates
+    'Scrollbar (drawn by __UI_DrawVScrollBar), in the frame's coordinates
+    SbLeft AS INTEGER
+    SbTop AS INTEGER
+    SbHeight AS INTEGER
+    TrackTop AS INTEGER ' the part between the arrow buttons
     TrackHeight AS INTEGER
     ThumbTop AS INTEGER
     ThumbHeight AS INTEGER
+    HoverPart AS _BYTE ' part under the mouse: 1 = up button, 2 = down button, 3 = thumb, 4 = track above it, 5 = track below it
+    PressPart AS _BYTE ' part the mouse button went down on (0 = none)
+    Dragging AS _BYTE ' the thumb is being dragged
+    GrabOffset AS INTEGER ' where the thumb was grabbed, from its top
+    RepeatTime AS SINGLE ' when a held button or track scrolls again
 END TYPE
 
 TYPE __UI_PropertyGridRowTYPE
@@ -54,6 +63,7 @@ TYPE __UI_PropertyGridRowTYPE
     Dirty AS _BYTE ' the text was edited since the last commit
     CommitTime AS SINGLE
     LastValue AS _FLOAT ' choice and toggle rows: the control's value at the last update
+    ShrunkBy AS INTEGER ' adopted rows: how much narrower the control was made to leave room for the scrollbar
 END TYPE
 
 REDIM SHARED __UI_PropertyGrids(0) AS __UI_PropertyGridTYPE
@@ -63,5 +73,7 @@ REDIM SHARED __UI_PropertyGridValues(0) AS STRING
 REDIM SHARED __UI_PropertyGridSeen(0) AS STRING ' text of a focused row's textbox at the last update
 REDIM SHARED __UI_PropertyGridAttachedID(0) AS LONG
 REDIM SHARED __UI_PropertyGridAttachedRow(0) AS LONG
+REDIM SHARED __UI_PropertyGridAttachedShift(0) AS INTEGER ' how far left an attached control was moved for the scrollbar
+DIM SHARED __UI_PGThumbDragging AS _BYTE ' tells __UI_DrawVScrollBar a grid's thumb is being dragged
 DIM SHARED __UI_TotalPropertyGrids AS LONG, __UI_TotalPropertyGridRows AS LONG
 DIM SHARED __UI_TotalPropertyGridAttached AS LONG

@@ -1985,6 +1985,7 @@ SUB __UI_EventDispatcher
             END IF
             __UI_MouseIsDown = True
             __UI_MouseDownOnID = __UI_HoveringID
+            __UI_PropertyGridMouseDown
 
             IF __UI_DesignMode AND __UI_MouseDownOnID = __UI_FormID THEN
                 __UI_SelectionRectangle = True
@@ -8984,6 +8985,11 @@ SUB __UI_DrawVScrollBar (TempThis AS __UI_ControlTYPE, ControlState AS _BYTE)
 
     This = TempThis
 
+    'Whether the thumb is shown as being dragged (a property grid keeps track of its own)
+    DIM ThumbDragged AS _BYTE
+    ThumbDragged = __UI_DraggingThumb
+    IF This.Type = __UI_Type_Frame THEN ThumbDragged = __UI_PGThumbDragging
+
     _FONT This.Font
 
     DIM Visible AS LONG ' items or lines shown at once
@@ -9005,6 +9011,10 @@ SUB __UI_DrawVScrollBar (TempThis AS __UI_ControlTYPE, ControlState AS _BYTE)
         This.Top = 1
         This.Height = This.Height - 1
         This.Width = __UI_ScrollbarWidth
+    ELSEIF This.Type = __UI_Type_Frame THEN
+        'A property grid's scrollbar (see InFormPropertyGrid.bm): the caller sets its place,
+        'Min/Max/Value, and in .LastVisibleItem how many rows show
+        Visible = This.LastVisibleItem
     END IF
 
     'Scrollbar measurements:
@@ -9051,14 +9061,14 @@ SUB __UI_DrawVScrollBar (TempThis AS __UI_ControlTYPE, ControlState AS _BYTE)
         'Thumb
         IF ControlState <> 4 THEN
             FlatThumb = __UI_FlatShade(FlatTrack, .35)
-            IF __UI_DraggingThumb = True THEN
+            IF ThumbDragged THEN
                 FlatThumb = __UI_FlatShade(FlatTrack, .6)
             ELSEIF This.HoveringVScrollbarButton = 3 THEN
                 FlatThumb = __UI_FlatShade(FlatTrack, .5)
             END IF
             DIM FlatThumbW AS SINGLE
             FlatThumbW = This.Width / 3
-            IF __UI_DraggingThumb = True OR This.HoveringVScrollbarButton > 0 THEN FlatThumbW = This.Width / 2
+            IF ThumbDragged OR This.HoveringVScrollbarButton > 0 THEN FlatThumbW = This.Width / 2
             __UI_FlatRoundFill This.Left + (This.Width - FlatThumbW) / 2, ThumbTop + __UI_ScrollbarButtonHeight + 1, FlatThumbW, ThumbHeight - 2, FlatThumbW / 2, FlatThumb
         END IF
     ELSE
@@ -9070,10 +9080,10 @@ SUB __UI_DrawVScrollBar (TempThis AS __UI_ControlTYPE, ControlState AS _BYTE)
         END IF
 
         'Mousedown on the track:
-        IF __UI_MouseDownOnID = This.ID AND This.HoveringVScrollbarButton = 4 AND __UI_DraggingThumb = False THEN
+        IF __UI_MouseDownOnID = This.ID AND This.HoveringVScrollbarButton = 4 AND NOT ThumbDragged THEN
             'Above the thumb
             _PUTIMAGE (This.Left, This.Top)-STEP(ImageWidth_Button - 1, ThumbTop + ThumbHeight + __UI_ScrollbarButtonHeight - 1), ControlImage_Track, , (0, 3 * ImageHeight_Button - ImageHeight_Button)-STEP(ImageWidth_Button - 1, ImageHeight_Button - 1)
-        ELSEIF __UI_MouseDownOnID = This.ID AND This.HoveringVScrollbarButton = 5 AND __UI_DraggingThumb = False THEN
+        ELSEIF __UI_MouseDownOnID = This.ID AND This.HoveringVScrollbarButton = 5 AND NOT ThumbDragged THEN
             'Below the thumb
             _PUTIMAGE (This.Left, This.Top + ThumbTop + __UI_ScrollbarButtonHeight)-STEP(ImageWidth_Button - 1, This.Height - (This.Top + ThumbTop + __UI_ScrollbarButtonHeight) - 1), ControlImage_Track, , (0, 3 * ImageHeight_Button - ImageHeight_Button)-STEP(ImageWidth_Button - 1, ImageHeight_Button - 1)
         END IF
@@ -9102,11 +9112,11 @@ SUB __UI_DrawVScrollBar (TempThis AS __UI_ControlTYPE, ControlState AS _BYTE)
         'Draw thumb
         IF ControlState = 4 THEN
             'No thumb is shown for disabled scrollbar
-        ELSEIF __UI_DraggingThumb = True THEN
+        ELSEIF ThumbDragged THEN
             _PUTIMAGE (This.Left + 1, ThumbTop + __UI_ScrollbarButtonHeight)-STEP(ImageWidth_Thumb - 2, ThumbHeight - 1), ControlImage_Thumb, , (0, 3 * ImageHeight_Thumb - ImageHeight_Thumb + 2)-STEP(ImageWidth_Thumb - 1, ImageHeight_Thumb - 5)
             _PUTIMAGE (This.Left + 1, ThumbTop + __UI_ScrollbarButtonHeight)-STEP(ImageWidth_Thumb - 2, 1), ControlImage_Thumb, , (0, 3 * ImageHeight_Thumb - ImageHeight_Thumb)-STEP(ImageWidth_Thumb - 1, 1)
             _PUTIMAGE (This.Left + 1, ThumbTop + __UI_ScrollbarButtonHeight + ThumbHeight - 2)-STEP(ImageWidth_Thumb - 2, 1), ControlImage_Thumb, , (0, 3 * ImageHeight_Thumb - 4)-STEP(ImageWidth_Thumb - 1, 3)
-        ELSEIF This.HoveringVScrollbarButton = 3 AND __UI_DraggingThumb = False THEN
+        ELSEIF This.HoveringVScrollbarButton = 3 AND NOT ThumbDragged THEN
             _PUTIMAGE (This.Left + 1, ThumbTop + __UI_ScrollbarButtonHeight)-STEP(ImageWidth_Thumb - 2, ThumbHeight - 1), ControlImage_Thumb, , (0, 2 * ImageHeight_Thumb - ImageHeight_Thumb + 2)-STEP(ImageWidth_Thumb - 1, ImageHeight_Thumb - 5)
             _PUTIMAGE (This.Left + 1, ThumbTop + __UI_ScrollbarButtonHeight)-STEP(ImageWidth_Thumb - 2, 1), ControlImage_Thumb, , (0, 2 * ImageHeight_Thumb - ImageHeight_Thumb)-STEP(ImageWidth_Thumb - 1, 1)
             _PUTIMAGE (This.Left + 1, ThumbTop + __UI_ScrollbarButtonHeight + ThumbHeight - 2)-STEP(ImageWidth_Thumb - 2, 1), ControlImage_Thumb, , (0, 2 * ImageHeight_Thumb - 4)-STEP(ImageWidth_Thumb - 1, 3)

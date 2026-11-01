@@ -2658,6 +2658,20 @@ SUB TestPGKey (k AS LONG)
     __UI_KeyHit = 0
 END SUB
 
+''' @brief Presses the mouse button on a control (the mouse is where __UI_MouseLeft/Top say), then lets the grids update.
+SUB TestPGPress (id AS LONG)
+    __UI_MouseIsDown = True
+    __UI_MouseDownOnID = id
+    __UI_PropertyGridMouseDown
+    __UI_PropertyGridsUpdate
+END SUB
+
+SUB TestPGRelease
+    __UI_MouseIsDown = False
+    __UI_MouseDownOnID = 0
+    __UI_PropertyGridsUpdate
+END SUB
+
 SUB Test_PropertyGrid
     DIM f AS LONG, f2 AS LONG, tb AS LONG, sz AS LONG, dd AS LONG, cb AS LONG, bt AS LONG, extra AS LONG
     DIM lbl AS LONG, own AS LONG, events AS LONG
@@ -2865,17 +2879,24 @@ SUB Test_PropertyGrid
     PropertyGrid_Layout fs
     TEST_CHECK Control(rowTB(1)).Top = 10 _ANDALSO Control(rowTB(4)).Top = 76, "Rows start unscrolled"
 
+    'Six rows of 22 = 132 pixels in 86 (100 - 10 - 4): they scroll by up to 46 pixels
     TEST_CHECK __UI_PropertyGridWheel(fs, 1), "Wheel over the frame scrolls"
-    TEST_CHECK Control(rowTB(1)).Top < -1000 _ANDALSO Control(rowTB(2)).Top = 10, "Row scrolled out above"
-    TEST_CHECK Control(PropertyGrid_LabelControl(fs, "r1")).Top < -1000, "Its label goes too"
+    TEST_CHECK Control(rowTB(1)).Top = -12 _ANDALSO Control(rowTB(2)).Top = 10, "A wheel notch scrolls a row"
+    TEST_CHECK Control(PropertyGrid_LabelControl(fs, "r1")).Top = -12, "Its label goes too"
     TEST_CHECK_FALSE Control(rowTB(1)).Hidden, "Scrolled-out rows can still get focus"
     TEST_CHECK __UI_PropertyGridWheel(rowTB(3), 10), "Wheel over a row scrolls its grid"
-    TEST_CHECK Control(rowTB(4)).Top = 10 _ANDALSO Control(rowTB(6)).Top = 54, "Scrolling stops when the last row shows"
+    TEST_CHECK Control(rowTB(6)).Top = 74, "Scrolling stops when the last row shows"
     TEST_CHECK __UI_PropertyGridWheel(fs, -10), "Wheel back up"
     TEST_CHECK Control(rowTB(1)).Top = 10, "Back at the top"
 
     TestPGFocus rowTB(6)
-    TEST_CHECK Control(rowTB(6)).Top = 54 _ANDALSO Control(rowTB(3)).Top < -1000, "Focused row is scrolled into view"
+    TEST_CHECK Control(rowTB(6)).Top = 74, "Focused row is scrolled into view"
+    TestPGFocus rowTB(5)
+    TEST_CHECK Control(rowTB(6)).Top = 74, "A row already in view doesn't scroll"
+    TestPGFocus rowTB(1)
+    TEST_CHECK Control(rowTB(1)).Top = 10, "Scrolled up just enough for a row above"
+    PropertyGrid_ScrollTo fs, "r6"
+    TEST_CHECK Control(rowTB(6)).Top = 74, "Scroll to a row below"
     PropertyGrid_ScrollTo fs, "r2"
     TEST_CHECK Control(rowTB(2)).Top = 10, "Scroll to a row above"
     __UI_Focus = 0
@@ -2888,21 +2909,90 @@ SUB Test_PropertyGrid
     PropertyGrid_ShowAll fs, True
     PropertyGrid_Layout fs
 
-    'Dragging the scrollbar to the bottom
-    __UI_MouseIsDown = True
-    __UI_MouseDownOnID = fs
-    __UI_MouseLeft = Control(fs).Left + Control(fs).Width - 4
-    __UI_MouseTop = Control(fs).Top + 96
+    'Rows end before the scrollbar while there is one
+    DIM gs AS LONG, sbX AS LONG
+    gs = __UI_PGFind(fs)
+    TEST_CHECK Control(rowTB(1)).Left + Control(rowTB(1)).Width <= __UI_PropertyGrids(gs).SbLeft - 3, "Rows make room for the scrollbar"
+
+    'The scrollbar, part by part (mouse coordinates are the form's)
+    sbX = Control(fs).Left + __UI_PropertyGrids(gs).SbLeft + __UI_ScrollbarWidth \ 2
+    __UI_HoveringID = fs
+    __UI_MouseLeft = sbX
+    __UI_MouseTop = Control(fs).Top + __UI_PropertyGrids(gs).SbTop + __UI_PropertyGrids(gs).SbHeight - 4
+    TestPGPress fs
+    TEST_CHECK Control(rowTB(1)).Top = -12 _ANDALSO Control(rowTB(2)).Top = 10, "Down button scrolls a row"
+    TestPGRelease
+    __UI_MouseTop = Control(fs).Top + __UI_PropertyGrids(gs).SbTop + 3
+    TestPGPress fs
+    TEST_CHECK Control(rowTB(1)).Top = 10, "Up button scrolls back"
+    TestPGRelease
+
+    __UI_MouseTop = Control(fs).Top + __UI_PropertyGrids(gs).TrackTop + __UI_PropertyGrids(gs).TrackHeight - 2
+    TestPGPress fs
+    TEST_CHECK Control(rowTB(6)).Top = 74, "Clicking the track below the thumb pages down"
+    TestPGRelease
+    __UI_MouseTop = Control(fs).Top + __UI_PropertyGrids(gs).TrackTop + 1
+    TestPGPress fs
+    TEST_CHECK Control(rowTB(1)).Top = 10, "Clicking the track above the thumb pages up"
+    TestPGRelease
+
+    'Dragging the thumb: it keeps the spot where it was grabbed
+    __UI_MouseTop = Control(fs).Top + __UI_PropertyGrids(gs).ThumbTop + 2
+    TestPGPress fs
+    TEST_CHECK __UI_PropertyGrids(gs).Dragging, "Thumb grabbed"
+    TEST_CHECK Control(rowTB(1)).Top = 10, "Grabbing doesn't scroll"
+    'Every pixel the thumb moves scrolls the rows, not just whole rows
+    DIM room AS LONG
+    room = __UI_PropertyGrids(gs).TrackHeight - __UI_PropertyGrids(gs).ThumbHeight
+    __UI_MouseTop = __UI_MouseTop + 1
     __UI_PropertyGridsUpdate
-    TEST_CHECK Control(rowTB(6)).Top = 54, "Thumb dragged to the bottom"
+    TEST_CHECK Control(rowTB(1)).Top < 10 _ANDALSO Control(rowTB(1)).Top > 10 - 22, "A small drag scrolls part of a row"
+    TEST_CHECK __UI_PropertyGrids(gs).ScrollY = _ROUND(46 / room), "Scrolled in proportion"
+    'Frames keep a picture of themselves: scrolling has to ask for a new one
+    Control(fs).Redraw = False
+    __UI_MouseTop = __UI_MouseTop + 1
+    __UI_PropertyGridsUpdate
+    TEST_CHECK Control(fs).Redraw, "Dragging the thumb redraws the frame"
+    Control(fs).Redraw = False
+    __UI_PropertyGridsUpdate
+    TEST_CHECK_FALSE Control(fs).Redraw, "Nothing redrawn while the thumb stays put"
+    __UI_HoveringID = rowTB(2)
     __UI_MouseDownOnID = 0
-    __UI_MouseTop = Control(fs).Top + 10
+    __UI_MouseTop = Control(fs).Top + 500
     __UI_PropertyGridsUpdate
-    TEST_CHECK Control(rowTB(1)).Top = 10, "Drag continues after leaving the frame"
-    __UI_MouseIsDown = False
-    __UI_MouseTop = Control(fs).Top + 96
+    TEST_CHECK Control(rowTB(6)).Top = 74, "Thumb dragged to the bottom, even off the scrollbar"
+    __UI_MouseTop = Control(fs).Top - 500
+    __UI_PropertyGridsUpdate
+    TEST_CHECK Control(rowTB(1)).Top = 10, "And back to the top"
+    TestPGRelease
+    __UI_MouseTop = Control(fs).Top + 500
     __UI_PropertyGridsUpdate
     TEST_CHECK Control(rowTB(1)).Top = 10, "Releasing the button ends the drag"
+
+    'A drag that leaves the frame's area before the screen updates still counts
+    '(the engine forgets which control was pressed as soon as the mouse moves onto another one)
+    __UI_HoveringID = fs
+    __UI_MouseLeft = sbX
+    __UI_MouseTop = Control(fs).Top + __UI_PropertyGrids(gs).ThumbTop + 2
+    __UI_MouseIsDown = True
+    __UI_MouseDownOnID = fs
+    __UI_PropertyGridMouseDown
+    __UI_MouseDownOnID = 0
+    __UI_HoveringID = rowTB(3)
+    __UI_MouseTop = Control(fs).Top + 500
+    __UI_PropertyGridsUpdate
+    TEST_CHECK Control(rowTB(6)).Top = 74, "Quick drag still moves the thumb"
+    TestPGRelease
+    PropertyGrid_ScrollTo fs, "r1"
+
+    'Pressing elsewhere in the frame doesn't touch the scrollbar
+    __UI_HoveringID = fs
+    __UI_MouseLeft = Control(fs).Left + 5
+    __UI_MouseTop = Control(fs).Top + __UI_PropertyGrids(gs).SbTop + __UI_PropertyGrids(gs).SbHeight - 4
+    TestPGPress fs
+    TEST_CHECK Control(rowTB(1)).Top = 10, "Press away from the scrollbar"
+    TestPGRelease
+    __UI_HoveringID = 0
 
     dd = PropertyGrid_Control(f, "color")
     __UI_Focus = dd
@@ -2910,6 +3000,44 @@ SUB Test_PropertyGrid
     __UI_Focus = 0
     __UI_PropertyGridsUpdate
     __UI_DestroyControl Control(fs)
+
+    TEST_CASE_END
+
+    TEST_CASE_BEGIN "PropertyGrid: adopted rows make room for the scrollbar"
+
+    DIM fa AS LONG, a1 AS LONG, a2 AS LONG, a3 AS LONG, side AS LONG, leftOfIt AS LONG
+    'Two rows fit: 60 high, rows from 10, 4 pixels at the bottom
+    fa = __UI_NewControl(__UI_Type_Frame, "TestPGRoom", 200, 60, 0, 0, 0)
+    a1 = __UI_NewControl(__UI_Type_TextBox, "TestPGRoom1", 100, 23, 50, 0, fa)
+    a2 = __UI_NewControl(__UI_Type_TextBox, "TestPGRoom2", 145, 23, 50, 0, fa)
+    a3 = __UI_NewControl(__UI_Type_TextBox, "TestPGRoom3", 145, 23, 50, 0, fa)
+    side = __UI_NewControl(__UI_Type_Button, "TestPGRoomSide", 40, 23, 155, 0, fa)
+    leftOfIt = __UI_NewControl(__UI_Type_Button, "TestPGRoomLeft", 23, 23, 25, 0, fa)
+    PropertyGrid_AdoptRow fa, "one", 0, a1
+    PropertyGrid_AttachControl fa, "one", side
+    PropertyGrid_AttachControl fa, "one", leftOfIt
+    PropertyGrid_AdoptRow fa, "two", 0, a2
+    PropertyGrid_AdoptRow fa, "three", 0, a3
+    PropertyGrid_Layout fa
+    gs = __UI_PGFind(fa)
+    TEST_CHECK __UI_PropertyGrids(gs).MaxScrollY > 0, "Three rows don't fit"
+    TEST_CHECK Control(a2).Left = 50 _ANDALSO Control(a2).Left + Control(a2).Width <= __UI_PropertyGrids(gs).SbLeft - 3, "Wide control narrowed, left kept"
+    TEST_CHECK Control(side).Left + Control(side).Width <= __UI_PropertyGrids(gs).SbLeft - 3, "Control attached to its right slides left"
+    TEST_CHECK Control(a1).Width = 100 - (195 - (__UI_PropertyGrids(gs).SbLeft - 3)), "The row's control narrows by as much"
+    TEST_CHECK Control(leftOfIt).Left = 25, "Control attached to its left stays"
+    PropertyGrid_Layout fa
+    TEST_CHECK Control(a2).Width = 145 - (195 - (__UI_PropertyGrids(gs).SbLeft - 3)), "Laying out again doesn't narrow it more"
+
+    PropertyGrid_ShowRow fa, "three", False
+    PropertyGrid_Layout fa
+    TEST_CHECK __UI_PropertyGrids(gs).MaxScrollY = 0, "Two rows fit"
+    TEST_CHECK Control(a2).Width = 145 _ANDALSO Control(a1).Width = 100 _ANDALSO Control(side).Left = 155, "Everything back as it was"
+
+    PropertyGrid_ShowRow fa, "three", True
+    PropertyGrid_Layout fa
+    PropertyGrid_DetachControl side
+    TEST_CHECK Control(side).Left = 155, "Detaching puts it back"
+    __UI_DestroyControl Control(fa)
 
     TEST_CASE_END
 
