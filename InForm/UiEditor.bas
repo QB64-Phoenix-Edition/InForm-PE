@@ -2596,7 +2596,7 @@ SUB __UI_OnLoad
     DataGrid_AddTextColumn RowsGrid, "Key", 110
     DataGrid_AddChoiceColumn RowsGrid, "Kind", 80, "text|integer|float|choice|toggle|button"
     DataGrid_AddTextColumn RowsGrid, "Label", 140
-    DataGrid_AddTextColumn RowsGrid, "Items / caption", 0
+    DataGrid_AddTextColumn RowsGrid, "Items / value", 0
     Control(RowsGrid).HasBorder = False
 
     ToolTip(FontTB) = "Multiple fonts can be specified by separating them with a question mark (?)." + CHR$(10) + "The first font that can be found/loaded is used."
@@ -2822,6 +2822,7 @@ SUB __UI_ValueChanged (id AS LONG)
             SendPropertyEdit id
         CASE RowsGrid
             'A cell was changed (column 0 means another cell became current)
+            IF DataGrid_ChangedColumn(RowsGrid) = 2 THEN RowsKindChanged DataGrid_ChangedRow(RowsGrid)
             IF DataGrid_ChangedColumn(RowsGrid) > 0 THEN RowsChanged
         CASE AlignOptions
             IF __UI_Focus <> id THEN EXIT SUB
@@ -3478,6 +3479,7 @@ SUB OpenRowsDialog
             DataGrid_SetCell RowsGrid, r, 2, RowKindName$(Kind)
             DataGrid_SetCell RowsGrid, r, 3, Label$
             DataGrid_SetCell RowsGrid, r, 4, Extra$
+            RowsValueKind r
         END IF
     LOOP
     IF DataGrid_RowCount(RowsGrid) > 0 THEN DataGrid_Select RowsGrid, 1, 1
@@ -3595,6 +3597,54 @@ FUNCTION RowsSnapshot$
     RowsSnapshot$ = s$
 END FUNCTION
 
+''' @brief Makes a row's last cell a check box for a toggle and a number for an integer or float (text otherwise).
+SUB RowsValueKind (r AS LONG)
+    SELECT CASE _TRIM$(DataGrid_Cell(RowsGrid, r, 2))
+        CASE "toggle": DataGrid_SetCellKind RowsGrid, r, 4, __UI_DataGrid_Toggle
+        CASE "integer": DataGrid_SetCellKind RowsGrid, r, 4, __UI_DataGrid_Integer
+        CASE "float": DataGrid_SetCellKind RowsGrid, r, 4, __UI_DataGrid_Float
+        CASE ELSE: DataGrid_SetCellKind RowsGrid, r, 4, 0
+    END SELECT
+END SUB
+
+''' @brief What a row's last cell holds for a kind: a starting value, a choice's items or a button's caption.
+FUNCTION RowsExtraMeaning$ (Kind$)
+    SELECT CASE Kind$
+        CASE "choice", "button": RowsExtraMeaning$ = Kind$
+        CASE ELSE: RowsExtraMeaning$ = "value"
+    END SELECT
+END FUNCTION
+
+''' @brief A row's kind was changed in the table: its last cell changes kind with it, and its value is kept
+''' only if it means the same thing for the new kind (e.g. a choice's items aren't a toggle's value).
+SUB RowsKindChanged (r AS LONG)
+    DIM s$, p AS LONG, i AS LONG, Row$, OldKind$, NewKind$, v$
+
+    'The row's kind before the change, from the last snapshot kept for undo
+    s$ = MID$(RowsHistory(RowsHistoryPos), 9)
+    FOR i = 1 TO r
+        p = INSTR(s$, CHR$(2))
+        IF p = 0 THEN Row$ = "": EXIT FOR
+        Row$ = LEFT$(s$, p - 1)
+        s$ = MID$(s$, p + 1)
+    NEXT
+    p = INSTR(Row$, CHR$(1))
+    IF p THEN OldKind$ = _TRIM$(MID$(Row$, p + 1, INSTR(p + 1, Row$, CHR$(1)) - p - 1))
+    NewKind$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 2))
+
+    v$ = DataGrid_Cell(RowsGrid, r, 4)
+    IF RowsExtraMeaning$(OldKind$) <> RowsExtraMeaning$(NewKind$) THEN v$ = ""
+    IF LEN(_TRIM$(v$)) THEN
+        SELECT CASE NewKind$
+            CASE "toggle": IF VAL(v$) <> 0 THEN v$ = "-1" ELSE v$ = "0"
+            CASE "integer": v$ = LTRIM$(STR$(_ROUND(VAL(v$))))
+            CASE "float": v$ = LTRIM$(STR$(VAL(v$)))
+        END SELECT
+    END IF
+    DataGrid_SetCell RowsGrid, r, 4, v$
+    RowsValueKind r
+END SUB
+
 ''' @brief Called after every change to the table: keeps it for undo and shows it in the preview.
 SUB RowsChanged
     DIM s$
@@ -3634,6 +3684,7 @@ SUB RowsUndo (Direction AS LONG)
             DataGrid_SetCell RowsGrid, r, c, LEFT$(Row$, p - 1)
             Row$ = MID$(Row$, p + 1)
         NEXT
+        RowsValueKind r
     LOOP
     IF CurRow = 0 THEN CurRow = 1
     IF CurCol = 0 THEN CurCol = 1
@@ -3696,7 +3747,13 @@ SUB UpdateRowsDialog
         CASE 1: Caption(RowsHintLB) = "Key: the name your code uses for the row, as in PropertyGrid_Value$(frame, " + CHR$(34) + "key" + CHR$(34) + "). Each row needs its own."
         CASE 2: Caption(RowsHintLB) = "Kind: a text, integer or float box, a choice (dropdown list), a toggle (check box) or a button. Space or a second click opens the list."
         CASE 3: Caption(RowsHintLB) = "Label: shown to the left of the row (a toggle's caption)."
-        CASE 4: Caption(RowsHintLB) = "Items: a choice's items, separated by commas (Red,Green,Blue), or a button's caption."
+        CASE 4
+            SELECT CASE _TRIM$(DataGrid_Cell(RowsGrid, r, 2))
+                CASE "choice": Caption(RowsHintLB) = "Items: the choice's items, separated by commas (Red,Green,Blue)."
+                CASE "button": Caption(RowsHintLB) = "Caption: the text on the button (the label when left empty)."
+                CASE "toggle": Caption(RowsHintLB) = "Value: whether the check box starts checked. A click or Space checks it."
+                CASE ELSE: Caption(RowsHintLB) = "Value: what the box starts with. Your code can change it with PropertyGrid_SetValue."
+            END SELECT
         CASE ELSE: Caption(RowsHintLB) = "Add a row to start."
     END SELECT
 END SUB

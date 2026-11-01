@@ -73,5 +73,6 @@ REDIM SHARED __UI_DataGridColCaption(0) AS STRING
 REDIM SHARED __UI_DataGridColItems(0) AS STRING ' a choice column's items, separated by "|"
 REDIM SHARED __UI_DataGridCells(0) AS STRING ' a row's cells, separated by CHR$(0)
 REDIM SHARED __UI_DataGridRowUsed(0) AS _BYTE
+REDIM SHARED __UI_DataGridCellKinds(0) AS STRING ' a row's cells' own kinds, one byte per column (0 = the column's)
 REDIM SHARED __UI_DataGridLook(0) AS STRING ' what a grid looked like at the last update (scroll, current cell, focus...)
 DIM SHARED __UI_TotalDataGrids AS LONG, __UI_TotalDataGridCols AS LONG, __UI_TotalDataGridRows AS LONG

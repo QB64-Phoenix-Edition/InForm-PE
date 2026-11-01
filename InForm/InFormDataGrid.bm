@@ -124,10 +124,12 @@ FUNCTION __UI_DGNewSlot&
         IF dgSlot > UBOUND(__UI_DataGridCells) THEN
             REDIM _PRESERVE __UI_DataGridCells(0 TO dgSlot + 31) AS STRING
             REDIM _PRESERVE __UI_DataGridRowUsed(0 TO dgSlot + 31) AS _BYTE
+            REDIM _PRESERVE __UI_DataGridCellKinds(0 TO dgSlot + 31) AS STRING
         END IF
     END IF
     __UI_DataGridRowUsed(dgSlot) = _TRUE
     __UI_DataGridCells(dgSlot) = _STR_EMPTY
+    __UI_DataGridCellKinds(dgSlot) = _STR_EMPTY
     __UI_DGNewSlot = dgSlot
 END FUNCTION
 
@@ -141,8 +143,16 @@ FUNCTION __UI_DGDefault$ (dgGrid AS LONG, dgCol AS LONG)
     END SELECT
 END FUNCTION
 
-FUNCTION __UI_DGKind%% (dgGrid AS LONG, dgCol AS LONG)
+''' @brief A cell's kind: its own (see DataGrid_SetCellKind) or its column's.
+FUNCTION __UI_DGKind%% (dgGrid AS LONG, dgRow AS LONG, dgCol AS LONG)
+    DIM dgSlot AS LONG
     IF dgCol < 1 _ORELSE dgCol > __UI_DGColCount(dgGrid) THEN EXIT FUNCTION
+    IF dgRow >= 1 _ANDALSO dgRow <= __UI_DGRowCount(dgGrid) THEN
+        dgSlot = __UI_DGSlot(dgGrid, dgRow)
+        IF LEN(__UI_DataGridCellKinds(dgSlot)) >= dgCol THEN
+            IF ASC(__UI_DataGridCellKinds(dgSlot), dgCol) > 0 THEN __UI_DGKind = ASC(__UI_DataGridCellKinds(dgSlot), dgCol): EXIT FUNCTION
+        END IF
+    END IF
     __UI_DGKind = __UI_DataGridCols(__UI_DGCol(dgGrid, dgCol)).Kind
 END FUNCTION
 
@@ -339,7 +349,7 @@ SUB __UI_DGSetByUser (dgGrid AS LONG, dgRow AS LONG, dgCol AS LONG, dgValue AS S
     DIM dgNew AS STRING
     IF dgRow < 1 _ORELSE dgRow > __UI_DGRowCount(dgGrid) _ORELSE dgCol < 1 _ORELSE dgCol > __UI_DGColCount(dgGrid) THEN EXIT SUB
     dgNew = dgValue
-    SELECT CASE __UI_DGKind(dgGrid, dgCol)
+    SELECT CASE __UI_DGKind(dgGrid, dgRow, dgCol)
         CASE __UI_DataGrid_Integer: dgNew = _TRIM$(STR$(_ROUND(VAL(dgNew))))
         CASE __UI_DataGrid_Float: dgNew = _TRIM$(STR$(VAL(dgNew)))
     END SELECT
@@ -379,7 +389,7 @@ SUB __UI_DGBeginEdit (dgGrid AS LONG, dgFirstKey AS STRING)
     dgC = __UI_DGCol(dgGrid, dgCol)
     dgValue = __UI_DGGetCell(dgGrid, dgRow, dgCol)
 
-    SELECT CASE __UI_DataGridCols(dgC).Kind
+    SELECT CASE __UI_DGKind(dgGrid, dgRow, dgCol)
         CASE __UI_DataGrid_Toggle
             IF VAL(dgValue) <> 0 THEN dgValue = "0" ELSE dgValue = "-1"
             __UI_DGSetByUser dgGrid, dgRow, dgCol, dgValue
@@ -416,7 +426,7 @@ SUB __UI_DGBeginEdit (dgGrid AS LONG, dgFirstKey AS STRING)
                 __UI_DataGrids(dgGrid).EditorID = dgID
             END IF
             dgID = __UI_DataGrids(dgGrid).EditorID
-            IF __UI_DataGridCols(dgC).Kind = __UI_DataGrid_Text THEN Control(dgID).NumericOnly = _FALSE ELSE Control(dgID).NumericOnly = __UI_NumericWithoutBounds
+            IF __UI_DGKind(dgGrid, dgRow, dgCol) = __UI_DataGrid_Text THEN Control(dgID).NumericOnly = _FALSE ELSE Control(dgID).NumericOnly = __UI_NumericWithoutBounds
             Control(dgID).Font = Control(frameID).Font
             Control(dgID).BorderColor = __UI_DefaultColor(__UI_Type_ListBox, 4)
             Control(dgID).Hidden = _FALSE
@@ -572,7 +582,7 @@ SUB __UI_DGDraw (dgGrid AS LONG)
             dgX2 = __UI_DataGridCols(dgC).Right
             IF dgI < dgCols THEN dgX2 = dgX2 - 1 'the column's line
             IF dgX2 > dgRight THEN dgX2 = dgRight
-            dgKind = __UI_DataGridCols(dgC).Kind
+            dgKind = __UI_DGKind(dgGrid, dgRow, dgI)
             dgText = __UI_DGPart(__UI_DataGridCells(__UI_DGSlot(dgGrid, dgRow)), dgI, CHR$(0))
             dgIsCur = dgRow = __UI_DataGrids(dgGrid).CurRow _ANDALSO dgI = __UI_DataGrids(dgGrid).CurCol
             dgInk = dgFore
@@ -589,7 +599,8 @@ SUB __UI_DGDraw (dgGrid AS LONG)
             COLOR dgInk
             SELECT CASE dgKind
                 CASE __UI_DataGrid_Toggle
-                    dgBx = (dgX1 + dgX2) \ 2 - 6
+                    'Centered in a column of check boxes; at the left in a cell that has its own kind
+                    IF __UI_DataGridCols(dgC).Kind = __UI_DataGrid_Toggle THEN dgBx = (dgX1 + dgX2) \ 2 - 6 ELSE dgBx = dgX1 + 4
                     dgBy = dgY + (__UI_DataGrids(dgGrid).RowHeight - 1 - 13) \ 2
                     LINE (dgBx, dgBy)-STEP(12, 12), dgBack, BF
                     LINE (dgBx, dgBy)-STEP(12, 12), dgBorder, B
@@ -601,7 +612,12 @@ SUB __UI_DGDraw (dgGrid AS LONG)
                     END IF
                 CASE __UI_DataGrid_Integer, __UI_DataGrid_Float
                     dgText = __UI_DGFit(dgText, dgX2 - dgX1 - 7)
-                    __UI_PrintString dgX2 - 3 - __UI_PrintWidth(dgText), dgTextTop, dgText
+                    'Right-aligned in a column of numbers; at the left, like the text around it, in a cell that has its own kind
+                    IF __UI_DataGridCols(dgC).Kind = dgKind THEN
+                        __UI_PrintString dgX2 - 3 - __UI_PrintWidth(dgText), dgTextTop, dgText
+                    ELSE
+                        __UI_PrintString dgX1 + 4, dgTextTop, dgText
+                    END IF
                 CASE __UI_DataGrid_Choice
                     IF dgIsCur THEN
                         'A small arrow says a list opens here
@@ -866,7 +882,7 @@ SUB __UI_DataGridMouseDown
         __UI_DGMoveTo dgGrid, dgRow, dgCol, _TRUE
         __UI_DataGrids(dgGrid).DragSelecting = _TRUE
         __UI_DataGrids(dgGrid).DragTime = 0
-        IF __UI_DGKind(dgGrid, dgCol) = __UI_DataGrid_Toggle THEN
+        IF __UI_DGKind(dgGrid, dgRow, dgCol) = __UI_DataGrid_Toggle THEN
             __UI_DGBeginEdit dgGrid, _STR_EMPTY
         ELSEIF dgWasCurrent _ANDALSO dgHadFocus THEN
             __UI_DataGrids(dgGrid).PendingEdit = _TRUE
@@ -944,7 +960,7 @@ SUB __UI_DataGridKey
         END SELECT
         EXIT SUB
     END IF
-    dgKind = __UI_DGKind(dgGrid, dgCol)
+    dgKind = __UI_DGKind(dgGrid, dgRow, dgCol)
     dgPage = __UI_DataGrids(dgGrid).VisibleRows - 1
     IF dgPage < 1 THEN dgPage = 1
 
@@ -1334,6 +1350,31 @@ SUB DataGrid_SetCell (frameID AS LONG, rowNumber AS LONG, columnNumber AS LONG, 
     IF columnNumber < 1 _ORELSE columnNumber > __UI_DGColCount(dgGrid) THEN EXIT SUB
     __UI_DGPutCell dgGrid, rowNumber, columnNumber, cellValue
 END SUB
+
+''' @brief Gives one cell a kind of its own (text, integer, float, choice or toggle), or its column's back with 0.
+''' A choice cell lists its column's items. The cell's value isn't changed.
+SUB DataGrid_SetCellKind (frameID AS LONG, rowNumber AS LONG, columnNumber AS LONG, cellKind AS _BYTE)
+    DIM dgGrid AS LONG, dgSlot AS LONG, dgKinds AS STRING
+    dgGrid = __UI_DGFind(frameID)
+    IF dgGrid = 0 THEN EXIT SUB
+    IF rowNumber < 1 _ORELSE rowNumber > __UI_DGRowCount(dgGrid) THEN EXIT SUB
+    IF columnNumber < 1 _ORELSE columnNumber > __UI_DGColCount(dgGrid) THEN EXIT SUB
+    IF cellKind < 0 _ORELSE cellKind > __UI_DataGrid_Toggle THEN EXIT SUB
+    IF __UI_DataGrids(dgGrid).Editing _ANDALSO __UI_DataGrids(dgGrid).EditRow = rowNumber _ANDALSO __UI_DataGrids(dgGrid).EditCol = columnNumber THEN __UI_DGEndEdit dgGrid, _TRUE
+    dgSlot = __UI_DGSlot(dgGrid, rowNumber)
+    dgKinds = __UI_DataGridCellKinds(dgSlot)
+    IF LEN(dgKinds) < columnNumber THEN dgKinds = dgKinds + STRING$(columnNumber - LEN(dgKinds), 0)
+    MID$(dgKinds, columnNumber, 1) = CHR$(cellKind)
+    __UI_DataGridCellKinds(dgSlot) = dgKinds
+    Control(frameID).Redraw = _TRUE
+END SUB
+
+''' @brief A cell's kind: its own, if it was given one, or its column's.
+FUNCTION DataGrid_CellKind%% (frameID AS LONG, rowNumber AS LONG, columnNumber AS LONG)
+    DIM dgGrid AS LONG
+    dgGrid = __UI_DGFind(frameID)
+    IF dgGrid THEN DataGrid_CellKind = __UI_DGKind(dgGrid, rowNumber, columnNumber)
+END FUNCTION
 
 ''' @brief The current cell's row (0 when there is none).
 FUNCTION DataGrid_Row& (frameID AS LONG)

@@ -117,6 +117,13 @@ SUB DataGrid_SetCell (frameID AS LONG, rowNumber AS LONG, columnNumber AS LONG, 
 Read or set a cell.
 
 ```vb
+SUB DataGrid_SetCellKind (frameID AS LONG, rowNumber AS LONG, columnNumber AS LONG, cellKind AS _BYTE)
+FUNCTION DataGrid_CellKind%% (frameID AS LONG, rowNumber AS LONG, columnNumber AS LONG)
+```
+
+Give one cell a kind of its own, different from its column's: `__UI_DataGrid_Text`, `__UI_DataGrid_Integer`, `__UI_DataGrid_Float`, `__UI_DataGrid_Choice` (with the column's items) or `__UI_DataGrid_Toggle`. Pass `0` to give it its column's kind back. The cell's value isn't changed. A check box or number in a column of another kind sits at the left, like the text around it. The kind stays with the row when rows are moved. `DataGrid_CellKind` returns the kind a cell has.
+
+```vb
 FUNCTION DataGrid_Row& (frameID AS LONG)
 FUNCTION DataGrid_Column& (frameID AS LONG)
 SUB DataGrid_Select (frameID AS LONG, rowNumber AS LONG, columnNumber AS LONG)

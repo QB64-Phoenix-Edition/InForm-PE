@@ -3070,6 +3070,17 @@ SUB Test_PropertyGrid
     TEST_CHECK PropertyGrid_Control(fd, "size") = VAL(pKey), "Building twice changes nothing"
     __UI_DestroyControl Control(fd)
 
+    'The last field is the starting value of text, number and toggle rows
+    fd = __UI_NewControl(__UI_Type_Frame, "TestPGStart", 230, 300, 0, 0, 0)
+    Text(fd) = "n|integer|N|4.6\nf|float|F|2.50\non|toggle|On|-1\noff|toggle|Off|0\nt|text|T|hello\nz|integer|Z"
+    __UI_PropertyGridsFromForm
+    TEST_CHECK PropertyGrid_Value(fd, "n") = "5" _ANDALSO Text(PropertyGrid_Control(fd, "n")) = "5", "An integer row starts rounded"
+    TEST_CHECK PropertyGrid_Value(fd, "f") = "2.5", "A float row starts with its number"
+    TEST_CHECK Control(PropertyGrid_Control(fd, "on")).Value <> 0 _ANDALSO Control(PropertyGrid_Control(fd, "off")).Value = 0, "A toggle starts checked when it isn't 0"
+    TEST_CHECK PropertyGrid_Value(fd, "t") = "hello", "A text row starts with its text"
+    TEST_CHECK PropertyGrid_Value(fd, "z") = "0", "Without a value, a number row starts at 0"
+    __UI_DestroyControl Control(fd)
+
     TEST_CASE_END
 
     TEST_CASE_BEGIN "PropertyGrid: destroying controls"
@@ -3377,6 +3388,39 @@ SUB Test_DataGrid
     DataGrid_RemoveSelection g
     TEST_CHECK DataGrid_RowCount(g) = rows - 2 _ANDALSO DataGrid_Cell(g, 1, 1) = c1, "Remove the selected rows"
     TEST_CHECK DataGrid_Row(g) = 2 _ANDALSO DataGrid_SelectionLast(g) = 2, "The row after them is current"
+
+    TEST_CASE_END
+
+    TEST_CASE_BEGIN "DataGrid: a cell's own kind"
+
+    r = DataGrid_InsertRow(g, 1, "own")
+    TEST_CHECK DataGrid_CellKind(g, 1, 1) = __UI_DataGrid_Text, "A cell has its column's kind"
+    DataGrid_SetCellKind g, 1, 1, __UI_DataGrid_Toggle
+    TEST_CHECK DataGrid_CellKind(g, 1, 1) = __UI_DataGrid_Toggle _ANDALSO DataGrid_CellKind(g, 2, 1) = __UI_DataGrid_Text, "until it gets one of its own"
+    TEST_CHECK DataGrid_Cell(g, 1, 1) = "own", "Its value isn't changed"
+    DataGrid_SetCell g, 1, 1, "0"
+    DataGrid_Select g, 1, 1
+    __UI_Focus = g
+    events = TestValueChangedCount
+    k = TestDGKey(32)
+    TEST_CHECK DataGrid_Cell(g, 1, 1) = "-1" _ANDALSO NOT DataGrid_IsEditing(g), "Space flips it like a toggle column's"
+    TEST_CHECK TestValueChangedCount = events + 1, "and fires __UI_ValueChanged"
+    DataGrid_MoveRow g, 1, 2
+    TEST_CHECK DataGrid_CellKind(g, 2, 1) = __UI_DataGrid_Toggle _ANDALSO DataGrid_CellKind(g, 1, 1) = __UI_DataGrid_Text, "The kind moves with its row"
+    DataGrid_SetCellKind g, 2, 1, __UI_DataGrid_Integer
+    DataGrid_Select g, 2, 1
+    k = TestDGKey(ASC("4"))
+    k = TestDGKey(ASC("."))
+    k = TestDGKey(ASC("6"))
+    Text(__UI_Focus) = "4.6"
+    k = TestDGKey(13)
+    TEST_CHECK DataGrid_Cell(g, 2, 1) = "5", "An integer cell rounds what's typed"
+    DataGrid_SetCellKind g, 2, 1, 0
+    TEST_CHECK DataGrid_CellKind(g, 2, 1) = __UI_DataGrid_Text, "0 gives it its column's kind back"
+    DataGrid_RemoveRow g, 2
+    r = DataGrid_AddRow(g, "new")
+    TEST_CHECK DataGrid_CellKind(g, r, 1) = __UI_DataGrid_Text, "A new row in a reused place starts with its columns' kinds"
+    DataGrid_RemoveRow g, r
 
     TEST_CASE_END
 
