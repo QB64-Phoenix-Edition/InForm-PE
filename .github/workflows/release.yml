@@ -36,7 +36,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -100,18 +100,20 @@ jobs:
         shell: bash
         run: |
           mkdir staging
-          # Explicitly copy only allowed items
-          cp -r docs examples InForm staging/
+          cp -r docs examples InForm tests staging/
           cp UiEditor${{ matrix.exe_ext }} ThemeEditor${{ matrix.exe_ext }} staging/
           cp inform.mk LICENSE.txt README.md staging/
           cp setup_inform_win.cmd setup_inform_lnx.sh setup_inform_mac.command staging/
+          rm -f staging/tests/test_main*
+          rm -f staging/InForm/InForm.ini
+          rm -f staging/.gitignore staging/.gitattributes
+          rm -rf staging/.git staging/.github
+          find staging \( -name ".git*" -o -name ".github" \) -exec rm -rf {} + 2>/dev/null || true
           if [[ "${{ runner.os }}" != "Windows" ]]; then
             chmod +x staging/UiEditor staging/ThemeEditor
             chmod +x staging/InForm/UiEditorPreview staging/InForm/vbdos2inform
             chmod +x staging/setup_inform_lnx.sh staging/setup_inform_mac.command
           fi
-          # Clean up any git metadata
-          find staging -name ".git*" -exec rm -rf {} +
 
           cd staging
           if [[ "${{ runner.os }}" == "Windows" ]]; then
@@ -122,9 +124,8 @@ jobs:
           cd ..
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          # Use a unique name without .zip to avoid zip-in-zip confusion in the Actions UI
           name: asset-${{ matrix.name }}
           path: ${{ matrix.archive_name }}
 
@@ -136,14 +137,14 @@ jobs:
       contents: write
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
           pattern: "asset-*"
           merge-multiple: true
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: artifacts/*
           generate_release_notes: true
