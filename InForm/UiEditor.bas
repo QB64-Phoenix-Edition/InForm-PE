@@ -1,6 +1,6 @@
 '-----------------------------------------------------------------------------------------------------------------------
 ' InForm-PE GUI engine for QB64-PE
-' Copyright (c) 2025 QB64 Phoenix Edition Team
+' Copyright (c) 2026 QB64 Phoenix Edition Team
 ' Copyright (c) 2023 George McGinn
 ' Copyright (c) 2022 Fellippe Heitor
 '-----------------------------------------------------------------------------------------------------------------------
@@ -295,9 +295,6 @@ RESUME NEXT
 
 '$INCLUDE:'UiEditor.frm'
 '$INCLUDE:'InForm.ui'
-'$INCLUDE:'extensions/Pathname.bm'
-'$INCLUDE:'extensions/Ini.bm'
-'$INCLUDE:'extensions/FontMgr.bm'
 
 'Event procedures: ---------------------------------------------------------------
 SUB __UI_Click (id AS LONG)

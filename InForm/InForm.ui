@@ -8,6 +8,8 @@
 $INCLUDEONCE
 
 '$INCLUDE:'InFormCommon.bi'
+'$INCLUDE:'extensions/HMap64.bi'
+'$INCLUDE:'extensions/String.bi'
 
 '---------------------------------------------------------------------------------
 FUNCTION uspacing&
@@ -9560,5 +9562,3 @@ $END IF
 
 '$INCLUDE:'InFormTheme.bm'
 '$INCLUDE:'InFormTabControl.bm'
-'$INCLUDE:'extensions/HMap64.bm'
-'$INCLUDE:'extensions/String.bm'

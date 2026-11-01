@@ -5,6 +5,7 @@ $LET TEST_CONSOLE_ONLY = TRUE
 
 '$INCLUDE:'../InForm/extensions/Catch.bi'
 
+'$INCLUDE:'../InForm/extensions/Algo.bi'
 '$INCLUDE:'../InForm/extensions/Array.bi'
 '$INCLUDE:'../InForm/extensions/HMap.bi'
 '$INCLUDE:'../InForm/extensions/HMap64.bi'
@@ -16,8 +17,6 @@ $LET TEST_CONSOLE_ONLY = TRUE
 '$INCLUDE:'../InForm/extensions/Stack.bi'
 '$INCLUDE:'../InForm/extensions/String.bi'
 '$INCLUDE:'../InForm/extensions/StringFile.bi'
-
-'$INCLUDE:'../InForm/extensions/CatchError.bi'
 
 '$INCLUDE:'../InForm/InForm.bi'
 
@@ -2237,6 +2236,7 @@ SUB Test_INI_Manager
     TEST_CHECK Ini_GetCode = INI_INFO_KEY_NOT_FOUND, "Ini_ReadSetting should not find the moved key in the old section"
     TEST_CHECK Ini_ReadSetting("", "Section1", "A_Key") = "A_Value", "Ini_ReadSetting should find the moved key in the new section"
 
+    Ini_Release "test.ini"
     KILL "test.ini"
 
     TEST_CASE_END
@@ -2261,6 +2261,7 @@ SUB Test_INI_Manager
     CLOSE #releaseFile
 
     TEST_CHECK Ini_ReadSetting("release.ini", "S", "K") = "second", "Released file is read from disk again"
+
     Ini_Release "release.ini"
     KILL "release.ini"
 
@@ -2481,18 +2482,3 @@ SUB __UI_MouseUp (id AS LONG): id = id: END SUB
 SUB __UI_Click (id AS LONG): id = id: END SUB
 
 '$INCLUDE:'../InForm/InForm.ui'
-
-'$INCLUDE:'../InForm/extensions/StringFile.bm'
-'$INCLUDE:'../InForm/extensions/String.bm'
-'$INCLUDE:'../InForm/extensions/Stack.bm'
-'$INCLUDE:'../InForm/extensions/Queue.bm'
-'$INCLUDE:'../InForm/extensions/Pathname.bm'
-'$INCLUDE:'../InForm/extensions/LList.bm'
-'$INCLUDE:'../InForm/extensions/Ini.bm'
-'$INCLUDE:'../InForm/extensions/HSet.bm'
-'$INCLUDE:'../InForm/extensions/HMap64.bm'
-'$INCLUDE:'../InForm/extensions/HMap.bm'
-'$INCLUDE:'../InForm/extensions/Array.bm'
-'$INCLUDE:'../InForm/extensions/Algo.bm'
-
-'$INCLUDE:'../InForm/extensions/Catch.bm'
