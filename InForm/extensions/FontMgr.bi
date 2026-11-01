@@ -5,9 +5,9 @@
 
 $INCLUDEONCE
 
-'$INCLUDE:'Algo.bi'
 '$INCLUDE:'Memory.bi'
 '$INCLUDE:'Pathname.bi'
+'$INCLUDE:'Sort.bi'
 
 CONST __FONTMGR_PROBE_SIZE_MIN~%% = 8~% ' minimum font height that can be reported
 CONST __FONTMGR_PROBE_SIZE_MAX~%% = 120~%% ' maximum font height that can be reported
@@ -184,7 +184,7 @@ FUNCTION FontMgr_BuildList~& (fontList() AS STRING)
     WEND
 
     ' Sort the array (else it looks really ugly)
-    IF fontCount > 1 THEN Algo_SortStringArray fontList()
+    IF fontCount > 1 THEN Sort_StringArray fontList()
 
     FontMgr_BuildList = fontCount
 END FUNCTION

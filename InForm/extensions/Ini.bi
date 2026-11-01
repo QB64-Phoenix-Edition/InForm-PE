@@ -6,7 +6,7 @@
 
 $INCLUDEONCE
 
-'$INCLUDE:'Algo.bi'
+'$INCLUDE:'Sort.bi'
 
 ' INI operation result codes
 CONST INI_INFO_SUCCESS& = 0
@@ -75,7 +75,7 @@ SUB Ini_SortSection (file$, __section$)
     LOOP
 
     REDIM _PRESERVE keys(1 TO totalKeys) AS STRING
-    IF NOT Algo_SortStringArray(keys()) THEN __ini.code = 23: EXIT SUB
+    IF NOT Sort_StringArray(keys()) THEN __ini.code = 23: EXIT SUB
 
     commitBackup = __ini.disableAutoCommit
     __ini.disableAutoCommit = -1 'Prevent every minor change from being written to disk
