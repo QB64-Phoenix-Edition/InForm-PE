@@ -2443,12 +2443,16 @@ SUB LoadPreview (Destination AS _BYTE)
         b$ = SPACE$(4): GET #BinaryFileNum, , b$
         IF LogFileLoad THEN PRINT #LogFileNum, "READ NEW ARRAYS:" + STR$(CVL(b$))
 
-        REDIM _PRESERVE Caption(1 TO CVL(b$)) AS STRING
-        REDIM __UI_TempCaptions(1 TO CVL(b$)) AS STRING
-        REDIM Text(1 TO CVL(b$)) AS STRING
-        REDIM __UI_TempTexts(1 TO CVL(b$)) AS STRING
-        REDIM ToolTip(1 TO CVL(b$)) AS STRING
-        REDIM __UI_TempTips(1 TO CVL(b$)) AS STRING
+        'Keep the lower bound at 0, as declared: REDIM _PRESERVE with a different
+        'lower bound shifts every element, mismatching the internal controls' captions
+        REDIM _PRESERVE Caption(0 TO CVL(b$)) AS STRING
+        REDIM _PRESERVE __UI_TempCaptions(0 TO CVL(b$)) AS STRING
+        REDIM _PRESERVE Text(0 TO CVL(b$)) AS STRING
+        REDIM _PRESERVE __UI_TempTexts(0 TO CVL(b$)) AS STRING
+        REDIM _PRESERVE Mask(0 TO CVL(b$)) AS STRING
+        REDIM _PRESERVE __UI_TempMask(0 TO CVL(b$)) AS STRING
+        REDIM _PRESERVE ToolTip(0 TO CVL(b$)) AS STRING
+        REDIM _PRESERVE __UI_TempTips(0 TO CVL(b$)) AS STRING
         REDIM _PRESERVE Control(0 TO CVL(b$)) AS __UI_ControlTYPE
     ELSEIF UndoBuffer THEN
         FOR i = UBOUND(Control) TO 1 STEP -1
@@ -2463,12 +2467,16 @@ SUB LoadPreview (Destination AS _BYTE)
         b$ = ReadSequential$(Clip$, 4)
         IF LogFileLoad THEN PRINT #LogFileNum, "READ NEW ARRAYS:" + STR$(CVL(b$))
 
-        REDIM _PRESERVE Caption(1 TO CVL(b$)) AS STRING
-        REDIM __UI_TempCaptions(1 TO CVL(b$)) AS STRING
-        REDIM Text(1 TO CVL(b$)) AS STRING
-        REDIM __UI_TempTexts(1 TO CVL(b$)) AS STRING
-        REDIM ToolTip(1 TO CVL(b$)) AS STRING
-        REDIM __UI_TempTips(1 TO CVL(b$)) AS STRING
+        'Keep the lower bound at 0, as declared: REDIM _PRESERVE with a different
+        'lower bound shifts every element, mismatching the internal controls' captions
+        REDIM _PRESERVE Caption(0 TO CVL(b$)) AS STRING
+        REDIM _PRESERVE __UI_TempCaptions(0 TO CVL(b$)) AS STRING
+        REDIM _PRESERVE Text(0 TO CVL(b$)) AS STRING
+        REDIM _PRESERVE __UI_TempTexts(0 TO CVL(b$)) AS STRING
+        REDIM _PRESERVE Mask(0 TO CVL(b$)) AS STRING
+        REDIM _PRESERVE __UI_TempMask(0 TO CVL(b$)) AS STRING
+        REDIM _PRESERVE ToolTip(0 TO CVL(b$)) AS STRING
+        REDIM _PRESERVE __UI_TempTips(0 TO CVL(b$)) AS STRING
         REDIM _PRESERVE Control(0 TO CVL(b$)) AS __UI_ControlTYPE
     ELSE
         DIM ShiftPosition AS _BYTE
