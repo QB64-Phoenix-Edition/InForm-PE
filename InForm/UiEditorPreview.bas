@@ -1930,7 +1930,59 @@ SUB __UI_KeyPress (id AS LONG)
             'NEXT
             'c$ = MKL$(LEN(a$)) + a$ + MKL$(LEN(b$)) + b$
             SendData "", "SHOWBINDCONTROLDIALOG"
+        CASE 230 TO 235 'Add a property grid row to the selected frame (right-click > Add property)
+            AddPropertyGridRow id - 230
     END SELECT
+END SUB
+
+''' @brief Adds a row to the selected frame's property grid definitions (its Text), with a key not used yet.
+''' Which: 0 = text box, 1 = integer, 2 = number, 3 = choice, 4 = toggle, 5 = button
+SUB AddPropertyGridRow (Which AS LONG)
+    DIM f AS LONG, Base$, Kind$, Label$, Extra$, Key$, n AS LONG, Rows$, NewLine$, Lines AS LONG, p AS LONG
+    DIM pKey AS STRING, pKind AS _BYTE, pLabel AS STRING, pExtra AS STRING, Taken AS _BYTE, Needed AS INTEGER
+
+    f = __UI_FirstSelectedID
+    IF __UI_TotalSelectedControls <> 1 OR Control(f).Type <> __UI_Type_Frame THEN EXIT SUB
+
+    SELECT CASE Which
+        CASE 0: Base$ = "text": Kind$ = "text": Label$ = "Text"
+        CASE 1: Base$ = "integer": Kind$ = "integer": Label$ = "Integer"
+        CASE 2: Base$ = "number": Kind$ = "float": Label$ = "Number"
+        CASE 3: Base$ = "choice": Kind$ = "choice": Label$ = "Choice": Extra$ = "Item 1,Item 2,Item 3"
+        CASE 4: Base$ = "toggle": Kind$ = "toggle": Label$ = "Toggle"
+        CASE 5: Base$ = "button": Kind$ = "button": Label$ = "Button": Extra$ = "Click"
+        CASE ELSE: EXIT SUB
+    END SELECT
+
+    'The first free key: text1, text2...
+    Rows$ = Replace(Text(f), CHR$(13), "", False, 0)
+    DO
+        n = n + 1
+        Key$ = Base$ + LTRIM$(STR$(n))
+        Taken = False
+        Lines = 0
+        NewLine$ = Rows$ + CHR$(10)
+        DO
+            p = INSTR(NewLine$, CHR$(10))
+            IF p = 0 THEN EXIT DO
+            IF __UI_PGParseLine(LEFT$(NewLine$, p - 1), pKey, pKind, pLabel, pExtra) THEN
+                Lines = Lines + 1
+                IF LCASE$(pKey) = Key$ THEN Taken = True
+            END IF
+            NewLine$ = MID$(NewLine$, p + 1)
+        LOOP
+    LOOP WHILE Taken
+
+    NewLine$ = Key$ + "|" + Kind$ + "|" + Label$ + " " + LTRIM$(STR$(n))
+    IF LEN(Extra$) THEN NewLine$ = NewLine$ + "|" + Extra$
+    IF LEN(Rows$) > 0 AND RIGHT$(Rows$, 1) <> CHR$(10) THEN Rows$ = Rows$ + CHR$(10)
+    Text(f) = Rows$ + NewLine$
+
+    'Make room for the new row, so it shows in the designer
+    Needed = 10 + (Lines + 1) * 22 + 8
+    IF Control(f).Height < Needed THEN Control(f).Height = Needed
+    Control(f).Redraw = True
+    __UI_ForceRedraw = True
 END SUB
 
 SUB AlternateNumericOnlyProperty

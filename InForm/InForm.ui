@@ -53,6 +53,23 @@ SUB __UI_InternalMenus
     __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "__UI_PreviewMenuConvertType", 0, 0, 0, 0, __UI_GetID("__UI_PreviewMenu"))
     SetCaption __UI_GetID("__UI_PreviewMenuConvertType"), "Co&nvert to type-"
 
+    'Frames: rows of a property grid (see InFormPropertyGrid.bm); the submenu's items are sent to the preview as keys 230 to 235
+    __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "__UI_PreviewMenuAddRow", 0, 0, 0, 0, __UI_GetID("__UI_PreviewMenu"))
+    SetCaption __UI_NewID, "Add property-"
+    ToolTip(__UI_NewID) = "Adds a row to this frame's property grid (its Rows property)."
+    __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "__UI_PreviewMenuAddRowText", 0, 0, 0, 0, __UI_GetID("__UI_PreviewMenuAddRow"))
+    SetCaption __UI_NewID, "&Text box"
+    __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "__UI_PreviewMenuAddRowInteger", 0, 0, 0, 0, __UI_GetID("__UI_PreviewMenuAddRow"))
+    SetCaption __UI_NewID, "&Integer box"
+    __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "__UI_PreviewMenuAddRowFloat", 0, 0, 0, 0, __UI_GetID("__UI_PreviewMenuAddRow"))
+    SetCaption __UI_NewID, "&Number box"
+    __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "__UI_PreviewMenuAddRowChoice", 0, 0, 0, 0, __UI_GetID("__UI_PreviewMenuAddRow"))
+    SetCaption __UI_NewID, "&Choice (dropdown list)"
+    __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "__UI_PreviewMenuAddRowToggle", 0, 0, 0, 0, __UI_GetID("__UI_PreviewMenuAddRow"))
+    SetCaption __UI_NewID, "Toggle (check bo&x)"
+    __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "__UI_PreviewMenuAddRowButton", 0, 0, 0, 0, __UI_GetID("__UI_PreviewMenuAddRow"))
+    SetCaption __UI_NewID, "&Button"
+
     __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "__UI_PreviewMenuImageOriginalSize", 0, 0, 0, 0, __UI_GetID("__UI_PreviewMenu"))
     SetCaption __UI_GetID("__UI_PreviewMenuImageOriginalSize"), "Restore &image dimensions-"
 
@@ -1798,6 +1815,9 @@ SUB __UI_EventDispatcher
                     END IF
                 END IF
 
+                'Property grid rows can be added to one frame at a time
+                Control(__UI_GetID("__UI_PreviewMenuAddRow")).Hidden = (__UI_TotalSelectedControls <> 1 _ORELSE Control(__UI_FirstSelectedID).Type <> __UI_Type_Frame)
+
                 IF LEFT$(_CLIPBOARD$, LEN(__UI_ClipboardCheck$)) = __UI_ClipboardCheck$ THEN
                     Control(__UI_GetID("__UI_PreviewMenuPaste")).Disabled = False
                 ELSE
@@ -2476,17 +2496,22 @@ SUB __UI_EventDispatcher
                     __UI_MouseDownOnID = 0
 
                     ProcessClick:
-                    IF RTRIM$(Control(Control(__UI_HoveringID).ParentID).Name) = "__UI_TextFieldMenu" OR RTRIM$(Control(Control(__UI_HoveringID).ParentID).Name) = "__UI_PreviewMenu" THEN
+                    IF RTRIM$(Control(Control(__UI_HoveringID).ParentID).Name) = "__UI_TextFieldMenu" OR RTRIM$(Control(Control(__UI_HoveringID).ParentID).Name) = "__UI_PreviewMenu" OR RTRIM$(Control(Control(__UI_HoveringID).ParentID).Name) = "__UI_PreviewMenuAddRow" THEN
                         'Internal context menus - Text field/Design mode options
                         IF RTRIM$(Control(Control(__UI_HoveringID).ParentID).Name) = "__UI_TextFieldMenu" THEN
                             __UI_Focus = __UI_PreviousFocus
-                        ELSEIF RTRIM$(Control(Control(__UI_HoveringID).ParentID).Name) = "__UI_PreviewMenu" THEN
-                            __UI_DestroyControl Control(__UI_ActiveMenu(__UI_TotalActiveMenus))
+                        ELSEIF RTRIM$(Control(Control(__UI_HoveringID).ParentID).Name) = "__UI_PreviewMenu" OR RTRIM$(Control(Control(__UI_HoveringID).ParentID).Name) = "__UI_PreviewMenuAddRow" THEN
+                            'An item that opens a submenu leaves the menus open; any other item
+                            'closes them all (a submenu's item would otherwise leave the menu it came from open)
+                            IF NOT Control(__UI_HoveringID).SubMenu THEN
+                                __UI_CloseAllMenus
+                                __UI_ForceRedraw = True
+                            END IF
                         END IF
 
                         ProcessHotkey:
                         __UI_FillSelectedText 0, 0
-                        IF UCASE$(LEFT$(Control(__UI_HoveringID).Name, 16)) = "__UI_PREVIEWMENU" THEN __UI_KeyPress 216
+                        IF UCASE$(LEFT$(Control(__UI_HoveringID).Name, 16)) = "__UI_PREVIEWMENU" _ANDALSO NOT Control(__UI_HoveringID).SubMenu THEN __UI_KeyPress 216
                         SELECT CASE UCASE$(RTRIM$(Control(__UI_HoveringID).Name))
                             CASE "__UI_TEXTMENUCUT"
                                 IF LEN(__UI_SelectedText) > 0 THEN
@@ -2549,6 +2574,12 @@ SUB __UI_EventDispatcher
                                 __UI_KeyPress 227
                             CASE UCASE$("__UI_PreviewMenuBindControls")
                                 __UI_KeyPress 228
+                            CASE UCASE$("__UI_PreviewMenuAddRowText"): __UI_KeyPress 230
+                            CASE UCASE$("__UI_PreviewMenuAddRowInteger"): __UI_KeyPress 231
+                            CASE UCASE$("__UI_PreviewMenuAddRowFloat"): __UI_KeyPress 232
+                            CASE UCASE$("__UI_PreviewMenuAddRowChoice"): __UI_KeyPress 233
+                            CASE UCASE$("__UI_PreviewMenuAddRowToggle"): __UI_KeyPress 234
+                            CASE UCASE$("__UI_PreviewMenuAddRowButton"): __UI_KeyPress 235
                             CASE "__UI_PREVIEWMENUCUT": GOTO ControlCut
                             CASE "__UI_PREVIEWMENUCOPY": GOTO ControlCopy
                             CASE "__UI_PREVIEWMENUPASTE": GOTO ControlPaste
