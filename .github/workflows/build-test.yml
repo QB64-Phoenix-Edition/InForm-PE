@@ -21,18 +21,26 @@ jobs:
             os: ubuntu-latest
             asset_pattern: "qb64pe_lnx-x64-*.tar.gz"
             exe_ext: ""
+            setup_script: setup_inform_lnx.sh
+            archive_name: InForm-PE-linux-x64.tar.gz
           - name: Windows-x64
             os: windows-latest
             asset_pattern: "qb64pe_win-x64-*.7z"
             exe_ext: ".exe"
+            setup_script: setup_inform_win.cmd
+            archive_name: InForm-PE-windows-x64.zip
           - name: Windows-arm64
             os: windows-11-arm
             asset_pattern: "qb64pe_win-arm64-*.7z"
             exe_ext: ".exe"
+            setup_script: setup_inform_win.cmd
+            archive_name: InForm-PE-windows-arm64.zip
           - name: macOS-arm64
             os: macos-latest
             asset_pattern: "qb64pe_osx-*.tar.gz"
             exe_ext: ""
+            setup_script: setup_inform_mac.command
+            archive_name: InForm-PE-macos-arm64.tar.gz
 
     steps:
       - name: Checkout code
@@ -105,7 +113,7 @@ jobs:
           cp -r docs examples InForm tests staging/
           cp UiEditor${{ matrix.exe_ext }} ThemeEditor${{ matrix.exe_ext }} staging/
           cp inform.mk LICENSE.txt README.md staging/
-          cp setup_inform_win.cmd setup_inform_lnx.sh setup_inform_mac.command staging/
+          cp ${{ matrix.setup_script }} staging/
           rm -f staging/tests/test_main*
           rm -f staging/InForm/InForm.ini
           rm -f staging/.gitignore staging/.gitattributes
@@ -114,12 +122,20 @@ jobs:
           if [[ "${{ runner.os }}" != "Windows" ]]; then
             chmod +x staging/UiEditor staging/ThemeEditor
             chmod +x staging/InForm/UiEditorPreview staging/InForm/vbdos2inform
-            chmod +x staging/setup_inform_lnx.sh staging/setup_inform_mac.command
+            chmod +x staging/${{ matrix.setup_script }}
           fi
+
+          cd staging
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            7z a -tzip "../${{ matrix.archive_name }}" *
+          else
+            tar -czf "../${{ matrix.archive_name }}" *
+          fi
+          cd ..
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
         with:
           name: InForm-PE-${{ matrix.name }}
-          path: staging/
+          path: ${{ matrix.archive_name }}
           if-no-files-found: error
