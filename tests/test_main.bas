@@ -50,6 +50,7 @@ SUB __UI_BeforeInit
     Test_TabControl
     Test_Timer
     Test_PropertyGrid
+    Test_DataGrid
 
     TEST_END_ALL
 END SUB
@@ -3087,6 +3088,309 @@ SUB Test_PropertyGrid
     TEST_CHECK TestValueChangedCount = events, "A forgotten grid fires nothing"
 
     TEST_CASE_END
+END SUB
+
+''' @brief Presses a key in the focused control, as far as data grids are concerned. Returns what's left of the key.
+FUNCTION TestDGKey& (k AS LONG)
+    __UI_KeyHit = k
+    __UI_DataGridKey
+    TestDGKey = __UI_KeyHit
+    __UI_KeyHit = 0
+END FUNCTION
+
+''' @brief Presses and releases the mouse button at a point of a frame (in the frame's coordinates).
+SUB TestDGClick (id AS LONG, x AS LONG, y AS LONG)
+    __UI_MouseLeft = Control(id).Left + x
+    __UI_MouseTop = Control(id).Top + y
+    __UI_HoveringID = id
+    __UI_Focus = id
+    __UI_MouseIsDown = True
+    __UI_MouseDownOnID = id
+    __UI_DataGridMouseDown
+    __UI_DataGridsUpdate
+    __UI_MouseIsDown = False
+    __UI_MouseDownOnID = 0
+    __UI_DataGridsUpdate
+END SUB
+
+SUB Test_DataGrid
+    DIM g AS LONG, r AS LONG, ed AS LONG, events AS LONG, i AS LONG, k AS LONG
+
+    TEST_CASE_BEGIN "DataGrid: columns and rows"
+
+    'No border and the default font: rows (and the header) are 24 high, rows start at 25
+    g = __UI_NewControl(__UI_Type_Frame, "TestDG", 300, 100, 0, 0, 0)
+    Control(g).HasBorder = False
+    DataGrid_AddTextColumn g, "Name", 100
+    DataGrid_AddChoiceColumn g, "Color", 80, "Red|Green|Blue"
+    DataGrid_AddIntegerColumn g, "Size", 60
+    DataGrid_AddToggleColumn g, "On", 0
+    TEST_CHECK DataGrid_ColumnCount(g) = 4, "Four columns"
+    TEST_CHECK Control(g).CanHaveFocus, "A grid can have focus"
+    TEST_CHECK DataGrid_RowCount(g) = 0, "No rows yet"
+
+    r = DataGrid_AddRow(g, "apple|Red|3|-1")
+    TEST_CHECK r = 1, "First row"
+    r = DataGrid_AddRow(g, "pear")
+    TEST_CHECK r = 2, "Second row"
+    TEST_CHECK DataGrid_Cell(g, 1, 1) = "apple" _ANDALSO DataGrid_Cell(g, 1, 4) = "-1", "Cells from a list"
+    TEST_CHECK DataGrid_Cell(g, 2, 2) = "Red", "A choice starts on its first item"
+    TEST_CHECK DataGrid_Cell(g, 2, 3) = "0" _ANDALSO DataGrid_Cell(g, 2, 4) = "0", "Numbers and toggles start at 0"
+    r = DataGrid_InsertRow(g, 1, "fig|Blue|7|0")
+    TEST_CHECK r = 1 _ANDALSO DataGrid_Cell(g, 1, 1) = "fig" _ANDALSO DataGrid_Cell(g, 2, 1) = "apple", "Insert before a row"
+    DataGrid_SetCell g, 3, 1, "a|b"
+    TEST_CHECK DataGrid_Cell(g, 3, 1) = "a|b", "A cell can hold anything set directly"
+    TEST_CHECK DataGrid_Cell(g, 9, 1) = "" _ANDALSO DataGrid_Cell(g, 1, 9) = "", "Missing cells are empty"
+
+    DataGrid_Select g, 2, 1
+    TEST_CHECK DataGrid_Row(g) = 2 _ANDALSO DataGrid_Column(g) = 1, "Select a cell"
+    DataGrid_MoveRow g, 2, 3
+    TEST_CHECK DataGrid_Cell(g, 3, 1) = "apple" _ANDALSO DataGrid_Cell(g, 2, 1) = "a|b", "Move a row down"
+    TEST_CHECK DataGrid_Row(g) = 3, "The current cell goes with its row"
+    DataGrid_MoveRow g, 3, 1
+    TEST_CHECK DataGrid_Cell(g, 1, 1) = "apple" _ANDALSO DataGrid_Cell(g, 2, 1) = "fig", "Move a row to the top"
+    DataGrid_RemoveRow g, 1
+    TEST_CHECK DataGrid_RowCount(g) = 2 _ANDALSO DataGrid_Cell(g, 1, 1) = "fig", "Remove a row"
+    TEST_CHECK DataGrid_Row(g) = 1, "The current cell stays on the same row number"
+    DataGrid_RemoveRow g, 2
+    DataGrid_RemoveRow g, 1
+    TEST_CHECK DataGrid_RowCount(g) = 0 _ANDALSO DataGrid_Row(g) = 0, "No rows, no current cell"
+    r = DataGrid_AddRow(g, "kiwi")
+    TEST_CHECK DataGrid_Cell(g, 1, 1) = "kiwi", "Places of removed rows are used again"
+    DataGrid_Clear g
+    TEST_CHECK DataGrid_RowCount(g) = 0, "Clear"
+
+    TEST_CASE_END
+
+    TEST_CASE_BEGIN "DataGrid: keyboard"
+
+    FOR i = 1 TO 6
+        r = DataGrid_AddRow(g, "row" + LTRIM$(STR$(i)) + "|Green|" + LTRIM$(STR$(i)) + "|0")
+    NEXT
+    __UI_Focus = g
+    TestValueChangedCount = 0
+    k = TestDGKey(_KEY_DOWN)
+    TEST_CHECK DataGrid_Row(g) = 1 _ANDALSO DataGrid_Column(g) = 1, "The first key picks the first cell"
+    TEST_CHECK TestValueChangedCount = 1 _ANDALSO TestValueChangedID = g, "Moving fires __UI_ValueChanged on the frame"
+    TEST_CHECK DataGrid_ChangedColumn(g) = 0 _ANDALSO DataGrid_ChangedRow(g) = 1, "Column 0: the current cell moved"
+    k = TestDGKey(_KEY_DOWN)
+    k = TestDGKey(_KEY_RIGHT)
+    TEST_CHECK DataGrid_Row(g) = 2 _ANDALSO DataGrid_Column(g) = 2, "Arrows move"
+    TEST_CHECK k = _KEY_RIGHT, "Arrows still reach __UI_KeyPress"
+    k = TestDGKey(_KEY_END)
+    TEST_CHECK DataGrid_Column(g) = 4, "End goes to the last column"
+    k = TestDGKey(_KEY_HOME)
+    TEST_CHECK DataGrid_Column(g) = 1, "Home goes to the first column"
+    k = TestDGKey(_KEY_PAGEDOWN)
+    TEST_CHECK DataGrid_Row(g) = 4, "Page down moves by a page (3 rows show, so 2)"
+    k = TestDGKey(_KEY_PAGEDOWN)
+    k = TestDGKey(_KEY_PAGEDOWN)
+    TEST_CHECK DataGrid_Row(g) = 6, "Not past the last row"
+    __UI_DataGridsUpdate
+    TEST_CHECK __UI_DataGrids(__UI_DGFind(g)).TopRow = 3, "The current row is scrolled into view"
+    k = TestDGKey(_KEY_UP)
+    TEST_CHECK __UI_DataGrids(__UI_DGFind(g)).TopRow = 3, "A row in view doesn't scroll"
+    DataGrid_Select g, 1, 1
+    TEST_CHECK __UI_DataGrids(__UI_DGFind(g)).TopRow = 0, "Selecting a row above scrolls up"
+
+    'Tab goes from cell to cell, and out of the grid past the last one
+    __UI_KeyHit = 9
+    TEST_CHECK __UI_DataGridTab, "Tab moves to the next cell"
+    TEST_CHECK DataGrid_Column(g) = 2, "Next cell"
+    DataGrid_Select g, 6, 4
+    TEST_CHECK_FALSE __UI_DataGridTab, "Tab on the last cell leaves the grid"
+    __UI_KeyHit = 0
+
+    TEST_CASE_END
+
+    TEST_CASE_BEGIN "DataGrid: editing"
+
+    DataGrid_Select g, 2, 1
+    __UI_Focus = g
+    TestValueChangedCount = 0
+    k = TestDGKey(13)
+    TEST_CHECK DataGrid_IsEditing(g), "Enter starts editing"
+    ed = __UI_Focus
+    TEST_CHECK Control(ed).Type = __UI_Type_TextBox _ANDALSO Control(ed).ParentID = g, "A box in the frame"
+    TEST_CHECK DataGrid_GridOf(ed) = g _ANDALSO DataGrid_GridOf(g) = g, "The box belongs to the grid"
+    TEST_CHECK Text(ed) = "row2" _ANDALSO Control(ed).TextIsSelected, "It holds the cell, selected"
+    'Row 2 shows at the top (the grid was scrolled down to row 6, then up just enough for row 2)
+    TEST_CHECK Control(ed).Top = 25 - 1 _ANDALSO Control(ed).Left = 0 _ANDALSO Control(ed).Width = 100 + 1, "It sits on the cell"
+    TEST_CHECK TestDGKey(-13) = 0, "Releasing Enter doesn't click the default button"
+    Text(ed) = "changed"
+    k = TestDGKey(13)
+    TEST_CHECK_FALSE DataGrid_IsEditing(g), "Enter ends editing"
+    TEST_CHECK __UI_Focus = g _ANDALSO Control(ed).Hidden, "The grid has focus again"
+    TEST_CHECK DataGrid_Cell(g, 2, 1) = "changed", "The new value is kept"
+    TEST_CHECK TestValueChangedCount = 1 _ANDALSO DataGrid_ChangedRow(g) = 2 _ANDALSO DataGrid_ChangedColumn(g) = 1, "Its change fires __UI_ValueChanged"
+
+    k = TestDGKey(13)
+    Text(ed) = "dropped"
+    k = TestDGKey(27)
+    TEST_CHECK DataGrid_Cell(g, 2, 1) = "changed" _ANDALSO TestValueChangedCount = 1, "Esc puts the old value back"
+
+    k = TestDGKey(ASC("x"))
+    TEST_CHECK DataGrid_IsEditing(g) _ANDALSO Text(ed) = "x" _ANDALSO k = 0, "Typing starts editing with that key"
+    __UI_Focus = 0
+    __UI_DataGridsUpdate
+    TEST_CHECK_FALSE DataGrid_IsEditing(g), "Leaving the box ends editing"
+    TEST_CHECK DataGrid_Cell(g, 2, 1) = "x", "and keeps what was typed"
+
+    __UI_Focus = g
+    DataGrid_Select g, 2, 3
+    k = TestDGKey(ASC("a"))
+    TEST_CHECK_FALSE DataGrid_IsEditing(g), "Letters don't start editing a number"
+    k = TestDGKey(ASC("4"))
+    Text(ed) = "4.6"
+    k = TestDGKey(_KEY_DOWN)
+    TEST_CHECK DataGrid_Cell(g, 2, 3) = "5", "Integers are rounded"
+    TEST_CHECK DataGrid_Row(g) = 3 _ANDALSO NOT DataGrid_IsEditing(g), "Down keeps the value and moves down"
+    k = TestDGKey(_KEY_DELETE)
+    TEST_CHECK DataGrid_Cell(g, 3, 3) = "0", "Delete clears a number to 0"
+
+    DataGrid_Select g, 3, 4
+    k = TestDGKey(32)
+    TEST_CHECK DataGrid_Cell(g, 3, 4) = "-1", "Space checks a toggle"
+    k = TestDGKey(32)
+    TEST_CHECK DataGrid_Cell(g, 3, 4) = "0", "and unchecks it"
+
+    DataGrid_Select g, 3, 2
+    k = TestDGKey(ASC("b"))
+    TEST_CHECK DataGrid_Cell(g, 3, 2) = "Blue", "A letter picks the next item starting with it"
+    k = TestDGKey(ASC("r"))
+    TEST_CHECK DataGrid_Cell(g, 3, 2) = "Red", "Another letter, another item"
+
+    TEST_CASE_END
+
+    TEST_CASE_BEGIN "DataGrid: mouse"
+
+    __UI_Focus = g
+    DataGrid_Select g, 1, 1
+    __UI_DataGridsUpdate
+    TestValueChangedCount = 0
+    'Row 1 is at 25..48, column 3 at 181..240 (100 + 80 + 1)
+    TestDGClick g, 200, 30
+    TEST_CHECK DataGrid_Row(g) = 1 _ANDALSO DataGrid_Column(g) = 3, "A click picks a cell"
+    TEST_CHECK_FALSE DataGrid_IsEditing(g), "but doesn't edit it"
+    TestDGClick g, 200, 30
+    TEST_CHECK DataGrid_IsEditing(g), "Clicking the current cell again edits it"
+    TestDGClick g, 50, 55
+    TEST_CHECK_FALSE DataGrid_IsEditing(g), "Clicking elsewhere ends editing"
+    TEST_CHECK DataGrid_Row(g) = 2 _ANDALSO DataGrid_Column(g) = 1, "and picks that cell"
+    TestDGClick g, 270, 55
+    TEST_CHECK DataGrid_Cell(g, 2, 4) = "-1", "A click on a toggle flips it"
+    TestDGClick g, 50, 10
+    TEST_CHECK DataGrid_Row(g) = 2, "A click on the header doesn't move"
+
+    'Six rows, three show: a scrollbar at the right
+    TEST_CHECK __UI_DataGrids(__UI_DGFind(g)).MaxTopRow = 3, "Three rows don't fit"
+    TEST_CHECK __UI_DataGridWheel(g, 1), "The wheel scrolls"
+    TEST_CHECK __UI_DataGrids(__UI_DGFind(g)).TopRow = 3, "three rows a notch"
+    Control(g).Redraw = False
+    __UI_DataGridsUpdate
+    TEST_CHECK Control(g).Redraw, "Scrolling redraws the frame"
+    Control(g).Redraw = False
+    __UI_DataGridsUpdate
+    TEST_CHECK_FALSE Control(g).Redraw, "Nothing redrawn when nothing changed"
+    TEST_CHECK __UI_DataGridWheel(g, -5), "Wheel back up"
+    TEST_CHECK __UI_DataGrids(__UI_DGFind(g)).TopRow = 0, "Back at the top"
+    TestDGClick g, 300 - 5, 100 - 8
+    TEST_CHECK __UI_DataGrids(__UI_DGFind(g)).TopRow = 1, "The scrollbar's down button scrolls a row"
+
+    TEST_CASE_END
+
+    TEST_CASE_BEGIN "DataGrid: the row cut off at the bottom"
+
+    'Rows 25..96 show whole; the next row starts at 97 and is cut off at 99
+    DataGrid_Select g, 1, 1
+    TEST_CHECK __UI_DataGrids(__UI_DGFind(g)).TopRow = 0, "Scrolled to the top"
+    TestDGClick g, 50, 98
+    TEST_CHECK DataGrid_Row(g) = 4, "A click on the row cut off picks it"
+    TEST_CHECK __UI_DataGrids(__UI_DGFind(g)).TopRow = 1, "and scrolls it into full view"
+
+    TEST_CASE_END
+
+    TEST_CASE_BEGIN "DataGrid: selecting rows"
+
+    __UI_Focus = g
+    DataGrid_Select g, 2, 1
+    TEST_CHECK DataGrid_SelectionFirst(g) = 2 _ANDALSO DataGrid_SelectionLast(g) = 2, "The current row is selected"
+    __UI_ShiftIsDown = True
+    k = TestDGKey(_KEY_DOWN)
+    k = TestDGKey(_KEY_DOWN)
+    __UI_ShiftIsDown = False
+    TEST_CHECK DataGrid_Row(g) = 4, "Shift+Down moves the current cell"
+    TEST_CHECK DataGrid_SelectionFirst(g) = 2 _ANDALSO DataGrid_SelectionLast(g) = 4, "and selects the rows on the way"
+    TEST_CHECK DataGrid_RowSelected(g, 3) _ANDALSO NOT DataGrid_RowSelected(g, 5), "Rows in the range"
+    k = TestDGKey(_KEY_DELETE)
+    TEST_CHECK k = _KEY_DELETE _ANDALSO DataGrid_Cell(g, 4, 1) = "row4", "Delete with several rows selected is left to the program"
+    k = TestDGKey(_KEY_UP)
+    TEST_CHECK DataGrid_SelectionFirst(g) = 3 _ANDALSO DataGrid_SelectionLast(g) = 3, "Moving without Shift leaves one row selected"
+
+    __UI_ShiftIsDown = True
+    k = TestDGKey(_KEY_UP)
+    __UI_ShiftIsDown = False
+    TEST_CHECK DataGrid_SelectionFirst(g) = 2 _ANDALSO DataGrid_SelectionLast(g) = 3, "Selecting upwards"
+
+    'Shift+click
+    DataGrid_Select g, 1, 1
+    __UI_DataGridsUpdate
+    __UI_ShiftIsDown = True
+    TestDGClick g, 50, 80
+    __UI_ShiftIsDown = False
+    TEST_CHECK DataGrid_Row(g) = 3 _ANDALSO DataGrid_SelectionFirst(g) = 1 _ANDALSO DataGrid_SelectionLast(g) = 3, "Shift+click selects a range"
+    TEST_CHECK_FALSE DataGrid_IsEditing(g), "Shift+click doesn't edit"
+
+    'Dragging from row 1 down to row 2
+    __UI_MouseLeft = Control(g).Left + 50
+    __UI_MouseTop = Control(g).Top + 30
+    __UI_HoveringID = g
+    __UI_MouseIsDown = True
+    __UI_MouseDownOnID = g
+    __UI_DataGridMouseDown
+    __UI_DataGridsUpdate
+    TEST_CHECK DataGrid_SelectionFirst(g) = 1 _ANDALSO DataGrid_SelectionLast(g) = 1, "A press picks one row"
+    __UI_MouseTop = Control(g).Top + 55
+    __UI_DataGridsUpdate
+    TEST_CHECK DataGrid_Row(g) = 2 _ANDALSO DataGrid_SelectionFirst(g) = 1 _ANDALSO DataGrid_SelectionLast(g) = 2, "Dragging selects rows"
+    __UI_MouseTop = Control(g).Top + 200
+    __UI_DataGridsUpdate
+    TEST_CHECK DataGrid_Row(g) = 4 _ANDALSO __UI_DataGrids(__UI_DGFind(g)).TopRow = 1, "Dragging below scrolls a row at a time"
+    __UI_MouseIsDown = False
+    __UI_MouseDownOnID = 0
+    __UI_DataGridsUpdate
+    TEST_CHECK_FALSE DataGrid_IsEditing(g), "A drag doesn't edit"
+
+    'Moving and removing the selection
+    DataGrid_SelectRows g, 2, 3
+    TEST_CHECK DataGrid_Row(g) = 3 _ANDALSO DataGrid_SelectionFirst(g) = 2 _ANDALSO DataGrid_SelectionLast(g) = 3, "Select rows from code"
+    DIM c1 AS STRING, c2 AS STRING, c3 AS STRING, rows AS LONG
+    c1 = DataGrid_Cell(g, 1, 1): c2 = DataGrid_Cell(g, 2, 1): c3 = DataGrid_Cell(g, 3, 1)
+    DataGrid_MoveSelection g, -1
+    TEST_CHECK DataGrid_Cell(g, 1, 1) = c2 _ANDALSO DataGrid_Cell(g, 2, 1) = c3 _ANDALSO DataGrid_Cell(g, 3, 1) = c1, "Move the selected rows up"
+    TEST_CHECK DataGrid_SelectionFirst(g) = 1 _ANDALSO DataGrid_SelectionLast(g) = 2 _ANDALSO DataGrid_Row(g) = 2, "They stay selected"
+    DataGrid_MoveSelection g, -1
+    TEST_CHECK DataGrid_Cell(g, 1, 1) = c2, "Not past the top"
+    DataGrid_MoveSelection g, 1
+    TEST_CHECK DataGrid_Cell(g, 1, 1) = c1 _ANDALSO DataGrid_Cell(g, 2, 1) = c2 _ANDALSO DataGrid_Cell(g, 3, 1) = c3, "and back down"
+    rows = DataGrid_RowCount(g)
+    DataGrid_RemoveSelection g
+    TEST_CHECK DataGrid_RowCount(g) = rows - 2 _ANDALSO DataGrid_Cell(g, 1, 1) = c1, "Remove the selected rows"
+    TEST_CHECK DataGrid_Row(g) = 2 _ANDALSO DataGrid_SelectionLast(g) = 2, "The row after them is current"
+
+    TEST_CASE_END
+
+    TEST_CASE_BEGIN "DataGrid: destroying the frame"
+
+    events = TestValueChangedCount
+    __UI_DestroyControl Control(g)
+    TEST_CHECK __UI_DGFind(g) = 0, "The grid goes with its frame"
+    TEST_CHECK Control(ed).ID = 0, "and so does its box"
+    __UI_DataGridsUpdate
+    TEST_CHECK TestValueChangedCount = events, "A forgotten grid fires nothing"
+
+    TEST_CASE_END
+    __UI_Focus = 0
 END SUB
 
 SUB __UI_LoadForm: END SUB

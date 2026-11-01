@@ -123,6 +123,13 @@ DIM SHARED AddGifExtensionToggle AS LONG
 DIM SHARED ControlList AS LONG, UpBT AS LONG
 DIM SHARED DownBT AS LONG, CloseZOrderingBT AS LONG
 
+'Property grid rows dialog
+DIM SHARED RowsLB AS LONG, EditRowsBT AS LONG, EditRowsDialog AS LONG, RowsDescriptionLB AS LONG
+DIM SHARED RowsFirstBT AS LONG, RowsPrevBT AS LONG, RowsPositionLB AS LONG, RowsNextBT AS LONG, RowsLastBT AS LONG
+DIM SHARED RowsAddBT AS LONG, RowsDeleteBT AS LONG, RowsUpBT AS LONG, RowsDownBT AS LONG
+DIM SHARED RowsHintLB AS LONG, RowsOKBT AS LONG, RowsCancelBT AS LONG, RowsGrid AS LONG
+DIM SHARED RowsDialogOpen AS _BYTE
+
 'Set binding dialog
 DIM SHARED SourceControlLB AS LONG
 DIM SHARED SourceControlNameLB AS LONG
@@ -613,6 +620,31 @@ SUB __UI_Click (id AS LONG)
                 b$ = b$ + "<END>"
                 Send Client, b$
             END IF
+        CASE EditRowsBT
+            OpenRowsDialog
+        CASE RowsOKBT
+            ApplyRowsDialog
+        CASE RowsCancelBT
+            CloseRowsDialog
+        CASE RowsFirstBT
+            RowsGoTo 1
+        CASE RowsPrevBT
+            RowsGoTo DataGrid_Row(RowsGrid) - 1
+        CASE RowsNextBT
+            RowsGoTo DataGrid_Row(RowsGrid) + 1
+        CASE RowsLastBT
+            RowsGoTo DataGrid_RowCount(RowsGrid)
+        CASE RowsAddBT
+            RowsAdd
+        CASE RowsDeleteBT
+            DataGrid_RemoveSelection RowsGrid
+            __UI_Focus = RowsGrid
+        CASE RowsUpBT
+            DataGrid_MoveSelection RowsGrid, -1
+            __UI_Focus = RowsGrid
+        CASE RowsDownBT
+            DataGrid_MoveSelection RowsGrid, 1
+            __UI_Focus = RowsGrid
         CASE CloseZOrderingBT
             Caption(StatusBar) = "Ready."
             Control(DialogBG).Left = -600: Control(DialogBG).Top = -600
@@ -770,7 +802,7 @@ SUB __UI_Click (id AS LONG)
             Clip$ = Replace$(Clip$, CHR$(13) + CHR$(10), CHR$(10), 0, 0)
             Clip$ = Replace$(Clip$, CHR$(10), "\n", 0, 0)
 
-            IF PreviewControls(FirstSelected).Type = __UI_Type_ListBox OR PreviewControls(FirstSelected).Type = __UI_Type_DropdownList OR PreviewControls(FirstSelected).Type = __UI_Type_Frame THEN
+            IF PreviewControls(FirstSelected).Type = __UI_Type_ListBox OR PreviewControls(FirstSelected).Type = __UI_Type_DropdownList THEN
                 Dummy = TextTB
             ELSEIF (PreviewControls(FirstSelected).Type = __UI_Type_Label AND PreviewControls(FirstSelected).WordWrap = True) THEN
                 Dummy = CaptionTB
@@ -900,6 +932,14 @@ SUB __UI_MouseLeave (id AS LONG)
 END SUB
 
 SUB __UI_FocusIn (id AS LONG)
+    'Focus stays in the property grid rows dialog while it's open
+    IF RowsDialogOpen THEN
+        IF Control(id).ParentID <> EditRowsDialog AND DataGrid_GridOf(id) <> RowsGrid AND id <> __UI_ActiveDropdownList THEN
+            __UI_Focus = RowsGrid
+            EXIT SUB
+        END IF
+    END IF
+
     SELECT CASE id
         CASE NameTB, CaptionTB, TextTB, MaskTB, TopTB, LeftTB, WidthTB, HeightTB, FontTB, TooltipTB, ValueTB, MinTB, MaxTB, IntervalTB, PaddingTB, MinIntervalTB, SizeTB
             Caption(StatusBar) = "Editing property"
@@ -914,6 +954,7 @@ SUB __UI_FocusIn (id AS LONG)
 
         CASE AddButton
             IF ZOrderingDialogOpen THEN __UI_Focus = ControlList
+            IF RowsDialogOpen THEN __UI_Focus = RowsGrid
             IF SetBindingDialogOpen THEN __UI_Focus = SourcePropertyList
 
         CASE KeyboardComboBT
@@ -1406,6 +1447,7 @@ SUB __UI_BeforeUpdateDisplay
             CASE "FORMID"
                 PreviewFormID = CVL(thisData$)
             CASE "FIRSTSELECTED"
+                IF RowsDialogOpen AND FirstSelected <> CVL(thisData$) THEN CloseRowsDialog
                 FirstSelected = CVL(thisData$)
                 IF SetBindingDialogOpen THEN
                     Caption(CancelBindBT) = "Cancel"
@@ -1586,7 +1628,9 @@ SUB __UI_BeforeUpdateDisplay
     IF UndoPointer > 0 THEN Control(EditMenuUndo).Disabled = False
     IF UndoPointer < TotalUndoImages THEN Control(EditMenuRedo).Disabled = False
 
-    IF (__UI_KeyHit = ASC("z") OR __UI_KeyHit = ASC("Z")) AND __UI_CtrlIsDown THEN
+    IF RowsDialogOpen THEN
+        'Undo/redo would change the form behind the dialog
+    ELSEIF (__UI_KeyHit = ASC("z") OR __UI_KeyHit = ASC("Z")) AND __UI_CtrlIsDown THEN
         SendSignal 214
     ELSEIF (__UI_KeyHit = ASC("y") OR __UI_KeyHit = ASC("Y")) AND __UI_CtrlIsDown THEN
         SendSignal 215
@@ -1872,13 +1916,21 @@ SUB __UI_BeforeUpdateDisplay
     END IF
 
     IF PreviewControls(FirstSelected).Type = __UI_Type_Frame AND TotalSelected > 0 THEN
-        ToolTip(TextTB) = "Property grid rows, separated by \n:" + CHR$(10) + "key|kind|label|items" + CHR$(10) + "kind: text, integer, float, choice, toggle or button" + CHR$(10) + "items: a choice's items separated by commas, or a button's caption" + CHR$(10) + "Example: size|integer|Size\ncolor|choice|Color|Red,Green,Blue"
-    ELSE
-        ToolTip(TextTB) = ""
+        'A frame's Text holds its property grid rows, edited in a table (see OpenRowsDialog)
+        i = __UI_DGPartCount(PropertyGridRowList$(FirstSelected), CHR$(10)) - 1
+        IF i < 0 THEN i = 0
+        SELECT CASE i
+            CASE 0: Caption(EditRowsBT) = "None - add rows..."
+            CASE 1: Caption(EditRowsBT) = "1 row - edit..."
+            CASE ELSE: Caption(EditRowsBT) = LTRIM$(STR$(i)) + " rows - edit..."
+        END SELECT
+        ToolTip(EditRowsBT) = "Rows written here turn the frame into a property grid when the program runs"
     END IF
 
+    IF RowsDialogOpen THEN UpdateRowsDialog
+
     'Hide the properties that don't apply
-    PropertyGrid_ShowRows ControlProperties, "align,boolean,valign,bullet", False
+    PropertyGrid_ShowRows ControlProperties, "align,boolean,valign,bullet,rows", False
     PropertyGrid_SetLabel ControlProperties, "text", "Text"
     PropertyGrid_SetLabel ControlProperties, "value", "Value"
     PropertyGrid_SetLabel ControlProperties, "max", "Max"
@@ -1905,10 +1957,9 @@ SUB __UI_BeforeUpdateDisplay
                 PropertyGrid_ShowRows ControlToggles, "transparent,autosize", True
                 PropertyGrid_ShowOnly ControlProperties, "name,caption,top,left,width,height,font,tooltip,padding,align,valign,fontlist"
             CASE __UI_Type_Frame
-                'Rows written here turn the frame into a property grid when the program runs
-                PropertyGrid_SetLabel ControlProperties, "text", "Rows"
+                'Its Text holds property grid rows, edited in a table with the Rows button
                 PropertyGrid_ShowRow ControlToggles, "transparent", False
-                PropertyGrid_ShowOnly ControlProperties, "name,caption,text,top,left,width,height,font,tooltip,fontlist"
+                PropertyGrid_ShowOnly ControlProperties, "name,caption,rows,top,left,width,height,font,tooltip,fontlist"
             CASE __UI_Type_TextBox
                 STATIC PreviousNumericState AS _BYTE
                 PropertyGrid_ShowRow ControlToggles, "transparent", True
@@ -2039,7 +2090,7 @@ SUB __UI_BeforeUpdateDisplay
             END IF
     END SELECT
 
-    IF PreviewControls(FirstSelected).Type = __UI_Type_ListBox OR PreviewControls(FirstSelected).Type = __UI_Type_DropdownList OR PreviewControls(FirstSelected).Type = __UI_Type_Frame THEN
+    IF PreviewControls(FirstSelected).Type = __UI_Type_ListBox OR PreviewControls(FirstSelected).Type = __UI_Type_DropdownList THEN
         IF INSTR(_CLIPBOARD$, CHR$(10)) THEN
             Control(PasteListBT).Top = Control(TextTB).Top
             Control(PasteListBT).Hidden = False
@@ -2471,6 +2522,7 @@ SUB __UI_OnLoad
     PropertyGrid_AdoptRow ControlProperties, "name", NameLB, NameTB
     PropertyGrid_AdoptRow ControlProperties, "caption", CaptionLB, CaptionTB
     PropertyGrid_AdoptRow ControlProperties, "text", TextLB, TextTB
+    PropertyGrid_AdoptRow ControlProperties, "rows", RowsLB, EditRowsBT
     PropertyGrid_AdoptRow ControlProperties, "mask", MaskLB, MaskTB
     PropertyGrid_AdoptRow ControlProperties, "top", TopLB, TopTB
     PropertyGrid_AdoptRow ControlProperties, "left", LeftLB, LeftTB
@@ -2517,6 +2569,13 @@ SUB __UI_OnLoad
     'The border size box sits next to "Has border", so it's left out of the stacking
     PropertyGrid_AdoptRow ControlToggles, "bordersize", 0, SizeTB
     PropertyGrid_SetFloating ControlToggles, "bordersize", True
+
+    'The table in the property grid rows dialog
+    DataGrid_AddTextColumn RowsGrid, "Key", 110
+    DataGrid_AddChoiceColumn RowsGrid, "Kind", 80, "text|integer|float|choice|toggle|button"
+    DataGrid_AddTextColumn RowsGrid, "Label", 140
+    DataGrid_AddTextColumn RowsGrid, "Items / caption", 0
+    Control(RowsGrid).HasBorder = False
 
     ToolTip(FontTB) = "Multiple fonts can be specified by separating them with a question mark (?)." + CHR$(10) + "The first font that can be found/loaded is used."
     ToolTip(FontList) = "System fonts may not be available in all computers. To specify a local font file, right-click 'Font' to the left of this list and disable 'Show system fonts list'."
@@ -2618,6 +2677,13 @@ SUB __UI_KeyPress (id AS LONG)
         CASE ControlList, UpBT, DownBT, CloseZOrderingBT
             IF __UI_KeyHit = 27 THEN
                 __UI_Click CloseZOrderingBT
+            END IF
+        CASE RowsGrid, RowsFirstBT, RowsPrevBT, RowsNextBT, RowsLastBT, RowsAddBT, RowsDeleteBT, RowsUpBT, RowsDownBT, RowsOKBT, RowsCancelBT
+            'Esc while a cell is being edited only stops the editing (the grid takes the key)
+            IF __UI_KeyHit = 27 THEN CloseRowsDialog
+            'Delete clears a cell; with several rows selected, it removes them
+            IF id = RowsGrid AND __UI_KeyHit = 21248 THEN
+                IF DataGrid_SelectionLast(RowsGrid) > DataGrid_SelectionFirst(RowsGrid) THEN DataGrid_RemoveSelection RowsGrid
             END IF
         CASE NameTB, CaptionTB, TextTB, MaskTB, TopTB, LeftTB, WidthTB, HeightTB, FontTB, TooltipTB, ValueTB, MinTB, MaxTB, IntervalTB, PaddingTB, MinIntervalTB, SizeTB
             'Enter and Esc were already handled by the property grid
@@ -3345,6 +3411,169 @@ SUB LoadPreview
         END IF
         PrevTotalGifLoaded = TotalGifLoaded
     END IF
+END SUB
+
+'---------------------------------------------------------------------------------
+'Property grid rows dialog: a frame's Text holds rows (key|kind|label|items, one per line), edited here in a table
+'---------------------------------------------------------------------------------
+
+''' @brief The word a property grid row kind is written as.
+FUNCTION RowKindName$ (Kind AS _BYTE)
+    SELECT CASE Kind
+        CASE __UI_PropertyGrid_Integer: RowKindName$ = "integer"
+        CASE __UI_PropertyGrid_Float: RowKindName$ = "float"
+        CASE __UI_PropertyGrid_Choice: RowKindName$ = "choice"
+        CASE __UI_PropertyGrid_Toggle: RowKindName$ = "toggle"
+        CASE __UI_PropertyGrid_Button: RowKindName$ = "button"
+        CASE ELSE: RowKindName$ = "text"
+    END SELECT
+END FUNCTION
+
+''' @brief Fills the table with the selected frame's rows and shows the dialog.
+SUB OpenRowsDialog
+    DIM t$, l$, p AS LONG, k$, Kind AS _BYTE, Label$, Extra$, r AS LONG
+
+    IF FirstSelected = 0 OR TotalSelected <> 1 THEN EXIT SUB
+    IF PreviewControls(FirstSelected).Type <> __UI_Type_Frame THEN EXIT SUB
+
+    DataGrid_Clear RowsGrid
+    t$ = Replace(PreviewTexts(FirstSelected), "\n", CHR$(10), False, 0)
+    t$ = Replace(t$, CHR$(13), "", False, 0) + CHR$(10)
+    DO
+        p = INSTR(t$, CHR$(10))
+        IF p = 0 THEN EXIT DO
+        l$ = LEFT$(t$, p - 1)
+        t$ = MID$(t$, p + 1)
+        IF __UI_PGParseLine(l$, k$, Kind, Label$, Extra$) THEN
+            r = DataGrid_AddRow(RowsGrid, "")
+            DataGrid_SetCell RowsGrid, r, 1, k$
+            DataGrid_SetCell RowsGrid, r, 2, RowKindName$(Kind)
+            DataGrid_SetCell RowsGrid, r, 3, Label$
+            DataGrid_SetCell RowsGrid, r, 4, Extra$
+        END IF
+    LOOP
+    IF DataGrid_RowCount(RowsGrid) > 0 THEN DataGrid_Select RowsGrid, 1, 1
+
+    Caption(EditRowsDialog) = "Property grid rows: " + RTRIM$(__UI_TrimAt0$(PreviewControls(FirstSelected).Name))
+    Control(DialogBG).Left = 0: Control(DialogBG).Top = 0
+    Control(EditRowsDialog).Left = 18: Control(EditRowsDialog).Top = 70
+    Control(RowsGrid).Left = Control(EditRowsDialog).Left + 15
+    Control(RowsGrid).Top = Control(EditRowsDialog).Top + 62
+    RowsDialogOpen = True
+    __UI_Focus = RowsGrid
+    UpdateRowsDialog
+    Caption(StatusBar) = "Editing property grid rows"
+    __UI_ForceRedraw = True
+END SUB
+
+''' @brief Hides the dialog without changing the frame.
+SUB CloseRowsDialog
+    IF NOT RowsDialogOpen THEN EXIT SUB
+    RowsDialogOpen = False
+    IF DataGrid_IsEditing(RowsGrid) THEN DataGrid_StopEditing RowsGrid
+    Control(DialogBG).Left = -600: Control(DialogBG).Top = -600
+    Control(EditRowsDialog).Left = -600: Control(EditRowsDialog).Top = -600
+    Control(RowsGrid).Left = -600: Control(RowsGrid).Top = -600
+    __UI_Focus = 0
+    Caption(StatusBar) = "Ready."
+    __UI_ForceRedraw = True
+END SUB
+
+''' @brief Writes the table back to the frame's Text (an edit that can be undone) and closes the dialog.
+SUB ApplyRowsDialog
+    DIM r AS LONG, k$, Kind$, Label$, Extra$, t$, Keys$, Row$
+
+    DataGrid_StopEditing RowsGrid
+    Keys$ = CHR$(10)
+    FOR r = 1 TO DataGrid_RowCount(RowsGrid)
+        k$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 1))
+        Kind$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 2))
+        Label$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 3))
+        Extra$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 4))
+        IF LEN(k$) = 0 AND LEN(Label$) = 0 THEN _CONTINUE 'blank rows are left out
+        IF LEN(k$) = 0 THEN k$ = Label$
+
+        IF INSTR(k$, "|") > 0 OR INSTR(Label$, "|") > 0 THEN
+            IF INSTR(k$, "|") > 0 THEN DataGrid_Select RowsGrid, r, 1 ELSE DataGrid_Select RowsGrid, r, 3
+            __UI_Focus = RowsGrid
+            MessageBox "Keys and labels can't contain |.", UiEditorTitle$, MsgBox_Exclamation
+            EXIT SUB
+        END IF
+        IF INSTR(Keys$, CHR$(10) + LCASE$(k$) + CHR$(10)) THEN
+            DataGrid_Select RowsGrid, r, 1
+            __UI_Focus = RowsGrid
+            MessageBox "More than one row has the key '" + k$ + "'. Each row needs its own key.", UiEditorTitle$, MsgBox_Exclamation
+            EXIT SUB
+        END IF
+        Keys$ = Keys$ + LCASE$(k$) + CHR$(10)
+
+        Row$ = k$ + "|" + Kind$ + "|" + Label$
+        IF LEN(Extra$) THEN Row$ = Row$ + "|" + Extra$
+        IF LEN(t$) THEN t$ = t$ + CHR$(10)
+        t$ = t$ + Row$
+    NEXT
+
+    'Sent the way a property typed in the Control properties panel is
+    Text(TextTB) = Replace(t$, CHR$(10), "\n", False, 0)
+    PropertyGrid_Commit ControlProperties, "text"
+    CloseRowsDialog
+END SUB
+
+''' @brief Makes a row current, keeping the column.
+SUB RowsGoTo (r AS LONG)
+    DIM c AS LONG
+    c = DataGrid_Column(RowsGrid)
+    IF c = 0 THEN c = 1
+    DataGrid_Select RowsGrid, r, c
+    __UI_Focus = RowsGrid
+END SUB
+
+''' @brief Adds a text row below the current one, with a key not used yet, and starts editing its key.
+SUB RowsAdd
+    DIM n AS LONG, r AS LONG, k$, Taken AS _BYTE
+    DO
+        n = n + 1
+        k$ = "text" + LTRIM$(STR$(n))
+        Taken = False
+        FOR r = 1 TO DataGrid_RowCount(RowsGrid)
+            IF LCASE$(_TRIM$(DataGrid_Cell(RowsGrid, r, 1))) = k$ THEN Taken = True: EXIT FOR
+        NEXT
+    LOOP WHILE Taken
+    r = DataGrid_InsertRow(RowsGrid, DataGrid_Row(RowsGrid) + 1, k$ + "|text|Text")
+    DataGrid_Select RowsGrid, r, 1
+    __UI_Focus = RowsGrid
+    DataGrid_Edit RowsGrid
+END SUB
+
+''' @brief Keeps the dialog's position, buttons and hint in step with the table.
+SUB UpdateRowsDialog
+    DIM r AS LONG, n AS LONG, First AS LONG, Last AS LONG
+    r = DataGrid_Row(RowsGrid)
+    n = DataGrid_RowCount(RowsGrid)
+    First = DataGrid_SelectionFirst(RowsGrid)
+    Last = DataGrid_SelectionLast(RowsGrid)
+    IF n = 0 THEN
+        Caption(RowsPositionLB) = "No rows"
+    ELSEIF Last > First THEN
+        Caption(RowsPositionLB) = "Rows" + STR$(First) + "-" + LTRIM$(STR$(Last)) + " of" + STR$(n)
+    ELSE
+        Caption(RowsPositionLB) = "Row" + STR$(r) + " of" + STR$(n)
+    END IF
+    Control(RowsFirstBT).Disabled = r <= 1
+    Control(RowsPrevBT).Disabled = r <= 1
+    Control(RowsNextBT).Disabled = r >= n
+    Control(RowsLastBT).Disabled = r >= n
+    Control(RowsDeleteBT).Disabled = r = 0
+    Control(RowsUpBT).Disabled = First <= 1
+    Control(RowsDownBT).Disabled = First = 0 OR Last >= n
+
+    SELECT CASE DataGrid_Column(RowsGrid)
+        CASE 1: Caption(RowsHintLB) = "Key: the name your code uses for the row, as in PropertyGrid_Value$(frame, " + CHR$(34) + "key" + CHR$(34) + "). Each row needs its own."
+        CASE 2: Caption(RowsHintLB) = "Kind: a text, integer or float box, a choice (dropdown list), a toggle (check box) or a button. Space or a second click opens the list."
+        CASE 3: Caption(RowsHintLB) = "Label: shown to the left of the row (a toggle's caption)."
+        CASE 4: Caption(RowsHintLB) = "Items: a choice's items, separated by commas (Red,Green,Blue), or a button's caption."
+        CASE ELSE: Caption(RowsHintLB) = "Add a row to start."
+    END SELECT
 END SUB
 
 '---------------------------------------------------------------------------------

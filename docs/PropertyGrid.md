@@ -51,10 +51,11 @@ Any frame can be a property grid without writing code to build it. The quickest 
 To turn a frame of your own into a property grid:
 
 1. Add a frame to your form.
-2. Right-click the frame and pick **Add property** and then a kind of row (text box, integer box, number box, choice, toggle or button). Each row is added with a key that isn't used yet (`text1`, `choice2`...), and the frame keeps its size: rows that don't fit get a scrollbar, which you can scroll with the mouse wheel. You can also type the rows straight into the frame's **Rows** property, one per line. Separate lines with `\n`, or paste several lines with the paste button next to the box.
+2. Right-click the frame and pick **Add property** and then a kind of row (text box, integer box, number box, choice, toggle or button). Each row is added with a key that isn't used yet (`text1`, `choice2`...), and the frame keeps its size: rows that don't fit get a scrollbar, which you can scroll with the mouse wheel.
+   To change the rows, click the **Rows** button in the frame's properties. It opens a table with one line per row and columns for the key, kind, label and items (see [DataGrid](DataGrid.md)). Edit the cells in place, use the buttons to go to the first, previous, next or last row and to add, delete or move rows, and click **OK** to keep the changes (they can be undone).
 3. The designer draws the rows the way they will look. When the program starts, they become real rows, before `__UI_OnLoad` runs.
 
-Each line is `key|kind|label|items`:
+The rows are kept in the frame's Text, one per line, as `key|kind|label|items`:
 
 ```text
 label|text|Label
