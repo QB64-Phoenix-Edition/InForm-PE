@@ -996,40 +996,12 @@ SUB __UI_BeforeUpdateDisplay
                             FOR i = 1 TO UBOUND(Control)
                                 IF Control(i).ControlIsSelected THEN
                                     ChangeFont:
-                                    Control(i).Font = SetFont(NewFontFile, NewFontSize)
-                                    DIM tempFont AS LONG
-                                    tempFont = _FONT
-                                    _FONT Control(i).Font
-                                    SELECT CASE Control(i).Type
-                                        CASE __UI_Type_Label
-                                            IF Control(i).WordWrap = False THEN
-                                                Control(i).Height = uspacing + 6 + (ABS(Control(i).HasBorder) * Control(i).BorderSize)
-                                                AutoSizeLabel Control(i)
-                                            END IF
-                                        CASE __UI_Type_TextBox
-                                            IF Control(i).Multiline = False THEN
-                                                Control(i).Height = uspacing + 6 + (ABS(Control(i).HasBorder) * Control(i).BorderSize)
-                                            END IF
-                                        CASE __UI_Type_CheckBox, __UI_Type_RadioButton
-                                            Control(i).Height = uspacing + 6
-                                        CASE __UI_Type_ProgressBar
-                                            IF INSTR(Caption(i), CHR$(10)) = 0 THEN
-                                                Control(i).Height = uspacing + 6
-                                            END IF
-                                    END SELECT
-                                    IF Control(i).HotKey > 0 THEN
-                                        IF Control(i).HotKeyPosition = 1 THEN
-                                            Control(i).HotKeyOffset = 0
-                                        ELSE
-                                            Control(i).HotKeyOffset = __UI_PrintWidth(LEFT$(Caption(i), Control(i).HotKeyPosition - 1))
-                                        END IF
-                                    END IF
-                                    _FONT tempFont
+                                    ApplyFont i, SetFont(NewFontFile, NewFontSize)
                                     IF LockedControlsGOSUB THEN RETURN
                                 END IF
                             NEXT
                         ELSE
-                            Control(__UI_FormID).Font = SetFont(NewFontFile, NewFontSize)
+                            ApplyFont __UI_FormID, SetFont(NewFontFile, NewFontSize)
                             DIM MustRedrawMenus AS _BYTE
                             FOR i = 1 TO UBOUND(Control)
                                 IF Control(i).Type = __UI_Type_MenuBar OR Control(i).Type = __UI_Type_MenuItem OR Control(i).Type = __UI_Type_MenuPanel OR Control(i).Type = __UI_Type_ContextMenu THEN
@@ -1510,6 +1482,7 @@ SUB __UI_BeforeUpdateDisplay
             CASE 40 'BorderSize
                 b$ = ReadSequential$(Property$, 2)
                 TempValue = CVI(b$)
+                DIM tempFont AS LONG
                 IF TotalLockedControls THEN
                     FOR j = 1 TO TotalLockedControls
                         IF NOT __UI_IsContainer(Control(LockedControls(j)).Type) THEN
@@ -4104,6 +4077,58 @@ SUB SetMultiline (id AS LONG, state AS INTEGER)
     END IF
     _FONT prevFont
     Control(id).Redraw = True
+END SUB
+
+SUB ApplyFont (id AS LONG, NewFont AS LONG)
+    'Sets a control's font, then passes it down to the children that were
+    'still using the old one (inherited from the form, a frame or a tab group)
+    DIM OldFont AS LONG, i AS LONG, tempFont AS LONG
+    OldFont = Control(id).Font
+    Control(id).Font = NewFont
+
+    tempFont = _FONT
+    _FONT Control(id).Font
+    SELECT CASE Control(id).Type
+        CASE __UI_Type_Label
+            IF Control(id).WordWrap = False THEN
+                Control(id).Height = uspacing + 6 + (ABS(Control(id).HasBorder) * Control(id).BorderSize)
+                AutoSizeLabel Control(id)
+            END IF
+        CASE __UI_Type_TextBox
+            IF Control(id).Multiline = False THEN
+                Control(id).Height = uspacing + 6 + (ABS(Control(id).HasBorder) * Control(id).BorderSize)
+            END IF
+        CASE __UI_Type_CheckBox, __UI_Type_RadioButton
+            Control(id).Height = uspacing + 6
+        CASE __UI_Type_ProgressBar
+            IF INSTR(Caption(id), CHR$(10)) = 0 THEN
+                Control(id).Height = uspacing + 6
+            END IF
+    END SELECT
+    IF Control(id).HotKey > 0 THEN
+        IF Control(id).HotKeyPosition = 1 THEN
+            Control(id).HotKeyOffset = 0
+        ELSE
+            Control(id).HotKeyOffset = __UI_PrintWidth(LEFT$(Caption(id), Control(id).HotKeyPosition - 1))
+        END IF
+    END IF
+    _FONT tempFont
+
+    IF OldFont = NewFont THEN EXIT SUB
+    IF id <> __UI_FormID AND NOT __UI_IsContainer(Control(id).Type) THEN EXIT SUB
+
+    FOR i = 1 TO UBOUND(Control)
+        IF i <> id AND Control(i).ID > 0 AND Control(i).Font = OldFont THEN
+            SELECT CASE Control(i).Type
+                CASE __UI_Type_Form, __UI_Type_Font, __UI_Type_MenuBar, __UI_Type_MenuItem, __UI_Type_MenuPanel, __UI_Type_ContextMenu
+                    'Menus are handled separately; fonts and the form don't inherit
+                CASE ELSE
+                    IF Control(i).ParentID = id OR (id = __UI_FormID AND Control(i).ParentID = 0) THEN
+                        ApplyFont i, NewFont
+                    END IF
+            END SELECT
+        END IF
+    NEXT
 END SUB
 
 SUB LoadDefaultFonts
