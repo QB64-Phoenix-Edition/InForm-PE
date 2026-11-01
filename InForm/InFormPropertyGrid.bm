@@ -672,14 +672,59 @@ SUB __UI_PropertyGridsFromForm
     NEXT
 END SUB
 
-''' @brief Called by __UI_DrawContainer in the designer: draws a frame's row definitions as the rows will look.
+''' @brief How many rows a frame's row definitions make (blank lines don't count).
+FUNCTION __UI_PGMockRowCount& (frameID AS LONG)
+    DIM pgText AS STRING, pgPos AS LONG, pgCount AS LONG
+    DIM pgKey AS STRING, pgKind AS _BYTE, pgLabel AS STRING, pgExtra AS STRING
+    pgText = __UI_PGDefinitions(frameID) + CHR$(10)
+    DO
+        pgPos = INSTR(pgText, CHR$(10))
+        IF pgPos = 0 THEN EXIT DO
+        IF __UI_PGParseLine(LEFT$(pgText, pgPos - 1), pgKey, pgKind, pgLabel, pgExtra) THEN pgCount = pgCount + 1
+        pgText = MID$(pgText, pgPos + 1)
+    LOOP
+    __UI_PGMockRowCount = pgCount
+END FUNCTION
+
+''' @brief How far a frame's rows are scrolled in the designer, kept within what its rows need (0 when they fit).
+FUNCTION __UI_PGMockScroll& (frameID AS LONG)
+    DIM pgMax AS LONG
+    IF frameID > UBOUND(__UI_PGMockScrollY) THEN REDIM _PRESERVE __UI_PGMockScrollY(0 TO UBOUND(Control)) AS LONG
+    pgMax = __UI_PGMockRowCount(frameID) * __UI_PG_MockSpacing - (Control(frameID).Height - __UI_PG_MockFirstTop - 4)
+    IF pgMax < 0 THEN pgMax = 0
+    IF __UI_PGMockScrollY(frameID) > pgMax THEN __UI_PGMockScrollY(frameID) = pgMax
+    IF __UI_PGMockScrollY(frameID) < 0 THEN __UI_PGMockScrollY(frameID) = 0
+    __UI_PGMockScroll = __UI_PGMockScrollY(frameID)
+END FUNCTION
+
+''' @brief Called by the mouse wheel handler in the designer: scrolls the rows of the frame under the mouse. Returns _TRUE if it did.
+FUNCTION __UI_PropertyGridMockWheel%% (hoverID AS LONG, pgWheel AS LONG)
+    DIM pgBefore AS LONG
+    IF hoverID <= 0 _ORELSE hoverID > UBOUND(Control) THEN EXIT FUNCTION
+    IF Control(hoverID).Type <> __UI_Type_Frame _ORELSE LEN(Text(hoverID)) = 0 THEN EXIT FUNCTION
+    pgBefore = __UI_PGMockScroll(hoverID)
+    __UI_PGMockScrollY(hoverID) = pgBefore + pgWheel * __UI_PG_MockSpacing
+    IF __UI_PGMockScroll(hoverID) = pgBefore THEN EXIT FUNCTION
+    Control(hoverID).Redraw = _TRUE
+    __UI_PropertyGridMockWheel = _TRUE
+END FUNCTION
+
+''' @brief Called by __UI_DrawContainer in the designer: draws a frame's row definitions as the rows will look,
+''' with a scrollbar (scrolled by the mouse wheel) when they don't fit, like the grid has when the program runs.
 SUB __UI_PropertyGridDrawMock (frameID AS LONG)
-    CONST __UI_PG_MockHeight = 23
     DIM pgText AS STRING, pgLine AS STRING, pgPos AS LONG, pgTop AS INTEGER, pgEditLeft AS INTEGER, pgRight AS INTEGER
     DIM pgKey AS STRING, pgKind AS _BYTE, pgLabel AS STRING, pgExtra AS STRING
     DIM pgPrevDest AS LONG, pgPrevFont AS LONG, pgTextTop AS INTEGER, pgX AS INTEGER, pgY AS INTEGER, pgColor AS _UNSIGNED LONG
+    DIM pgScroll AS LONG, pgMax AS LONG, pgViewHeight AS LONG, pgSbLeft AS INTEGER, pgBar AS __UI_ControlTYPE
 
     IF Control(frameID).Type <> __UI_Type_Frame _ORELSE LEN(Text(frameID)) = 0 _ORELSE Control(frameID).Canvas = 0 THEN EXIT SUB
+
+    'Measured the way __UI_PGLayout does with the default layout
+    pgViewHeight = Control(frameID).Height - __UI_PG_MockFirstTop - 4
+    pgMax = __UI_PGMockRowCount(frameID) * __UI_PG_MockSpacing - pgViewHeight
+    IF pgMax < 0 THEN pgMax = 0
+    pgScroll = __UI_PGMockScroll(frameID)
+    pgSbLeft = Control(frameID).Width - __UI_ScrollbarWidth - 2
 
     pgPrevDest = _DEST
     pgPrevFont = _FONT
@@ -688,8 +733,9 @@ SUB __UI_PropertyGridDrawMock (frameID AS LONG)
     _PRINTMODE _KEEPBACKGROUND
     pgTextTop = (__UI_PG_MockHeight - _UFONTHEIGHT) \ 2
     pgEditLeft = 129
-    pgRight = Control(frameID).Width - 8
-    pgTop = 10
+    'Rows end before the scrollbar when there is one
+    IF pgMax > 0 THEN pgRight = pgSbLeft - 4 ELSE pgRight = Control(frameID).Width - 8
+    pgTop = __UI_PG_MockFirstTop - pgScroll
 
     pgText = __UI_PGDefinitions(frameID) + CHR$(10)
     DO
@@ -698,6 +744,8 @@ SUB __UI_PropertyGridDrawMock (frameID AS LONG)
         pgLine = LEFT$(pgText, pgPos - 1)
         pgText = MID$(pgText, pgPos + 1)
         IF NOT __UI_PGParseLine(pgLine, pgKey, pgKind, pgLabel, pgExtra) THEN _CONTINUE
+        'Rows scrolled above the frame aren't drawn
+        IF pgTop + __UI_PG_MockHeight <= 0 THEN pgTop = pgTop + __UI_PG_MockSpacing: _CONTINUE
 
         IF pgKind = __UI_PropertyGrid_Toggle THEN
             'Check box and caption across both columns
@@ -739,8 +787,30 @@ SUB __UI_PropertyGridDrawMock (frameID AS LONG)
                     __UI_PrintString pgEditLeft + 5, pgTop + pgTextTop, "0"
             END SELECT
         END IF
-        pgTop = pgTop + 22
+        pgTop = pgTop + __UI_PG_MockSpacing
     LOOP
+
+    IF pgMax > 0 THEN
+        'Rows partly out of view are cut off at the edges of the area rows show in
+        _DONTBLEND
+        LINE (0, 0)-(Control(frameID).Width - 1, __UI_PG_MockFirstTop - 1), Control(frameID).BackColor, BF
+        LINE (0, __UI_PG_MockFirstTop + pgViewHeight)-(Control(frameID).Width - 1, Control(frameID).Height - 1), Control(frameID).BackColor, BF
+        _BLEND
+
+        'The scrollbar, where the grid will have it
+        pgBar = Control(frameID)
+        pgBar.Left = pgSbLeft
+        pgBar.Top = __UI_PG_MockFirstTop - 1
+        pgBar.Width = __UI_ScrollbarWidth
+        pgBar.Height = Control(frameID).Height - pgBar.Top - 3
+        pgBar.Min = 0
+        pgBar.Max = pgMax
+        pgBar.Value = pgScroll
+        pgBar.LastVisibleItem = pgViewHeight
+        pgBar.HoveringVScrollbarButton = 0
+        __UI_PGThumbDragging = _FALSE
+        __UI_DrawVScrollBar pgBar, 1
+    END IF
 
     _FONT pgPrevFont
     _DEST pgPrevDest

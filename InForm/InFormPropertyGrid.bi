@@ -74,6 +74,8 @@ REDIM SHARED __UI_PropertyGridSeen(0) AS STRING ' text of a focused row's textbo
 REDIM SHARED __UI_PropertyGridAttachedID(0) AS LONG
 REDIM SHARED __UI_PropertyGridAttachedRow(0) AS LONG
 REDIM SHARED __UI_PropertyGridAttachedShift(0) AS INTEGER ' how far left an attached control was moved for the scrollbar
+REDIM SHARED __UI_PGMockScrollY(0) AS LONG ' designer: how far each frame's mock rows are scrolled, by control ID
+CONST __UI_PG_MockFirstTop = 10, __UI_PG_MockSpacing = 22, __UI_PG_MockHeight = 23 ' designer: the default row layout
 DIM SHARED __UI_PGThumbDragging AS _BYTE ' tells __UI_DrawVScrollBar a grid's thumb is being dragged
 DIM SHARED __UI_TotalPropertyGrids AS LONG, __UI_TotalPropertyGridRows AS LONG
 DIM SHARED __UI_TotalPropertyGridAttached AS LONG

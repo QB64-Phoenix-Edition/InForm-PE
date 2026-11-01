@@ -523,7 +523,8 @@ SUB __UI_ProcessInput
                 __UI_Focus = __UI_HoveringID
             END IF
         ELSE
-            IF __UI_HoveringID <> __UI_LastHoveringID AND Control(__UI_HoveringID).Type = __UI_Type_MenuItem AND Control(__UI_HoveringID).SubMenu AND __UI_DesignMode = False THEN
+            'Start the delay before a submenu opens (in the designer too, or it would open at once)
+            IF __UI_HoveringID <> __UI_LastHoveringID AND Control(__UI_HoveringID).Type = __UI_Type_MenuItem AND Control(__UI_HoveringID).SubMenu THEN
                 Control(__UI_HoveringID).LastChange = TIMER
                 __UI_HoveringSubMenu = True
             ELSEIF __UI_HoveringID = __UI_LastHoveringID AND Control(__UI_HoveringID).Type = __UI_Type_MenuItem AND Control(__UI_HoveringID).SubMenu THEN
@@ -1574,7 +1575,10 @@ SUB __UI_EventDispatcher
     END IF
 
     'MouseWheel
-    IF __UI_MouseWheel AND NOT __UI_DesignMode THEN
+    IF __UI_MouseWheel _ANDALSO __UI_DesignMode THEN
+        'The designer scrolls the rows of a frame's property grid that don't fit
+        IF __UI_PropertyGridMockWheel(__UI_HoveringID, __UI_MouseWheel) THEN __UI_ForceRedraw = True
+    ELSEIF __UI_MouseWheel THEN
         IF (Control(__UI_HoveringID).Type = __UI_Type_ListBox AND NOT Control(__UI_HoveringID).Disabled) THEN
             Control(__UI_HoveringID).InputViewStart = Control(__UI_HoveringID).InputViewStart + __UI_MouseWheel
             IF Control(__UI_HoveringID).InputViewStart + Control(__UI_HoveringID).LastVisibleItem > Control(__UI_HoveringID).Max THEN
@@ -9502,7 +9506,7 @@ END SUB
 
 '---------------------------------------------------------------------------------
 SUB __UI_DrawMenuPanel (This AS __UI_ControlTYPE, Parent AS LONG)
-    DIM PrevDest AS LONG, TempCaption$
+    DIM PrevDest AS LONG, TempCaption$, OpenSubMenu AS _BYTE, k AS LONG
     DIM Temp&
 
     DIM CheckMarkIndex AS _BYTE
@@ -9564,7 +9568,15 @@ SUB __UI_DrawMenuPanel (This AS __UI_ControlTYPE, Parent AS LONG)
                     HasSeparator = False
                 END IF
 
-                IF __UI_Focus = i OR (__UI_HoveringID = i AND __UI_Focus = i) THEN
+                'An item whose submenu is open stays selected while the mouse is in the submenu
+                OpenSubMenu = False
+                IF Control(i).SubMenu THEN
+                    FOR k = 1 TO __UI_TotalActiveMenus
+                        IF __UI_ParentMenu(k) = i THEN OpenSubMenu = True: EXIT FOR
+                    NEXT
+                END IF
+
+                IF __UI_Focus = i OR OpenSubMenu THEN
                     LINE (3, Control(i).Top)-STEP(This.Width - 7, Control(i).Height - 1), This.SelectedBackColor, BF
                     COLOR This.SelectedForeColor
                     CheckMarkIndex = 2
