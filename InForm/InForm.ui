@@ -1038,11 +1038,13 @@ SUB __UI_UpdateDisplay
         _DEST 0
     END IF
 
-    'Anchor markers: controls that don't keep the default left + top anchors show a
-    'pin on each edge they follow (part of "Show invisible elements" in the editor)
-    IF __UI_DesignMode AND __UI_ShowInvisibleControls AND Control(__UI_FormID).Width > 0 AND Control(__UI_FormID).Height > 0 THEN
+    'Anchor markers: selected controls that don't keep the default left + top anchors
+    'show a pin on each edge they follow (part of "Show invisible elements" in the editor).
+    'Hidden while dragging or resizing, so they don't get in the way of the snap lines.
+    IF __UI_DesignMode AND __UI_ShowInvisibleControls AND __UI_IsDragging = False AND __UI_IsResizing = False AND Control(__UI_FormID).Width > 0 AND Control(__UI_FormID).Height > 0 THEN
         FOR i = 1 TO UBOUND(Control)
-            IF Control(i).ID = 0 OR Control(i).Anchor = 0 OR Control(i).Anchor = (__UI_Anchor_Left OR __UI_Anchor_Top) THEN _CONTINUE
+            IF Control(i).ID = 0 OR NOT Control(i).ControlIsSelected THEN _CONTINUE
+            IF Control(i).Anchor = 0 OR Control(i).Anchor = (__UI_Anchor_Left OR __UI_Anchor_Top) THEN _CONTINUE
             IF __UI_IsOnHiddenTab(i) THEN _CONTINUE
             IF OverlayReset = False THEN
                 OverlayReset = True

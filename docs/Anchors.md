@@ -15,7 +15,7 @@ Anchors let controls move and stretch on their own when a form is resized, so a 
 
 Top and bottom work the same way for the height. A control always follows at least one side in each direction, so to release the left side, anchor the right one first. With several controls selected, a click changes only that edge on each of them.
 
-In the preview, a control with anchors other than the default shows a small blue pin on each edge it follows. The pins are part of **View > Show invisible elements on the preview**.
+In the preview, a selected control with anchors other than the default shows a small blue pin on each edge it follows. The pins are part of **View > Show invisible elements on the preview**.
 
 ## How it works
 
