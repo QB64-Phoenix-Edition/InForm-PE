@@ -69,6 +69,14 @@ Notes
 
 Then use the rows from code exactly as below, for example `PropertyGrid_SetValue ShapeFrame, "size", "120"` in `__UI_OnLoad`.
 
+When you save the form, the exported `.bas` explains the grid where you'll need it:
+
+- `__UI_OnLoad` gets a comment about setting starting values.
+- `__UI_ValueChanged` gets a `CASE` for the frame with a `SELECT CASE PropertyGrid_ChangedRow$(...)` that has one `CASE` per row and a comment on reading its value.
+- `__UI_Click` gets a `SELECT CASE PropertyGrid_RowOf$(id)` for the grid's buttons.
+
+A frame that becomes a grid after the `.bas` was first exported gets its `__UI_ValueChanged` block added to your code the next time you save. Your existing code is left as it is.
+
 ## Rows
 
 | Add with | Control | Value |

@@ -4276,7 +4276,12 @@ SUB SaveForm (ExitToQB64 AS _BYTE, SaveOnlyFrm AS _BYTE)
                                 GOSUB checkCondition
                                 IF checkConditionResult THEN
                                     IF INSTR(thisBlock$, " CASE " + RTRIM$(PreviewControls(Dummy).Name) + CHR$(10)) = 0 AND INSTR(thisBlock$, " CASE " + RTRIM$(PreviewControls(Dummy).Name) + " '<-- " + CHR$(34) + RTRIM$(PreviewControls(Dummy).Name) + CHR$(34) + " deleted from Form on ") = 0 THEN
-                                        addedItems$ = addedItems$ + SPACE$(indenting) + "CASE " + RTRIM$(PreviewControls(Dummy).Name) + CHR$(10) + CHR$(10)
+                                        IF i = 13 AND IsPropertyGridFrame(Dummy) THEN
+                                            'A frame that became a property grid gets the explained CASE block
+                                            addedItems$ = addedItems$ + PropertyGridValueChangedCase$(Dummy, indenting) + CHR$(10)
+                                        ELSE
+                                            addedItems$ = addedItems$ + SPACE$(indenting) + "CASE " + RTRIM$(PreviewControls(Dummy).Name) + CHR$(10) + CHR$(10)
+                                        END IF
                                     ELSEIF INSTR(thisBlock$, " CASE " + RTRIM$(PreviewControls(Dummy).Name) + " '<-- " + CHR$(34) + RTRIM$(PreviewControls(Dummy).Name) + CHR$(34) + " deleted from Form on ") > 0 THEN
                                         thisBlock$ = LEFT$(thisBlock$, INSTR(thisBlock$, " CASE " + RTRIM$(PreviewControls(Dummy).Name) + " '<-- " + CHR$(34)) + 5 + LEN(RTRIM$(PreviewControls(Dummy).Name))) + MID$(thisBlock$, INSTR(INSTR(thisBlock$, " CASE " + RTRIM$(PreviewControls(Dummy).Name) + " '<-- " + CHR$(34) + RTRIM$(PreviewControls(Dummy).Name) + CHR$(34) + " deleted from Form on "), thisBlock$, CHR$(10)))
                                     END IF
@@ -4352,11 +4357,22 @@ SUB SaveForm (ExitToQB64 AS _BYTE, SaveOnlyFrm AS _BYTE)
                         PRINT #TextFileNum,
 
                     CASE 1
+                        'Hints go right below the SUB line, each followed by an empty line
+                        '(the empty body line is only needed when nothing else goes in)
+                        DIM OnLoadHasCode AS _BYTE
+                        OnLoadHasCode = False
                         IF PreviewDefaultButtonID > 0 THEN
                             PRINT #TextFileNum, "    __UI_DefaultButtonID = " + RTRIM$(__UI_TrimAt0$(PreviewControls(PreviewDefaultButtonID).Name))
-                        ELSE
-                            PRINT #TextFileNum,
+                            OnLoadHasCode = True
                         END IF
+                        FOR Dummy = 1 TO UBOUND(PreviewControls)
+                            IF IsPropertyGridFrame(Dummy) THEN
+                                PrintLines TextFileNum, PropertyGridOnLoadHint$(Dummy)
+                                PRINT #TextFileNum,
+                                OnLoadHasCode = True
+                            END IF
+                        NEXT
+                        IF NOT OnLoadHasCode THEN PRINT #TextFileNum,
 
                     CASE 2
                         IF AddGifExtension = True AND TotalGifLoaded > 0 THEN
@@ -4381,6 +4397,9 @@ SUB SaveForm (ExitToQB64 AS _BYTE, SaveOnlyFrm AS _BYTE)
                             END IF
                         NEXT
                         PRINT #TextFileNum, "    END SELECT"
+
+                    CASE 4 'Buttons on property grid rows
+                        PrintLines TextFileNum, PropertyGridClickBlock$
 
                     CASE 7, 8, 11 'Controls that can have focus only
                         PRINT #TextFileNum, "    SELECT CASE id"
@@ -4407,6 +4426,9 @@ SUB SaveForm (ExitToQB64 AS _BYTE, SaveOnlyFrm AS _BYTE)
                         FOR Dummy = 1 TO UBOUND(PreviewControls)
                             IF PreviewControls(Dummy).ID > 0 AND (PreviewControls(Dummy).Type = __UI_Type_ListBox OR PreviewControls(Dummy).Type = __UI_Type_DropdownList OR PreviewControls(Dummy).Type = __UI_Type_TabControl OR PreviewControls(Dummy).Type = __UI_Type_TrackBar OR PreviewControls(Dummy).Type = __UI_Type_ToggleSwitch OR PreviewControls(Dummy).Type = __UI_Type_CheckBox OR PreviewControls(Dummy).Type = __UI_Type_RadioButton) THEN
                                 PRINT #TextFileNum, "        CASE " + RTRIM$(PreviewControls(Dummy).Name)
+                                PRINT #TextFileNum,
+                            ELSEIF IsPropertyGridFrame(Dummy) THEN
+                                PrintLines TextFileNum, PropertyGridValueChangedCase$(Dummy, 8)
                                 PRINT #TextFileNum,
                             END IF
                         NEXT
@@ -4469,7 +4491,8 @@ SUB SaveForm (ExitToQB64 AS _BYTE, SaveOnlyFrm AS _BYTE)
                 checkConditionResult = True
             END IF
 
-        CASE 13 'Dropdown list, List box, Tab control, Track bar, ToggleSwitch, CheckBox
+        CASE 13 'Dropdown list, List box, Tab control, Track bar, ToggleSwitch, CheckBox, property grid frames
+            IF IsPropertyGridFrame(Dummy) THEN checkConditionResult = True
             IF PreviewControls(Dummy).ID > 0 AND (PreviewControls(Dummy).Type = __UI_Type_ListBox OR PreviewControls(Dummy).Type = __UI_Type_DropdownList OR PreviewControls(Dummy).Type = __UI_Type_TabControl OR PreviewControls(Dummy).Type = __UI_Type_TrackBar OR PreviewControls(Dummy).Type = __UI_Type_ToggleSwitch OR PreviewControls(Dummy).Type = __UI_Type_CheckBox OR PreviewControls(Dummy).Type = __UI_Type_RadioButton) THEN
                 checkConditionResult = True
             END IF
@@ -4518,6 +4541,154 @@ FUNCTION SpecialCharsToEscapeCode$ (Text$)
     NEXT
     SpecialCharsToEscapeCode$ = Temp$ + CHR$(34)
 END FUNCTION
+
+''' @brief _TRUE for a frame that has property grid rows (see docs/PropertyGrid.md).
+FUNCTION IsPropertyGridFrame%% (i AS LONG)
+    IF PreviewControls(i).ID = 0 OR PreviewControls(i).Type <> __UI_Type_Frame THEN EXIT FUNCTION
+    IsPropertyGridFrame = LEN(_TRIM$(Replace$(PreviewTexts(i), CHR$(10), "", False, 0))) > 0
+END FUNCTION
+
+''' @brief The rows of a property grid frame, one "key|kind" per line (kind as a __UI_PropertyGrid_* number).
+FUNCTION PropertyGridRowList$ (i AS LONG)
+    DIM t$, l$, p AS LONG, r$, k$, kind AS _BYTE, label$, extra$
+    t$ = Replace$(PreviewTexts(i), CHR$(13), "", False, 0) + CHR$(10)
+    DO
+        p = INSTR(t$, CHR$(10))
+        IF p = 0 THEN EXIT DO
+        l$ = LEFT$(t$, p - 1)
+        t$ = MID$(t$, p + 1)
+        IF __UI_PGParseLine(l$, k$, kind, label$, extra$) THEN
+            IF kind = __UI_PropertyGrid_Choice THEN
+                p = INSTR(extra$, ",")
+                IF p THEN extra$ = LEFT$(extra$, p - 1)
+            END IF
+            r$ = r$ + k$ + "|" + LTRIM$(STR$(kind)) + "|" + extra$ + CHR$(10)
+        END IF
+    LOOP
+    PropertyGridRowList$ = r$
+END FUNCTION
+
+''' @brief Splits one entry of PropertyGridRowList$.
+SUB PropertyGridRowFields (Entry$, Key$, Kind AS INTEGER, FirstItem$)
+    DIM p1 AS LONG, p2 AS LONG
+    p1 = INSTR(Entry$, "|")
+    p2 = INSTR(p1 + 1, Entry$, "|")
+    Key$ = LEFT$(Entry$, p1 - 1)
+    Kind = VAL(MID$(Entry$, p1 + 1, p2 - p1 - 1))
+    FirstItem$ = MID$(Entry$, p2 + 1)
+END SUB
+
+''' @brief The CASE block written in __UI_ValueChanged for a property grid frame, explaining how to use it.
+FUNCTION PropertyGridValueChangedCase$ (i AS LONG, Indent AS INTEGER)
+    DIM n$, p$, r$, rows$, entry$, k$, item$, kind AS INTEGER, q$, LF$, pos1 AS LONG
+
+    n$ = RTRIM$(PreviewControls(i).Name)
+    p$ = SPACE$(Indent)
+    q$ = CHR$(34)
+    LF$ = CHR$(10)
+    r$ = p$ + "CASE " + n$ + LF$
+    r$ = r$ + p$ + "    '" + n$ + " is a property grid. This runs when one of its rows changes: Enter was" + LF$
+    r$ = r$ + p$ + "    'pressed in a box (or the box lost focus), an item was picked or a box was checked." + LF$
+    r$ = r$ + p$ + "    'PropertyGrid_Value$ reads the new value; PropertyGrid_SetValue here replaces it" + LF$
+    r$ = r$ + p$ + "    '(for example, to keep a number in range: the box then turns red until Esc)." + LF$
+    r$ = r$ + p$ + "    SELECT CASE PropertyGrid_ChangedRow$(" + n$ + ")" + LF$
+
+    rows$ = PropertyGridRowList$(i)
+    DO
+        pos1 = INSTR(rows$, LF$)
+        IF pos1 = 0 THEN EXIT DO
+        entry$ = LEFT$(rows$, pos1 - 1)
+        rows$ = MID$(rows$, pos1 + 1)
+        PropertyGridRowFields entry$, k$, kind, item$
+        IF kind = __UI_PropertyGrid_Button THEN _CONTINUE 'clicks go to __UI_Click
+        r$ = r$ + p$ + "        CASE " + q$ + k$ + q$ + LF$
+        SELECT CASE kind
+            CASE __UI_PropertyGrid_Integer, __UI_PropertyGrid_Float
+                r$ = r$ + p$ + "            'The number entered: VAL(PropertyGrid_Value$(" + n$ + ", " + q$ + k$ + q$ + "))" + LF$
+            CASE __UI_PropertyGrid_Choice
+                r$ = r$ + p$ + "            'The item picked (1 = " + item$ + "): VAL(PropertyGrid_Value$(" + n$ + ", " + q$ + k$ + q$ + "))" + LF$
+            CASE __UI_PropertyGrid_Toggle
+                r$ = r$ + p$ + "            'Checked: PropertyGrid_Value$(" + n$ + ", " + q$ + k$ + q$ + ") <> " + q$ + "0" + q$ + LF$
+            CASE ELSE
+                r$ = r$ + p$ + "            'The text entered: PropertyGrid_Value$(" + n$ + ", " + q$ + k$ + q$ + ")" + LF$
+        END SELECT
+        r$ = r$ + LF$
+    LOOP
+    r$ = r$ + p$ + "    END SELECT" + LF$
+    PropertyGridValueChangedCase$ = r$
+END FUNCTION
+
+''' @brief Comments written in __UI_OnLoad for a property grid frame.
+FUNCTION PropertyGridOnLoadHint$ (i AS LONG)
+    DIM n$, r$, rows$, entry$, k$, item$, kind AS INTEGER, q$, LF$, pos1 AS LONG, example$
+
+    n$ = RTRIM$(PreviewControls(i).Name)
+    q$ = CHR$(34)
+    LF$ = CHR$(10)
+    rows$ = PropertyGridRowList$(i)
+    DO
+        pos1 = INSTR(rows$, LF$)
+        IF pos1 = 0 THEN EXIT DO
+        entry$ = LEFT$(rows$, pos1 - 1)
+        rows$ = MID$(rows$, pos1 + 1)
+        PropertyGridRowFields entry$, k$, kind, item$
+        SELECT CASE kind
+            CASE __UI_PropertyGrid_Integer, __UI_PropertyGrid_Float: example$ = "10"
+            CASE __UI_PropertyGrid_Choice: example$ = "1"
+            CASE __UI_PropertyGrid_Toggle: example$ = "-1"
+            CASE __UI_PropertyGrid_Button: _CONTINUE
+            CASE ELSE: example$ = "some text"
+        END SELECT
+        EXIT DO
+    LOOP
+
+    r$ = "    '" + n$ + " is a property grid: its rows were built from the Rows property just before" + LF$
+    r$ = r$ + "    'this event, so you can set their starting values here. Values are always text." + LF$
+    IF LEN(example$) THEN
+        r$ = r$ + "    'PropertyGrid_SetValue " + n$ + ", " + q$ + k$ + q$ + ", " + q$ + example$ + q$ + LF$
+    END IF
+    r$ = r$ + "    'See docs/PropertyGrid.md for everything a property grid can do." + LF$
+    PropertyGridOnLoadHint$ = r$
+END FUNCTION
+
+''' @brief The block written in __UI_Click for buttons on property grid rows (empty when there are none).
+FUNCTION PropertyGridClickBlock$
+    DIM i AS LONG, r$, rows$, entry$, k$, item$, kind AS INTEGER, q$, LF$, pos1 AS LONG
+
+    q$ = CHR$(34)
+    LF$ = CHR$(10)
+    FOR i = 1 TO UBOUND(PreviewControls)
+        IF NOT IsPropertyGridFrame(i) THEN _CONTINUE
+        rows$ = PropertyGridRowList$(i)
+        DO
+            pos1 = INSTR(rows$, LF$)
+            IF pos1 = 0 THEN EXIT DO
+            entry$ = LEFT$(rows$, pos1 - 1)
+            rows$ = MID$(rows$, pos1 + 1)
+            PropertyGridRowFields entry$, k$, kind, item$
+            IF kind = __UI_PropertyGrid_Button THEN
+                r$ = r$ + "        CASE " + q$ + k$ + q$ + " '" + RTRIM$(PreviewControls(i).Name) + LF$ + LF$
+            END IF
+        LOOP
+    NEXT
+    IF LEN(r$) = 0 THEN EXIT FUNCTION
+
+    PropertyGridClickBlock$ = LF$ + "    'Buttons on property grid rows aren't listed above: the grid creates them when the" + LF$ + _
+        "    'program starts. PropertyGrid_RowOf$(id) tells which row a clicked button is on." + LF$ + _
+        "    SELECT CASE PropertyGrid_RowOf$(id)" + LF$ + r$ + "    END SELECT" + LF$
+END FUNCTION
+
+''' @brief Writes text to a file one line at a time, so line endings suit the system.
+SUB PrintLines (FileNum AS INTEGER, Block$)
+    DIM t$, p AS LONG
+    t$ = Block$
+    DO WHILE LEN(t$)
+        p = INSTR(t$, CHR$(10))
+        IF p = 0 THEN PRINT #FileNum, t$: EXIT DO
+        PRINT #FileNum, LEFT$(t$, p - 1)
+        t$ = MID$(t$, p + 1)
+    LOOP
+END SUB
 
 '---------------------------------------------------------------------------------
 FUNCTION OutsideQuotes%% (text$, position AS LONG)
