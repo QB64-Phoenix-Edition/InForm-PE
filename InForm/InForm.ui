@@ -247,6 +247,7 @@ SUB __UI_Init
     _DISPLAY
 
     __UI_AssignIDs
+    __UI_PropertyGridsFromForm
     __UI_AnchorFormWidth = Control(__UI_FormID).Width
     __UI_AnchorFormHeight = Control(__UI_FormID).Height
     __UI_OnLoad
@@ -1571,6 +1572,8 @@ SUB __UI_EventDispatcher
             IF Control(__UI_ActiveDropdownList).InputViewStart < 1 THEN Control(__UI_ActiveDropdownList).InputViewStart = 1
         ELSEIF Control(__UI_HoveringID).Type = __UI_Type_TextBox _ANDALSO Control(__UI_HoveringID).Multiline _ANDALSO NOT Control(__UI_HoveringID).Disabled THEN
             __UI_TBScrollTo __UI_HoveringID, Control(__UI_HoveringID).FirstVisibleLine + __UI_MouseWheel * 3
+        ELSEIF __UI_PropertyGridWheel(__UI_HoveringID, __UI_MouseWheel) THEN
+            'A property grid under the mouse was scrolled
         ELSEIF (Control(__UI_Focus).Type = __UI_Type_DropdownList AND NOT Control(__UI_Focus).Disabled) THEN
             Control(__UI_Focus).Value = Control(__UI_Focus).Value + __UI_MouseWheel
             IF Control(__UI_Focus).Value < 1 THEN Control(__UI_Focus).Value = 1
@@ -4861,6 +4864,7 @@ SUB __UI_DestroyControl (This AS __UI_ControlTYPE)
         Mask(This.ID) = _STR_EMPTY
 
         __UI_UnBind This.ID
+        __UI_PropertyGridForget This.ID
 
         IF This.Type = __UI_Type_ListBox THEN
             IF __UI_ActiveDropdownList = This.ID THEN

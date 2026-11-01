@@ -854,6 +854,10 @@ SUB __UI_BeforeUpdateDisplay
                                         Control(i).Height = (_HEIGHT(Control(i).HelperCanvas) / _WIDTH(Control(i).HelperCanvas)) * Control(i).Width
                                         IF LEN(b$) > 0 AND b$ <> "&" THEN GOSUB AutoName
                                     END IF
+                                ELSEIF Control(i).Type = __UI_Type_Frame THEN
+                                    'A frame's text holds property grid rows, one per line
+                                    Text(i) = Replace(b$, "\n", CHR$(10), False, TotalReplacements)
+                                    IF RIGHT$(Text(i), 1) = CHR$(10) THEN Text(i) = LEFT$(Text(i), LEN(Text(i)) - 1)
                                 ELSEIF Control(i).Type = __UI_Type_TabControl THEN
                                     Text(i) = Replace(b$, "\n", CHR$(10), False, TotalReplacements)
                                     IF RIGHT$(Text(i), 1) = CHR$(10) THEN Text(i) = LEFT$(Text(i), LEN(Text(i)) - 1)

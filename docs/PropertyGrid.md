@@ -5,6 +5,7 @@ A **PropertyGrid** turns a frame into a list of rows, each with a label on the l
 The grid takes care of the parts that are tedious to write by hand:
 
 - Rows are stacked from the top of the frame. Hide a row and the ones below move up to close the gap.
+- When the rows don't fit, the grid scrolls: with the mouse wheel anywhere over it, by dragging the thin scrollbar on its right edge, or by tabbing to a row that's out of view.
 - In a text row, **Enter** (or leaving the box) commits what was typed and **Esc** puts back the row's value.
 - While a box has focus, its border turns **green** when the text is the row's value, and **red** when a value was entered but the row ended up with another one (for example, your code kept it in range).
 - Every change arrives in one place: `__UI_ValueChanged`, with the frame's ID.
@@ -42,6 +43,31 @@ END SUB
 Each row has a **key** (`"size"` above). Keys are used to read, set, show and hide rows, and they ignore case.
 
 The `PropertyGridDemo` example shows a complete form.
+
+## In the designer
+
+Any frame can be a property grid without writing code to build it:
+
+1. Add a frame to your form.
+2. Fill its **Rows** property with one row per line. Separate lines with `\n`, or paste several lines with the paste button next to the box.
+3. The designer draws the rows the way they will look. When the program starts, they become real rows, before `__UI_OnLoad` runs.
+
+Each line is `key|kind|label|items`:
+
+```text
+label|text|Label
+size|integer|Size
+color|choice|Color|Red,Green,Blue
+filled|toggle|Filled
+reset|button|Defaults|Reset
+Notes
+```
+
+- **kind** is `text`, `integer`, `float`, `choice`, `toggle` or `button`. Leave it out for a text row.
+- **items** are a choice's items, separated by commas, or a button's caption.
+- A line with only a label (`Notes` above) makes a text row whose key is that label.
+
+Then use the rows from code exactly as below, for example `PropertyGrid_SetValue ShapeFrame, "size", "120"` in `__UI_OnLoad`.
 
 ## Rows
 
@@ -149,6 +175,12 @@ FUNCTION PropertyGrid_RowState%% (frameID AS LONG, rowKey AS STRING)
 ```
 
 What a focused text row's border shows: `__UI_PropertyGrid_Normal`, `__UI_PropertyGrid_Confirmed` (green) or `__UI_PropertyGrid_Rejected` (red).
+
+```vb
+SUB PropertyGrid_ScrollTo (frameID AS LONG, rowKey AS STRING)
+```
+
+Scrolls the grid so a row is in view.
 
 ```vb
 SUB PropertyGrid_Layout (frameID AS LONG)

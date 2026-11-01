@@ -767,7 +767,7 @@ SUB __UI_Click (id AS LONG)
             Clip$ = Replace$(Clip$, CHR$(13) + CHR$(10), CHR$(10), 0, 0)
             Clip$ = Replace$(Clip$, CHR$(10), "\n", 0, 0)
 
-            IF PreviewControls(FirstSelected).Type = __UI_Type_ListBox OR PreviewControls(FirstSelected).Type = __UI_Type_DropdownList THEN
+            IF PreviewControls(FirstSelected).Type = __UI_Type_ListBox OR PreviewControls(FirstSelected).Type = __UI_Type_DropdownList OR PreviewControls(FirstSelected).Type = __UI_Type_Frame THEN
                 Dummy = TextTB
             ELSEIF (PreviewControls(FirstSelected).Type = __UI_Type_Label AND PreviewControls(FirstSelected).WordWrap = True) THEN
                 Dummy = CaptionTB
@@ -1757,7 +1757,7 @@ SUB __UI_BeforeUpdateDisplay
     __UI_PasteLineBreakAs = ""
     IF __UI_Focus = TextTB AND FirstSelected > 0 THEN
         SELECT CASE PreviewControls(FirstSelected).Type
-            CASE __UI_Type_ListBox, __UI_Type_DropdownList
+            CASE __UI_Type_ListBox, __UI_Type_DropdownList, __UI_Type_Frame
                 __UI_PasteLineBreakAs = "\n"
             CASE __UI_Type_TextBox
                 IF PreviewControls(FirstSelected).Multiline THEN __UI_PasteLineBreakAs = "\n"
@@ -1769,7 +1769,7 @@ SUB __UI_BeforeUpdateDisplay
         PropertyGrid_SetValue ControlProperties, "name", RTRIM$(PreviewControls(FirstSelected).Name)
         PropertyGrid_SetValue ControlProperties, "caption", Replace(__UI_TrimAt0$(PreviewCaptions(FirstSelected)), CHR$(10), "\n", False, 0)
 
-        IF PreviewControls(FirstSelected).Type = __UI_Type_ListBox OR PreviewControls(FirstSelected).Type = __UI_Type_DropdownList OR (PreviewControls(FirstSelected).Type = __UI_Type_TextBox AND PreviewControls(FirstSelected).Multiline) THEN
+        IF PreviewControls(FirstSelected).Type = __UI_Type_ListBox OR PreviewControls(FirstSelected).Type = __UI_Type_DropdownList OR PreviewControls(FirstSelected).Type = __UI_Type_Frame OR (PreviewControls(FirstSelected).Type = __UI_Type_TextBox AND PreviewControls(FirstSelected).Multiline) THEN
             PropertyGrid_SetValue ControlProperties, "text", Replace(PreviewTexts(FirstSelected), CHR$(10), "\n", False, 0)
             IF __UI_Focus <> TextTB THEN Mask(TextTB) = ""
         ELSE
@@ -1868,6 +1868,12 @@ SUB __UI_BeforeUpdateDisplay
         ShowInvalidValueWarning = False
     END IF
 
+    IF PreviewControls(FirstSelected).Type = __UI_Type_Frame AND TotalSelected > 0 THEN
+        ToolTip(TextTB) = "Property grid rows, separated by \n:" + CHR$(10) + "key|kind|label|items" + CHR$(10) + "kind: text, integer, float, choice, toggle or button" + CHR$(10) + "items: a choice's items separated by commas, or a button's caption" + CHR$(10) + "Example: size|integer|Size\ncolor|choice|Color|Red,Green,Blue"
+    ELSE
+        ToolTip(TextTB) = ""
+    END IF
+
     'Hide the properties that don't apply
     PropertyGrid_ShowRows ControlProperties, "align,boolean,valign,bullet", False
     PropertyGrid_SetLabel ControlProperties, "text", "Text"
@@ -1896,8 +1902,10 @@ SUB __UI_BeforeUpdateDisplay
                 PropertyGrid_ShowRows ControlToggles, "transparent,autosize", True
                 PropertyGrid_ShowOnly ControlProperties, "name,caption,top,left,width,height,font,tooltip,padding,align,valign,fontlist"
             CASE __UI_Type_Frame
+                'Rows written here turn the frame into a property grid when the program runs
+                PropertyGrid_SetLabel ControlProperties, "text", "Rows"
                 PropertyGrid_ShowRow ControlToggles, "transparent", False
-                PropertyGrid_ShowOnly ControlProperties, "name,caption,top,left,width,height,font,tooltip,fontlist"
+                PropertyGrid_ShowOnly ControlProperties, "name,caption,text,top,left,width,height,font,tooltip,fontlist"
             CASE __UI_Type_TextBox
                 STATIC PreviousNumericState AS _BYTE
                 PropertyGrid_ShowRow ControlToggles, "transparent", True
@@ -2028,7 +2036,7 @@ SUB __UI_BeforeUpdateDisplay
             END IF
     END SELECT
 
-    IF PreviewControls(FirstSelected).Type = __UI_Type_ListBox OR PreviewControls(FirstSelected).Type = __UI_Type_DropdownList THEN
+    IF PreviewControls(FirstSelected).Type = __UI_Type_ListBox OR PreviewControls(FirstSelected).Type = __UI_Type_DropdownList OR PreviewControls(FirstSelected).Type = __UI_Type_Frame THEN
         IF INSTR(_CLIPBOARD$, CHR$(10)) THEN
             Control(PasteListBT).Top = Control(TextTB).Top
             Control(PasteListBT).Hidden = False

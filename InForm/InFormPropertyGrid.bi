@@ -31,6 +31,16 @@ TYPE __UI_PropertyGridTYPE
     NextTop AS INTEGER ' where a row added below the last visible one would go
     FocusRow AS LONG ' row whose textbox had focus during the last update
     ChangedRow AS LONG ' row that last fired __UI_ValueChanged
+    LastFocusID AS LONG ' __UI_Focus at the last update, to notice a row getting focus
+    ScrollRow AS LONG ' stacked rows scrolled out above the frame
+    MaxScroll AS LONG ' 0 when every row fits
+    StackCount AS LONG ' rows being stacked (shown and not floating)
+    EnsureRow AS LONG ' a row to bring into view at the next layout
+    Dragging AS _BYTE ' the scrollbar's thumb is being dragged
+    TrackTop AS INTEGER ' scrollbar, in the frame's coordinates
+    TrackHeight AS INTEGER
+    ThumbTop AS INTEGER
+    ThumbHeight AS INTEGER
 END TYPE
 
 TYPE __UI_PropertyGridRowTYPE
