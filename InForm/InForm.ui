@@ -6924,7 +6924,7 @@ SUB __UI_DrawInputLockedNotice
     _PRINTMODE _KEEPBACKGROUND
     LINE (0, 0)-(_WIDTH - 1, _HEIGHT - 1), _RGBA32(0, 0, 0, 60), BF
 
-    line1$ = "Being edited in UiEditor"
+    line1$ = "Editing in UiEditor"
     line2$ = "Click OK or Cancel in its dialog to edit here again"
     lh = _UFONTHEIGHT
     w = _MAX(__UI_PrintWidth(line1$), __UI_PrintWidth(line2$)) + 32
