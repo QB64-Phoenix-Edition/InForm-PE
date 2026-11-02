@@ -379,6 +379,26 @@ SUB __UI_BeforeUpdateDisplay
                     END IF
                     SelectNewControl TempValue
                 END IF
+            CASE "NEWDATAGRID"
+                'A frame whose Text holds a data grid's columns and rows (see InFormDataGrid.bm)
+                SaveUndoImage
+                DIM dgName$, dgN AS LONG
+                dgN = 0
+                DO
+                    dgN = dgN + 1
+                    dgName$ = "DataGrid" + LTRIM$(STR$(dgN))
+                LOOP WHILE __UI_GetID(dgName$) > 0
+                'Never wider or taller than the form (with a small margin)
+                defW = _MIN(320, Control(__UI_FormID).Width - 20)
+                defH = _MIN(160, Control(__UI_FormID).Height - __UI_MenuBarOffsetV - 20)
+                IF defW < 60 THEN defW = 60
+                IF defH < 60 THEN defH = 60
+                TempValue = __UI_NewControl(__UI_Type_Frame, dgName$, defW, defH, Control(__UI_FormID).Width \ 2 - defW \ 2, (Control(__UI_FormID).Height - __UI_MenuBarOffsetV) \ 2 + __UI_MenuBarOffsetV - defH \ 2, 0)
+                SetCaption TempValue, ""
+                Control(TempValue).HasBorder = False
+                Text(TempValue) = "#columns" + CHR$(10) + "Column 1|text|0" + CHR$(10) + "Column 2|text|0" + CHR$(10) + "#rows"
+                IF __UI_TotalActiveMenus > 0 THEN __UI_CloseAllMenus
+                SelectNewControl TempValue
             CASE "NEWPROPERTYGRID"
                 'A frame with two sample property grid rows in its Text (see InFormPropertyGrid.bm);
                 'double-clicking it opens the editor's table to change them
@@ -432,6 +452,7 @@ SUB __UI_BeforeUpdateDisplay
             CASE "LOCKINPUT"
                 'The editor shows a dialog that works on this form (property grid rows): no editing here meanwhile
                 __UI_InputLocked = CVI(thisData$)
+                __UI_ForceRedraw = True 'shows or clears the notice that says the form is being edited in the editor
                 IF __UI_InputLocked THEN
                     __UI_MouseIsDown = False
                     __UI_MouseDownOnID = 0
@@ -1949,7 +1970,7 @@ SUB __UI_KeyPress (id AS LONG)
             SelectAllControls
         CASE 236 'Double-click on a container
             IF __UI_TotalSelectedControls = 1 _ANDALSO Control(__UI_FirstSelectedID).Type = __UI_Type_Frame _ANDALSO LEN(_TRIM$(Replace(Text(__UI_FirstSelectedID), CHR$(10), "", False, 0))) > 0 THEN
-                'A frame with property grid rows: edit them in the editor's dialog
+                'A frame with property grid rows or a data grid: edit them in the editor's dialog
                 SendData "", "SHOWROWSDIALOG"
             ELSE
                 SelectAllControls
@@ -2000,6 +2021,7 @@ SUB AddPropertyGridRow (Which AS LONG)
 
     f = __UI_FirstSelectedID
     IF __UI_TotalSelectedControls <> 1 OR Control(f).Type <> __UI_Type_Frame THEN EXIT SUB
+    IF __UI_IsDataGridFrame(f) THEN EXIT SUB 'a data grid's columns are edited in the editor
 
     SELECT CASE Which
         CASE 0: Base$ = "text": Kind$ = "text": Label$ = "Text"

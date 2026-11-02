@@ -15,6 +15,8 @@ CONST __UI_DataGrid_Float%% = 3%%
 CONST __UI_DataGrid_Choice%% = 4%% ' a dropdown list of items; the cell holds the chosen item's text
 CONST __UI_DataGrid_Toggle%% = 5%% ' a check box; the cell holds "-1" or "0"
 
+CONST __UI_DataGrid_MinShare = 30 ' narrowest a column with no width of its own gets (narrower than that, the grid scrolls sideways)
+
 TYPE __UI_DataGridTYPE
     FrameID AS LONG
     Columns AS STRING ' MKL$ of the grid's columns (indexes into __UI_DataGridCols), in order
@@ -25,6 +27,7 @@ TYPE __UI_DataGridTYPE
     DragSelecting AS _BYTE ' the mouse button went down on a cell and is still held: dragging selects rows
     DragTime AS SINGLE ' when a drag past the top or bottom scrolls again
     TopRow AS LONG ' rows scrolled out of view at the top
+    LeftCol AS LONG ' columns scrolled out of view on the left
     ChangedRow AS LONG ' what last fired __UI_ValueChanged: a cell (row and column),
     ChangedColumn AS LONG ' or the current cell moving (column 0)
     EditorID AS LONG ' text box used to edit text and number cells (created when first needed)
@@ -43,8 +46,10 @@ TYPE __UI_DataGridTYPE
     AreaBottom AS INTEGER
     RowHeight AS INTEGER
     HeaderHeight AS INTEGER
+    BodyBottom AS INTEGER ' last line of pixels rows can use (above the horizontal scrollbar when there is one)
     VisibleRows AS LONG
     MaxTopRow AS LONG ' 0 when every row fits
+    MaxLeftCol AS LONG ' 0 when every column fits
     'Scrollbar (drawn by __UI_DrawVScrollBar)
     SbLeft AS INTEGER
     SbTop AS INTEGER
@@ -58,10 +63,22 @@ TYPE __UI_DataGridTYPE
     Dragging AS _BYTE
     GrabOffset AS INTEGER
     RepeatTime AS SINGLE
+    'Horizontal scrollbar, under the rows (drawn by __UI_DrawVScrollBar and turned on its side)
+    HbLeft AS INTEGER
+    HbTop AS INTEGER
+    HbWidth AS INTEGER
+    HTrackLeft AS INTEGER
+    HTrackWidth AS INTEGER
+    HThumbLeft AS INTEGER
+    HThumbWidth AS INTEGER
+    HHoverPart AS _BYTE ' same parts as HoverPart: 1 = left button, 2 = right button, 3 = thumb, 4/5 = track
+    HPressPart AS _BYTE
+    HDragging AS _BYTE
+    HGrabOffset AS INTEGER
 END TYPE
 
 TYPE __UI_DataGridColumnTYPE
-    Kind AS _BYTE
+    Kind AS _BYTE ' 0 = a free place for a new column
     Width AS INTEGER ' 0 = share the room the other columns leave
     Left AS INTEGER ' where the column starts, worked out by __UI_DGMeasure
     Right AS INTEGER
@@ -74,5 +91,7 @@ REDIM SHARED __UI_DataGridColItems(0) AS STRING ' a choice column's items, separ
 REDIM SHARED __UI_DataGridCells(0) AS STRING ' a row's cells, separated by CHR$(0)
 REDIM SHARED __UI_DataGridRowUsed(0) AS _BYTE
 REDIM SHARED __UI_DataGridCellKinds(0) AS STRING ' a row's cells' own kinds, one byte per column (0 = the column's)
+REDIM SHARED __UI_DataGridRowTag(0) AS STRING ' a value the program keeps with a row (see DataGrid_SetRowTag)
 REDIM SHARED __UI_DataGridLook(0) AS STRING ' what a grid looked like at the last update (scroll, current cell, focus...)
+REDIM SHARED __UI_DataGridDesign(0) AS STRING ' the frame's Text a grid was built from in the designer ("" otherwise)
 DIM SHARED __UI_TotalDataGrids AS LONG, __UI_TotalDataGridCols AS LONG, __UI_TotalDataGridRows AS LONG

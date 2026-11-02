@@ -102,6 +102,21 @@ FUNCTION __UI_DGWithCell$ (dgCells AS STRING, dgN AS LONG, dgValue AS STRING)
     __UI_DGWithCell = dgOut
 END FUNCTION
 
+''' @brief A list with one of its parts taken out.
+FUNCTION __UI_DGWithoutPart$ (dgList AS STRING, dgN AS LONG, dgSep AS STRING)
+    DIM dgI AS LONG, dgCount AS LONG, dgOut AS STRING, dgFirst AS _BYTE
+    dgCount = __UI_DGPartCount(dgList, dgSep)
+    IF dgN < 1 _ORELSE dgN > dgCount THEN __UI_DGWithoutPart = dgList: EXIT FUNCTION
+    dgFirst = _TRUE
+    FOR dgI = 1 TO dgCount
+        IF dgI = dgN THEN _CONTINUE
+        IF NOT dgFirst THEN dgOut = dgOut + dgSep
+        dgOut = dgOut + __UI_DGPart(dgList, dgI, dgSep)
+        dgFirst = _FALSE
+    NEXT
+    __UI_DGWithoutPart = dgOut
+END FUNCTION
+
 FUNCTION __UI_DGGetCell$ (dgGrid AS LONG, dgRow AS LONG, dgCol AS LONG)
     __UI_DGGetCell = __UI_DGPart(__UI_DataGridCells(__UI_DGSlot(dgGrid, dgRow)), dgCol, CHR$(0))
 END FUNCTION
@@ -125,11 +140,13 @@ FUNCTION __UI_DGNewSlot&
             REDIM _PRESERVE __UI_DataGridCells(0 TO dgSlot + 31) AS STRING
             REDIM _PRESERVE __UI_DataGridRowUsed(0 TO dgSlot + 31) AS _BYTE
             REDIM _PRESERVE __UI_DataGridCellKinds(0 TO dgSlot + 31) AS STRING
+            REDIM _PRESERVE __UI_DataGridRowTag(0 TO dgSlot + 31) AS STRING
         END IF
     END IF
     __UI_DataGridRowUsed(dgSlot) = _TRUE
     __UI_DataGridCells(dgSlot) = _STR_EMPTY
     __UI_DataGridCellKinds(dgSlot) = _STR_EMPTY
+    __UI_DataGridRowTag(dgSlot) = _STR_EMPTY
     __UI_DGNewSlot = dgSlot
 END FUNCTION
 
@@ -168,10 +185,20 @@ FUNCTION __UI_DGHasFocus%% (dgGrid AS LONG)
     END IF
 END FUNCTION
 
-''' @brief Works out where everything goes: the table's area, the rows that fit, the scrollbar and the columns.
+''' @brief Width a column takes: its own, or its share of the room the columns with a width leave (dgShare).
+FUNCTION __UI_DGColWidth& (dgGrid AS LONG, dgCol AS LONG, dgShare AS LONG)
+    DIM dgW AS LONG
+    dgW = __UI_DataGridCols(__UI_DGCol(dgGrid, dgCol)).Width
+    IF dgW <= 0 THEN dgW = dgShare
+    __UI_DGColWidth = dgW
+END FUNCTION
+
+''' @brief Works out where everything goes: the table's area, the rows and columns that fit, the scrollbars
+''' and where each column starts.
 SUB __UI_DGMeasure (dgGrid AS LONG)
-    DIM frameID AS LONG, dgFontH AS INTEGER, dgBodyTop AS INTEGER, dgRight AS INTEGER
+    DIM frameID AS LONG, dgFontH AS INTEGER, dgBodyTop AS INTEGER, dgRight AS INTEGER, dgPass AS LONG
     DIM dgCount AS LONG, dgI AS LONG, dgC AS LONG, dgFixed AS LONG, dgFlex AS LONG, dgShare AS LONG, dgX AS LONG, dgW AS LONG
+    DIM dgHasV AS _BYTE, dgHasH AS _BYTE, dgNeedV AS _BYTE, dgNeedH AS _BYTE, dgView AS LONG, dgFit AS LONG, dgVisCols AS LONG
 
     frameID = __UI_DataGrids(dgGrid).FrameID
     IF Control(frameID).Font THEN dgFontH = _UFONTHEIGHT(Control(frameID).Font) ELSE dgFontH = 16
@@ -191,20 +218,60 @@ SUB __UI_DGMeasure (dgGrid AS LONG)
         __UI_DataGrids(dgGrid).AreaBottom = Control(frameID).Height - 1
     END IF
     IF LEN(Caption(frameID)) THEN __UI_DataGrids(dgGrid).AreaTop = __UI_DataGrids(dgGrid).AreaTop + dgFontH \ 2 + 2
-
-    'Rows that fit whole below the header, and how far they can scroll
     dgBodyTop = __UI_DataGrids(dgGrid).AreaTop + __UI_DataGrids(dgGrid).HeaderHeight + 1
-    __UI_DataGrids(dgGrid).VisibleRows = (__UI_DataGrids(dgGrid).AreaBottom - dgBodyTop) \ __UI_DataGrids(dgGrid).RowHeight
-    IF __UI_DataGrids(dgGrid).VisibleRows < 1 THEN __UI_DataGrids(dgGrid).VisibleRows = 1
+
+    dgCount = __UI_DGColCount(dgGrid)
+    FOR dgI = 1 TO dgCount
+        dgC = __UI_DGCol(dgGrid, dgI)
+        IF __UI_DataGridCols(dgC).Width > 0 THEN dgFixed = dgFixed + __UI_DataGridCols(dgC).Width ELSE dgFlex = dgFlex + 1
+    NEXT
+
+    'Each scrollbar takes room from the other direction, so whether one is needed can depend on the other
+    FOR dgPass = 1 TO 3
+        IF dgHasV THEN dgRight = __UI_DataGrids(dgGrid).AreaRight - __UI_ScrollbarWidth - 1 ELSE dgRight = __UI_DataGrids(dgGrid).AreaRight - 1
+        IF dgHasH THEN __UI_DataGrids(dgGrid).BodyBottom = __UI_DataGrids(dgGrid).AreaBottom - __UI_ScrollbarWidth ELSE __UI_DataGrids(dgGrid).BodyBottom = __UI_DataGrids(dgGrid).AreaBottom
+        __UI_DataGrids(dgGrid).VisibleRows = (__UI_DataGrids(dgGrid).BodyBottom - dgBodyTop) \ __UI_DataGrids(dgGrid).RowHeight
+        IF __UI_DataGrids(dgGrid).VisibleRows < 1 THEN __UI_DataGrids(dgGrid).VisibleRows = 1
+        dgView = dgRight - __UI_DataGrids(dgGrid).AreaLeft
+        dgShare = 0
+        IF dgFlex > 0 THEN
+            dgShare = (dgView - dgFixed) \ dgFlex
+            IF dgShare < __UI_DataGrid_MinShare THEN dgShare = __UI_DataGrid_MinShare
+        END IF
+        dgNeedV = __UI_DGRowCount(dgGrid) > __UI_DataGrids(dgGrid).VisibleRows
+        dgNeedH = dgFixed + dgFlex * dgShare > dgView _ANDALSO dgCount > 1
+        IF dgNeedV = dgHasV _ANDALSO dgNeedH = dgHasH THEN EXIT FOR
+        dgHasV = dgNeedV
+        dgHasH = dgNeedH
+    NEXT
+
+    'Rows: how far they can scroll
     __UI_DataGrids(dgGrid).MaxTopRow = __UI_DGRowCount(dgGrid) - __UI_DataGrids(dgGrid).VisibleRows
     IF __UI_DataGrids(dgGrid).MaxTopRow < 0 THEN __UI_DataGrids(dgGrid).MaxTopRow = 0
     IF __UI_DataGrids(dgGrid).TopRow > __UI_DataGrids(dgGrid).MaxTopRow THEN __UI_DataGrids(dgGrid).TopRow = __UI_DataGrids(dgGrid).MaxTopRow
     IF __UI_DataGrids(dgGrid).TopRow < 0 THEN __UI_DataGrids(dgGrid).TopRow = 0
 
-    'Scrollbar parts, measured the way __UI_DrawVScrollBar draws them
+    'Columns: scrolled a whole column at a time, as far as it takes for the last ones to show whole
+    __UI_DataGrids(dgGrid).MaxLeftCol = 0
+    IF dgHasH THEN
+        dgI = dgCount
+        dgFit = 0
+        DO WHILE dgI > 0
+            dgW = __UI_DGColWidth(dgGrid, dgI, dgShare)
+            IF dgFit + dgW > dgView THEN EXIT DO
+            dgFit = dgFit + dgW
+            dgI = dgI - 1
+        LOOP
+        IF dgI >= dgCount THEN dgI = dgCount - 1 'the last column is wider than the table: it shows cut off
+        __UI_DataGrids(dgGrid).MaxLeftCol = dgI
+    END IF
+    IF __UI_DataGrids(dgGrid).LeftCol > __UI_DataGrids(dgGrid).MaxLeftCol THEN __UI_DataGrids(dgGrid).LeftCol = __UI_DataGrids(dgGrid).MaxLeftCol
+    IF __UI_DataGrids(dgGrid).LeftCol < 0 THEN __UI_DataGrids(dgGrid).LeftCol = 0
+
+    'Vertical scrollbar parts, measured the way __UI_DrawVScrollBar draws them
     __UI_DataGrids(dgGrid).SbLeft = __UI_DataGrids(dgGrid).AreaRight - __UI_ScrollbarWidth
     __UI_DataGrids(dgGrid).SbTop = dgBodyTop
-    __UI_DataGrids(dgGrid).SbHeight = __UI_DataGrids(dgGrid).AreaBottom - dgBodyTop
+    __UI_DataGrids(dgGrid).SbHeight = __UI_DataGrids(dgGrid).BodyBottom - dgBodyTop
     __UI_DataGrids(dgGrid).TrackTop = __UI_DataGrids(dgGrid).SbTop + __UI_ScrollbarButtonHeight
     __UI_DataGrids(dgGrid).TrackHeight = __UI_DataGrids(dgGrid).SbHeight - __UI_ScrollbarButtonHeight * 2 - 1
     IF __UI_DataGrids(dgGrid).MaxTopRow > 0 THEN
@@ -213,23 +280,36 @@ SUB __UI_DGMeasure (dgGrid AS LONG)
         IF __UI_DataGrids(dgGrid).ThumbHeight > __UI_DataGrids(dgGrid).TrackHeight THEN __UI_DataGrids(dgGrid).ThumbHeight = __UI_DataGrids(dgGrid).TrackHeight
         __UI_DataGrids(dgGrid).ThumbTop = __UI_DataGrids(dgGrid).TrackTop + (__UI_DataGrids(dgGrid).TrackHeight - __UI_DataGrids(dgGrid).ThumbHeight) * (__UI_DataGrids(dgGrid).TopRow / __UI_DataGrids(dgGrid).MaxTopRow)
     END IF
+
+    'Horizontal scrollbar parts: the same measures, along the bottom
+    __UI_DataGrids(dgGrid).HbLeft = __UI_DataGrids(dgGrid).AreaLeft + 1
+    __UI_DataGrids(dgGrid).HbTop = __UI_DataGrids(dgGrid).AreaBottom - __UI_ScrollbarWidth
+    IF __UI_DataGrids(dgGrid).MaxTopRow > 0 THEN
+        __UI_DataGrids(dgGrid).HbWidth = __UI_DataGrids(dgGrid).SbLeft - __UI_DataGrids(dgGrid).HbLeft
+    ELSE
+        __UI_DataGrids(dgGrid).HbWidth = __UI_DataGrids(dgGrid).AreaRight - __UI_DataGrids(dgGrid).HbLeft
+    END IF
+    __UI_DataGrids(dgGrid).HTrackLeft = __UI_DataGrids(dgGrid).HbLeft + __UI_ScrollbarButtonHeight
+    __UI_DataGrids(dgGrid).HTrackWidth = __UI_DataGrids(dgGrid).HbWidth - __UI_ScrollbarButtonHeight * 2 - 1
+    IF __UI_DataGrids(dgGrid).MaxLeftCol > 0 THEN
+        dgVisCols = dgCount - __UI_DataGrids(dgGrid).MaxLeftCol
+        __UI_DataGrids(dgGrid).HThumbWidth = __UI_DataGrids(dgGrid).HTrackWidth * dgVisCols / dgCount
+        IF __UI_DataGrids(dgGrid).HThumbWidth < 22 THEN __UI_DataGrids(dgGrid).HThumbWidth = 22
+        IF __UI_DataGrids(dgGrid).HThumbWidth > __UI_DataGrids(dgGrid).HTrackWidth THEN __UI_DataGrids(dgGrid).HThumbWidth = __UI_DataGrids(dgGrid).HTrackWidth
+        __UI_DataGrids(dgGrid).HThumbLeft = __UI_DataGrids(dgGrid).HTrackLeft + (__UI_DataGrids(dgGrid).HTrackWidth - __UI_DataGrids(dgGrid).HThumbWidth) * (__UI_DataGrids(dgGrid).LeftCol / __UI_DataGrids(dgGrid).MaxLeftCol)
+    END IF
     dgRight = __UI_DGContentRight(dgGrid)
 
-    'Columns: fixed widths first; columns with no width share what's left; the last one reaches the right edge
-    dgCount = __UI_DGColCount(dgGrid)
-    FOR dgI = 1 TO dgCount
-        dgC = __UI_DGCol(dgGrid, dgI)
-        IF __UI_DataGridCols(dgC).Width > 0 THEN dgFixed = dgFixed + __UI_DataGridCols(dgC).Width ELSE dgFlex = dgFlex + 1
-    NEXT
-    IF dgFlex > 0 THEN
-        dgShare = (dgRight - __UI_DataGrids(dgGrid).AreaLeft - dgFixed) \ dgFlex
-        IF dgShare < 30 THEN dgShare = 30
-    END IF
+    'Where columns go: the ones scrolled out on the left are placed out of reach; the last one reaches the right edge
     dgX = __UI_DataGrids(dgGrid).AreaLeft + 1
     FOR dgI = 1 TO dgCount
         dgC = __UI_DGCol(dgGrid, dgI)
-        dgW = __UI_DataGridCols(dgC).Width
-        IF dgW <= 0 THEN dgW = dgShare
+        IF dgI <= __UI_DataGrids(dgGrid).LeftCol THEN
+            __UI_DataGridCols(dgC).Left = -32000
+            __UI_DataGridCols(dgC).Right = -32001
+            _CONTINUE
+        END IF
+        dgW = __UI_DGColWidth(dgGrid, dgI, dgShare)
         __UI_DataGridCols(dgC).Left = dgX
         __UI_DataGridCols(dgC).Right = dgX + dgW - 1
         IF dgI = dgCount _ANDALSO __UI_DataGridCols(dgC).Right < dgRight THEN __UI_DataGridCols(dgC).Right = dgRight
@@ -245,6 +325,28 @@ FUNCTION __UI_DGContentRight% (dgGrid AS LONG)
         __UI_DGContentRight = __UI_DataGrids(dgGrid).AreaRight - 1
     END IF
 END FUNCTION
+
+''' @brief _TRUE when a column shows (whole or cut off at the right).
+FUNCTION __UI_DGColInView%% (dgGrid AS LONG, dgCol AS LONG)
+    IF dgCol <= __UI_DataGrids(dgGrid).LeftCol _ORELSE dgCol > __UI_DGColCount(dgGrid) THEN EXIT FUNCTION
+    __UI_DGColInView = __UI_DataGridCols(__UI_DGCol(dgGrid, dgCol)).Left <= __UI_DGContentRight(dgGrid)
+END FUNCTION
+
+''' @brief Scrolls sideways so a column shows whole (or starts at the left edge when it's wider than the table).
+SUB __UI_DGEnsureColVisible (dgGrid AS LONG, dgCol AS LONG)
+    __UI_DGMeasure dgGrid
+    IF dgCol < 1 _ORELSE dgCol > __UI_DGColCount(dgGrid) THEN EXIT SUB
+    IF dgCol <= __UI_DataGrids(dgGrid).LeftCol THEN
+        __UI_DataGrids(dgGrid).LeftCol = dgCol - 1
+        __UI_DGMeasure dgGrid
+    ELSE
+        DO WHILE __UI_DataGrids(dgGrid).LeftCol < dgCol - 1 _ANDALSO __UI_DataGrids(dgGrid).LeftCol < __UI_DataGrids(dgGrid).MaxLeftCol
+            IF __UI_DataGridCols(__UI_DGCol(dgGrid, dgCol)).Right <= __UI_DGContentRight(dgGrid) THEN EXIT DO
+            __UI_DataGrids(dgGrid).LeftCol = __UI_DataGrids(dgGrid).LeftCol + 1
+            __UI_DGMeasure dgGrid
+        LOOP
+    END IF
+END SUB
 
 ''' @brief Top of a row's cells (the line under it is at the top plus RowHeight - 1). Only meaningful for rows in view.
 FUNCTION __UI_DGRowTop% (dgGrid AS LONG, dgRow AS LONG)
@@ -272,6 +374,7 @@ FUNCTION __UI_DGHit%% (dgGrid AS LONG, dgX AS LONG, dgY AS LONG, dgRow AS LONG, 
 
     dgBodyTop = __UI_DataGrids(dgGrid).AreaTop + __UI_DataGrids(dgGrid).HeaderHeight + 1
     IF dgY < dgBodyTop THEN __UI_DGHit = 1: EXIT FUNCTION
+    IF dgY >= __UI_DataGrids(dgGrid).BodyBottom THEN EXIT FUNCTION 'the horizontal scrollbar
 
     dgV = (dgY - dgBodyTop) \ __UI_DataGrids(dgGrid).RowHeight + 1
     __UI_DGHit = 3
@@ -313,6 +416,7 @@ SUB __UI_DGMoveTo (dgGrid AS LONG, dgRow AS LONG, dgCol AS LONG, dgByUser AS _BY
     IF dgCol < 1 THEN dgCol = 1
     IF dgCol > dgCols THEN dgCol = dgCols
     __UI_DGEnsureVisible dgGrid, dgRow
+    __UI_DGEnsureColVisible dgGrid, dgCol
     IF __UI_DataGrids(dgGrid).SelAnchor THEN
         'Only the current row stays selected
         __UI_DataGrids(dgGrid).SelAnchor = 0
@@ -385,6 +489,7 @@ SUB __UI_DGBeginEdit (dgGrid AS LONG, dgFirstKey AS STRING)
     IF dgRow < 1 _ORELSE dgRow > __UI_DGRowCount(dgGrid) _ORELSE dgCol < 1 _ORELSE dgCol > __UI_DGColCount(dgGrid) THEN EXIT SUB
 
     __UI_DGEnsureVisible dgGrid, dgRow
+    __UI_DGEnsureColVisible dgGrid, dgCol
     __UI_DataGrids(dgGrid).SelAnchor = 0 'editing a cell leaves only its row selected
     dgC = __UI_DGCol(dgGrid, dgCol)
     dgValue = __UI_DGGetCell(dgGrid, dgRow, dgCol)
@@ -510,6 +615,7 @@ SUB __UI_DGDraw (dgGrid AS LONG)
     DIM dgCols AS LONG, dgRows AS LONG, dgI AS LONG, dgC AS LONG, dgV AS LONG, dgRow AS LONG, dgY AS LONG
     DIM dgX1 AS LONG, dgX2 AS LONG, dgText AS STRING, dgKind AS _BYTE, dgIsCur AS _BYTE, dgBx AS LONG, dgBy AS LONG
     DIM dgBar AS __UI_ControlTYPE, dgState AS _BYTE, dgSelFirst AS LONG, dgSelLast AS LONG, dgRangeBack AS _UNSIGNED LONG
+    DIM dgImage AS LONG, dgPrevSource AS LONG
 
     frameID = __UI_DataGrids(dgGrid).FrameID
     IF Control(frameID).Canvas = 0 _ORELSE Control(frameID).Hidden THEN EXIT SUB
@@ -554,11 +660,11 @@ SUB __UI_DGDraw (dgGrid AS LONG)
     LINE (dgL, dgT + __UI_DataGrids(dgGrid).HeaderHeight)-(dgR, dgT + __UI_DataGrids(dgGrid).HeaderHeight), dgBorder
     dgTextTop = dgT + 1 + (__UI_DataGrids(dgGrid).HeaderHeight - 1 - dgFontH) \ 2
     COLOR dgHeadFore
-    FOR dgI = 1 TO dgCols
+    FOR dgI = __UI_DataGrids(dgGrid).LeftCol + 1 TO dgCols
         dgC = __UI_DGCol(dgGrid, dgI)
-        IF __UI_DataGridCols(dgC).Left > dgR - 1 THEN EXIT FOR
+        IF __UI_DataGridCols(dgC).Left > dgRight THEN EXIT FOR
         dgX2 = __UI_DataGridCols(dgC).Right
-        IF dgX2 > dgR - 1 THEN dgX2 = dgR - 1
+        IF dgX2 > dgRight THEN dgX2 = dgRight
         __UI_PrintString __UI_DataGridCols(dgC).Left + 4, dgTextTop, __UI_DGFit(__UI_DataGridColCaption(dgC), dgX2 - __UI_DataGridCols(dgC).Left - 7)
     NEXT
 
@@ -567,7 +673,7 @@ SUB __UI_DGDraw (dgGrid AS LONG)
         dgRow = __UI_DataGrids(dgGrid).TopRow + dgV
         IF dgRow > dgRows THEN EXIT FOR
         dgY = __UI_DGRowTop(dgGrid, dgRow)
-        IF dgY >= dgB THEN EXIT FOR
+        IF dgY >= __UI_DataGrids(dgGrid).BodyBottom THEN EXIT FOR
         dgTextTop = dgY + (__UI_DataGrids(dgGrid).RowHeight - 1 - dgFontH) \ 2
         IF dgSelLast > dgSelFirst _ANDALSO dgRow >= dgSelFirst _ANDALSO dgRow <= dgSelLast THEN
             LINE (dgL + 1, dgY)-(dgRight, dgY + __UI_DataGrids(dgGrid).RowHeight - 2), dgRangeBack, BF
@@ -575,7 +681,7 @@ SUB __UI_DGDraw (dgGrid AS LONG)
             LINE (dgL + 1, dgY)-(dgRight, dgY + __UI_DataGrids(dgGrid).RowHeight - 2), dgRowBack, BF
         END IF
 
-        FOR dgI = 1 TO dgCols
+        FOR dgI = __UI_DataGrids(dgGrid).LeftCol + 1 TO dgCols
             dgC = __UI_DGCol(dgGrid, dgI)
             dgX1 = __UI_DataGridCols(dgC).Left
             IF dgX1 > dgRight THEN EXIT FOR
@@ -640,7 +746,7 @@ SUB __UI_DGDraw (dgGrid AS LONG)
     NEXT
 
     'Lines between columns
-    FOR dgI = 1 TO dgCols - 1
+    FOR dgI = __UI_DataGrids(dgGrid).LeftCol + 1 TO dgCols - 1
         dgC = __UI_DGCol(dgGrid, dgI)
         IF __UI_DataGridCols(dgC).Right >= dgRight THEN EXIT FOR
         LINE (__UI_DataGridCols(dgC).Right, dgT + 1)-(__UI_DataGridCols(dgC).Right, dgB - 1), dgLine
@@ -673,6 +779,46 @@ SUB __UI_DGDraw (dgGrid AS LONG)
         __UI_PGThumbDragging = __UI_DataGrids(dgGrid).Dragging
         __UI_DrawVScrollBar dgBar, dgState
         __UI_PGThumbDragging = _FALSE
+    END IF
+
+    'Horizontal scrollbar: a vertical one drawn on a picture of its own, then turned on its side
+    IF __UI_DataGrids(dgGrid).MaxLeftCol > 0 _ANDALSO __UI_DataGrids(dgGrid).HbWidth > __UI_ScrollbarButtonHeight * 2 THEN
+        dgBar = Control(frameID)
+        dgBar.Left = 0
+        dgBar.Top = 0
+        dgBar.Width = __UI_ScrollbarWidth
+        dgBar.Height = __UI_DataGrids(dgGrid).HbWidth
+        dgBar.Min = 0
+        dgBar.Max = __UI_DataGrids(dgGrid).MaxLeftCol
+        dgBar.Value = __UI_DataGrids(dgGrid).LeftCol
+        dgBar.LastVisibleItem = dgCols - __UI_DataGrids(dgGrid).MaxLeftCol
+        dgBar.HoveringVScrollbarButton = __UI_DataGrids(dgGrid).HHoverPart
+        dgBar.BackColor = dgBack
+        dgState = 1
+        IF Control(frameID).Disabled THEN dgState = 4
+        dgImage = _NEWIMAGE(__UI_ScrollbarWidth, __UI_DataGrids(dgGrid).HbWidth, 32)
+        _DEST dgImage
+        CLS , dgBack
+        __UI_PGThumbDragging = __UI_DataGrids(dgGrid).HDragging
+        __UI_DrawVScrollBar dgBar, dgState
+        __UI_PGThumbDragging = _FALSE
+        'Its top goes to the left: arrows that pointed up and down now point left and right
+        dgPrevSource = _SOURCE
+        _SOURCE dgImage
+        _DEST Control(frameID).Canvas
+        _DONTBLEND
+        FOR dgY = 0 TO __UI_DataGrids(dgGrid).HbWidth - 1
+            FOR dgX1 = 0 TO __UI_ScrollbarWidth - 1
+                PSET (__UI_DataGrids(dgGrid).HbLeft + dgY, __UI_DataGrids(dgGrid).HbTop + __UI_ScrollbarWidth - 1 - dgX1), POINT(dgX1, dgY)
+            NEXT
+        NEXT
+        _BLEND
+        _SOURCE dgPrevSource
+        _FREEIMAGE dgImage
+        'The corner between the two scrollbars
+        IF __UI_DataGrids(dgGrid).MaxTopRow > 0 THEN
+            LINE (__UI_DataGrids(dgGrid).SbLeft, __UI_DataGrids(dgGrid).HbTop)-(dgR - 1, dgB - 1), dgBack, BF
+        END IF
     END IF
 
     _FONT dgPrevFont
@@ -742,6 +888,68 @@ SUB __UI_DGScrollbarMouse (dgGrid AS LONG)
     END IF
 END SUB
 
+''' @brief Which part of a grid's horizontal scrollbar is at a point given in the frame's coordinates:
+''' 0 = none, 1 = left button, 2 = right button, 3 = thumb, 4 = track left of it, 5 = track right of it.
+FUNCTION __UI_DGHScrollbarPart%% (dgGrid AS LONG, dgX AS LONG, dgY AS LONG)
+    IF __UI_DataGrids(dgGrid).MaxLeftCol = 0 THEN EXIT FUNCTION
+    IF dgY < __UI_DataGrids(dgGrid).HbTop _ORELSE dgY >= __UI_DataGrids(dgGrid).HbTop + __UI_ScrollbarWidth THEN EXIT FUNCTION
+    IF dgX < __UI_DataGrids(dgGrid).HbLeft _ORELSE dgX >= __UI_DataGrids(dgGrid).HbLeft + __UI_DataGrids(dgGrid).HbWidth THEN EXIT FUNCTION
+    IF dgX < __UI_DataGrids(dgGrid).HTrackLeft THEN
+        __UI_DGHScrollbarPart = 1
+    ELSEIF dgX >= __UI_DataGrids(dgGrid).HbLeft + __UI_DataGrids(dgGrid).HbWidth - __UI_ScrollbarButtonHeight - 1 THEN
+        __UI_DGHScrollbarPart = 2
+    ELSEIF dgX >= __UI_DataGrids(dgGrid).HThumbLeft _ANDALSO dgX < __UI_DataGrids(dgGrid).HThumbLeft + __UI_DataGrids(dgGrid).HThumbWidth THEN
+        __UI_DGHScrollbarPart = 3
+    ELSEIF dgX < __UI_DataGrids(dgGrid).HThumbLeft THEN
+        __UI_DGHScrollbarPart = 4
+    ELSE
+        __UI_DGHScrollbarPart = 5
+    END IF
+END FUNCTION
+
+''' @brief Scrolls sideways for a click on a part of the horizontal scrollbar: a column for the arrow buttons, a page for the track.
+SUB __UI_DGHScrollStep (dgGrid AS LONG, dgPart AS _BYTE)
+    DIM dgPage AS LONG
+    dgPage = __UI_DGColCount(dgGrid) - __UI_DataGrids(dgGrid).MaxLeftCol - 1
+    IF dgPage < 1 THEN dgPage = 1
+    SELECT CASE dgPart
+        CASE 1: __UI_DataGrids(dgGrid).LeftCol = __UI_DataGrids(dgGrid).LeftCol - 1
+        CASE 2: __UI_DataGrids(dgGrid).LeftCol = __UI_DataGrids(dgGrid).LeftCol + 1
+        CASE 4: __UI_DataGrids(dgGrid).LeftCol = __UI_DataGrids(dgGrid).LeftCol - dgPage
+        CASE 5: __UI_DataGrids(dgGrid).LeftCol = __UI_DataGrids(dgGrid).LeftCol + dgPage
+    END SELECT
+    __UI_DGMeasure dgGrid
+END SUB
+
+''' @brief The horizontal scrollbar's part of __UI_DGScrollbarMouse.
+SUB __UI_DGHScrollbarMouse (dgGrid AS LONG)
+    DIM frameID AS LONG, dgMouseX AS LONG, dgRoom AS LONG, dgPart AS _BYTE
+
+    frameID = __UI_DataGrids(dgGrid).FrameID
+    IF __UI_DataGrids(dgGrid).MaxLeftCol = 0 _ORELSE NOT __UI_MouseIsDown THEN
+        __UI_DataGrids(dgGrid).HPressPart = 0
+        __UI_DataGrids(dgGrid).HDragging = _FALSE
+    END IF
+
+    dgMouseX = __UI_MouseLeft - Control(frameID).Left
+    IF __UI_HoveringID = frameID _ORELSE __UI_DataGrids(dgGrid).HPressPart > 0 THEN
+        dgPart = __UI_DGHScrollbarPart(dgGrid, dgMouseX, __UI_MouseTop - Control(frameID).Top)
+    END IF
+    __UI_DataGrids(dgGrid).HHoverPart = dgPart
+
+    IF __UI_DataGrids(dgGrid).HDragging THEN
+        dgRoom = __UI_DataGrids(dgGrid).HTrackWidth - __UI_DataGrids(dgGrid).HThumbWidth
+        IF dgRoom > 0 THEN
+            __UI_DataGrids(dgGrid).LeftCol = _ROUND((dgMouseX - __UI_DataGrids(dgGrid).HGrabOffset - __UI_DataGrids(dgGrid).HTrackLeft) * __UI_DataGrids(dgGrid).MaxLeftCol / dgRoom)
+            __UI_DGMeasure dgGrid
+        END IF
+        __UI_DataGrids(dgGrid).HHoverPart = 3
+    ELSEIF __UI_DataGrids(dgGrid).HPressPart > 0 _ANDALSO dgPart = __UI_DataGrids(dgGrid).HPressPart _ANDALSO TIMER >= __UI_DataGrids(dgGrid).RepeatTime THEN
+        __UI_DGHScrollStep dgGrid, dgPart
+        __UI_DataGrids(dgGrid).RepeatTime = TIMER + .05
+    END IF
+END SUB
+
 ''' @brief While the mouse button is held after going down on a cell, the rows from there to the one under the
 ''' mouse are selected. Past the top or bottom, the grid scrolls a row at a time.
 SUB __UI_DGDragSelect (dgGrid AS LONG)
@@ -755,10 +963,10 @@ SUB __UI_DGDragSelect (dgGrid AS LONG)
     frameID = __UI_DataGrids(dgGrid).FrameID
     dgY = __UI_MouseTop - Control(frameID).Top
     dgBodyTop = __UI_DataGrids(dgGrid).AreaTop + __UI_DataGrids(dgGrid).HeaderHeight + 1
-    IF dgY >= dgBodyTop + __UI_DataGrids(dgGrid).VisibleRows * __UI_DataGrids(dgGrid).RowHeight _ANDALSO dgY < __UI_DataGrids(dgGrid).AreaBottom THEN
+    IF dgY >= dgBodyTop + __UI_DataGrids(dgGrid).VisibleRows * __UI_DataGrids(dgGrid).RowHeight _ANDALSO dgY < __UI_DataGrids(dgGrid).BodyBottom THEN
         'Over the row cut off at the bottom: a click there scrolls it into view, so this isn't a drag yet
         EXIT SUB
-    ELSEIF dgY < dgBodyTop _ORELSE dgY >= __UI_DataGrids(dgGrid).AreaBottom THEN
+    ELSEIF dgY < dgBodyTop _ORELSE dgY >= __UI_DataGrids(dgGrid).BodyBottom THEN
         'Above the rows or below the table: one more row at a time
         IF TIMER < __UI_DataGrids(dgGrid).DragTime _ANDALSO TIMER > __UI_DataGrids(dgGrid).DragTime - 1 THEN EXIT SUB
         __UI_DataGrids(dgGrid).DragTime = TIMER + .06
@@ -781,7 +989,7 @@ END SUB
 ''' @brief Called by __UI_UpdateDisplay after the containers' canvases are cleared: draws every grid.
 SUB __UI_DataGridsDraw
     DIM dgGrid AS LONG
-    IF __UI_TotalDataGrids = 0 _ORELSE __UI_DesignMode THEN EXIT SUB
+    IF __UI_TotalDataGrids = 0 THEN EXIT SUB
     FOR dgGrid = 1 TO __UI_TotalDataGrids
         IF __UI_DataGrids(dgGrid).FrameID > 0 THEN __UI_DGDraw dgGrid
     NEXT
@@ -792,7 +1000,8 @@ END SUB
 SUB __UI_DataGridsUpdate
     DIM dgGrid AS LONG, frameID AS LONG, dgLook AS STRING
 
-    IF __UI_TotalDataGrids = 0 _ORELSE __UI_DesignMode THEN EXIT SUB
+    IF __UI_DesignMode THEN __UI_DataGridsFromDesign: EXIT SUB
+    IF __UI_TotalDataGrids = 0 THEN EXIT SUB
     FOR dgGrid = 1 TO __UI_TotalDataGrids
         frameID = __UI_DataGrids(dgGrid).FrameID
         IF frameID = 0 THEN _CONTINUE
@@ -812,13 +1021,14 @@ SUB __UI_DataGridsUpdate
 
         __UI_DGMeasure dgGrid
         __UI_DGScrollbarMouse dgGrid
+        __UI_DGHScrollbarMouse dgGrid
         __UI_DGDragSelect dgGrid
 
         'The cell being edited keeps its box on it; scrolled out of view, the editing ends
         IF __UI_DataGrids(dgGrid).Editing THEN
             IF __UI_DataGrids(dgGrid).EditRow > __UI_DGRowCount(dgGrid) _ORELSE __UI_DataGrids(dgGrid).EditCol > __UI_DGColCount(dgGrid) THEN
                 __UI_DGEndEdit dgGrid, _FALSE
-            ELSEIF NOT __UI_DGRowInView(dgGrid, __UI_DataGrids(dgGrid).EditRow) THEN
+            ELSEIF NOT __UI_DGRowInView(dgGrid, __UI_DataGrids(dgGrid).EditRow) _ORELSE NOT __UI_DGColInView(dgGrid, __UI_DataGrids(dgGrid).EditCol) THEN
                 __UI_DGEndEdit dgGrid, _TRUE
             ELSEIF __UI_DataGrids(dgGrid).Editing = 1 THEN
                 __UI_DGPlaceEditor dgGrid, __UI_DataGrids(dgGrid).EditorID, __UI_DataGrids(dgGrid).EditRow, __UI_DataGrids(dgGrid).EditCol
@@ -831,7 +1041,8 @@ SUB __UI_DataGridsUpdate
         dgLook = MKL$(__UI_DataGrids(dgGrid).TopRow) + MKL$(__UI_DataGrids(dgGrid).CurRow) + MKL$(__UI_DataGrids(dgGrid).CurCol) + _
                  MKI$(__UI_DataGrids(dgGrid).HadFocus) + MKI$(__UI_DataGrids(dgGrid).HoverPart) + MKI$(__UI_DataGrids(dgGrid).PressPart) + _
                  MKI$(__UI_DataGrids(dgGrid).Dragging) + MKI$(__UI_DataGrids(dgGrid).Editing) + MKI$(Control(frameID).Disabled) + MKL$(__UI_DataGrids(dgGrid).SelAnchor) + _
-                 MKL$(Control(frameID).Width) + MKL$(Control(frameID).Height) + MKL$(__UI_DGRowCount(dgGrid))
+                 MKL$(Control(frameID).Width) + MKL$(Control(frameID).Height) + MKL$(__UI_DGRowCount(dgGrid)) + _
+                 MKL$(__UI_DataGrids(dgGrid).LeftCol) + MKI$(__UI_DataGrids(dgGrid).HHoverPart) + MKI$(__UI_DataGrids(dgGrid).HPressPart) + MKI$(__UI_DataGrids(dgGrid).HDragging)
         IF dgLook <> __UI_DataGridLook(dgGrid) THEN
             __UI_DataGridLook(dgGrid) = dgLook
             Control(frameID).Redraw = _TRUE
@@ -872,6 +1083,21 @@ SUB __UI_DataGridMouseDown
         EXIT SUB
     END IF
 
+    dgPart = __UI_DGHScrollbarPart(dgGrid, dgX, dgY)
+    IF dgPart > 0 THEN
+        __UI_DataGrids(dgGrid).HPressPart = dgPart
+        __UI_DataGrids(dgGrid).HHoverPart = dgPart
+        IF dgPart = 3 THEN
+            __UI_DataGrids(dgGrid).HDragging = _TRUE
+            __UI_DataGrids(dgGrid).HGrabOffset = dgX - __UI_DataGrids(dgGrid).HThumbLeft
+        ELSE
+            __UI_DGHScrollStep dgGrid, dgPart
+            __UI_DataGrids(dgGrid).RepeatTime = TIMER + .35
+        END IF
+        Control(frameID).Redraw = _TRUE
+        EXIT SUB
+    END IF
+
     IF __UI_DGHit(dgGrid, dgX, dgY, dgRow, dgCol) = 2 THEN
         IF __UI_ShiftIsDown _ANDALSO __UI_DataGrids(dgGrid).CurRow > 0 THEN
             'Shift+click selects the rows from the current one (or where the range started) to this one
@@ -896,10 +1122,19 @@ FUNCTION __UI_DataGridWheel%% (hoverID AS LONG, dgWheel AS LONG)
     IF __UI_TotalDataGrids = 0 _ORELSE hoverID <= 0 THEN EXIT FUNCTION
     dgGrid = __UI_DGOwner(hoverID)
     IF dgGrid = 0 THEN EXIT FUNCTION
-    IF __UI_DataGrids(dgGrid).MaxTopRow = 0 THEN EXIT FUNCTION
-    IF __UI_DataGrids(dgGrid).Editing THEN __UI_DGEndEdit dgGrid, _TRUE
-    __UI_DataGrids(dgGrid).TopRow = __UI_DataGrids(dgGrid).TopRow + dgWheel * 3
     __UI_DGMeasure dgGrid
+    IF __UI_DataGrids(dgGrid).MaxLeftCol > 0 _ANDALSO (__UI_ShiftIsDown _ORELSE __UI_DataGrids(dgGrid).MaxTopRow = 0) THEN
+        'Shift+wheel (or the wheel, when every row fits) scrolls sideways, a column at a time
+        IF __UI_DataGrids(dgGrid).Editing THEN __UI_DGEndEdit dgGrid, _TRUE
+        __UI_DataGrids(dgGrid).LeftCol = __UI_DataGrids(dgGrid).LeftCol + SGN(dgWheel)
+    ELSEIF __UI_DataGrids(dgGrid).MaxTopRow > 0 THEN
+        IF __UI_DataGrids(dgGrid).Editing THEN __UI_DGEndEdit dgGrid, _TRUE
+        __UI_DataGrids(dgGrid).TopRow = __UI_DataGrids(dgGrid).TopRow + dgWheel * 3
+    ELSE
+        EXIT FUNCTION
+    END IF
+    __UI_DGMeasure dgGrid
+    Control(__UI_DataGrids(dgGrid).FrameID).Redraw = _TRUE
     __UI_DataGridWheel = _TRUE
 END FUNCTION
 
@@ -908,7 +1143,7 @@ SUB __UI_DataGridKey
     DIM dgGrid AS LONG, frameID AS LONG, dgK AS LONG, dgRow AS LONG, dgCol AS LONG, dgKind AS _BYTE
     DIM dgPage AS LONG, dgC AS LONG, dgI AS LONG, dgN AS LONG, dgItem AS STRING, dgCount AS LONG
 
-    IF __UI_TotalDataGrids = 0 _ORELSE __UI_Focus <= 0 THEN EXIT SUB
+    IF __UI_TotalDataGrids = 0 _ORELSE __UI_Focus <= 0 _ORELSE __UI_DesignMode THEN EXIT SUB
     dgGrid = __UI_DGOwner(__UI_Focus)
     IF dgGrid = 0 THEN EXIT SUB
     frameID = __UI_DataGrids(dgGrid).FrameID
@@ -1047,7 +1282,7 @@ END SUB
 FUNCTION __UI_DataGridTab%%
     DIM dgGrid AS LONG, frameID AS LONG, dgRow AS LONG, dgCol AS LONG, dgCols AS LONG
 
-    IF __UI_TotalDataGrids = 0 _ORELSE __UI_Focus <= 0 THEN EXIT FUNCTION
+    IF __UI_TotalDataGrids = 0 _ORELSE __UI_Focus <= 0 _ORELSE __UI_DesignMode THEN EXIT FUNCTION
     dgGrid = __UI_DGOwner(__UI_Focus)
     IF dgGrid = 0 THEN EXIT FUNCTION
     frameID = __UI_DataGrids(dgGrid).FrameID
@@ -1084,6 +1319,10 @@ SUB __UI_DataGridForget (dgID AS LONG)
             FOR dgI = 1 TO __UI_DGRowCount(dgGrid)
                 __UI_DataGridRowUsed(__UI_DGSlot(dgGrid, dgI)) = _FALSE
             NEXT
+            FOR dgI = 1 TO __UI_DGColCount(dgGrid)
+                __UI_DataGridCols(__UI_DGCol(dgGrid, dgI)).Kind = 0
+            NEXT
+            __UI_DataGridDesign(dgGrid) = _STR_EMPTY
             dgEditor = __UI_DataGrids(dgGrid).EditorID
             dgChooser = __UI_DataGrids(dgGrid).ChooserID
             __UI_DataGrids(dgGrid).FrameID = 0
@@ -1109,6 +1348,180 @@ SUB __UI_DataGridForget (dgID AS LONG)
 END SUB
 
 '-----------------------------------------------------------------------------------------------------------------------
+' Grids written in the designer
+'
+' A frame whose Text starts with a "#columns" line becomes a grid when the program starts (and the designer draws it):
+'   #columns
+'   caption|kind|width|items      one line per column: kind is text, integer, float, choice or toggle (text if left
+'                                 out), width is in pixels (0 or left out: shares the room left), items are a choice's,
+'                                 separated by commas
+'   #rows
+'   cell|cell|cell                one line per row, cells separated by |
+' Blank lines at the end of the rows are left out.
+'-----------------------------------------------------------------------------------------------------------------------
+
+''' @brief Text with line breaks as CHR$(10), whether they came from a .frm file (\10;) or code (\n).
+FUNCTION __UI_DGNormalize$ (dgText AS STRING)
+    DIM dgT AS STRING
+    dgT = RestoreCHR$(dgText)
+    dgT = Replace$(dgT, "\n", CHR$(10), _FALSE, 0)
+    __UI_DGNormalize = Replace$(dgT, CHR$(13), _STR_EMPTY, _FALSE, 0)
+END FUNCTION
+
+''' @brief _TRUE for a grid definition: text whose first line that isn't blank is "#columns".
+FUNCTION __UI_IsDataGridDefinition%% (dgText AS STRING)
+    DIM dgT AS STRING, dgPos AS LONG, dgLine AS STRING
+    dgT = __UI_DGNormalize(dgText) + CHR$(10)
+    DO
+        dgPos = INSTR(dgT, CHR$(10))
+        IF dgPos = 0 THEN EXIT FUNCTION
+        dgLine = _TRIM$(LEFT$(dgT, dgPos - 1))
+        dgT = MID$(dgT, dgPos + 1)
+        IF LEN(dgLine) THEN __UI_IsDataGridDefinition = LCASE$(dgLine) = "#columns": EXIT FUNCTION
+    LOOP
+END FUNCTION
+
+''' @brief _TRUE for a frame whose Text is a grid definition.
+FUNCTION __UI_IsDataGridFrame%% (frameID AS LONG)
+    IF frameID <= 0 _ORELSE frameID > UBOUND(Control) THEN EXIT FUNCTION
+    IF Control(frameID).ID = 0 _ORELSE Control(frameID).Type <> __UI_Type_Frame _ORELSE LEN(Text(frameID)) = 0 THEN EXIT FUNCTION
+    __UI_IsDataGridFrame = __UI_IsDataGridDefinition(Text(frameID))
+END FUNCTION
+
+''' @brief The word a column kind is written as in a grid definition.
+FUNCTION __UI_DGKindName$ (dgKind AS _BYTE)
+    SELECT CASE dgKind
+        CASE __UI_DataGrid_Integer: __UI_DGKindName = "integer"
+        CASE __UI_DataGrid_Float: __UI_DGKindName = "float"
+        CASE __UI_DataGrid_Choice: __UI_DGKindName = "choice"
+        CASE __UI_DataGrid_Toggle: __UI_DGKindName = "toggle"
+        CASE ELSE: __UI_DGKindName = "text"
+    END SELECT
+END FUNCTION
+
+''' @brief A column kind from its word in a grid definition (text for anything else).
+FUNCTION __UI_DGKindFromName%% (dgName AS STRING)
+    SELECT CASE LCASE$(_TRIM$(dgName))
+        CASE "integer": __UI_DGKindFromName = __UI_DataGrid_Integer
+        CASE "float": __UI_DGKindFromName = __UI_DataGrid_Float
+        CASE "choice": __UI_DGKindFromName = __UI_DataGrid_Choice
+        CASE "toggle": __UI_DGKindFromName = __UI_DataGrid_Toggle
+        CASE ELSE: __UI_DGKindFromName = __UI_DataGrid_Text
+    END SELECT
+END FUNCTION
+
+''' @brief Splits a grid definition into its column lines and row lines (each list ends every line with CHR$(10)).
+''' Blank lines among the columns, and at the end of the rows, are left out.
+SUB __UI_DGSplitDefinition (dgText AS STRING, dgColumns AS STRING, dgRows AS STRING)
+    DIM dgT AS STRING, dgPos AS LONG, dgLine AS STRING, dgSection AS LONG
+
+    dgColumns = _STR_EMPTY
+    dgRows = _STR_EMPTY
+    dgT = __UI_DGNormalize(dgText) + CHR$(10)
+    DO
+        dgPos = INSTR(dgT, CHR$(10))
+        IF dgPos = 0 THEN EXIT DO
+        dgLine = LEFT$(dgT, dgPos - 1)
+        dgT = MID$(dgT, dgPos + 1)
+        SELECT CASE LCASE$(_TRIM$(dgLine))
+            CASE "#columns": IF dgSection = 0 THEN dgSection = 1: _CONTINUE
+            CASE "#rows": IF dgSection = 1 THEN dgSection = 2: _CONTINUE
+        END SELECT
+        SELECT CASE dgSection
+            CASE 1: IF LEN(_TRIM$(dgLine)) THEN dgColumns = dgColumns + dgLine + CHR$(10)
+            CASE 2: dgRows = dgRows + dgLine + CHR$(10)
+        END SELECT
+    LOOP
+    'The text's last line break (and blank lines before it) don't make rows
+    DO WHILE LEN(dgRows)
+        IF LEN(dgRows) = 1 THEN dgPos = 0 ELSE dgPos = _INSTRREV(LEN(dgRows) - 1, dgRows, CHR$(10))
+        IF LEN(_TRIM$(MID$(dgRows, dgPos + 1, LEN(dgRows) - dgPos - 1))) THEN EXIT DO
+        dgRows = LEFT$(dgRows, dgPos)
+    LOOP
+END SUB
+
+''' @brief Splits one column line of a grid definition: caption|kind|width|items.
+SUB __UI_DGParseColumn (dgLine AS STRING, dgCaption AS STRING, dgKind AS _BYTE, dgWidth AS INTEGER, dgItems AS STRING)
+    dgCaption = _TRIM$(__UI_DGPart(dgLine, 1, "|"))
+    dgKind = __UI_DGKindFromName(__UI_DGPart(dgLine, 2, "|"))
+    dgWidth = VAL(__UI_DGPart(dgLine, 3, "|"))
+    IF dgWidth < 0 THEN dgWidth = 0
+    dgItems = _TRIM$(__UI_DGPart(dgLine, 4, "|"))
+END SUB
+
+''' @brief Builds a grid's columns and rows from a grid definition, replacing the ones it had.
+SUB __UI_DGBuild (frameID AS LONG, dgText AS STRING)
+    DIM dgGrid AS LONG, dgColumns AS STRING, dgRows AS STRING, dgI AS LONG, dgLine AS STRING, dgR AS LONG
+    DIM dgCaption AS STRING, dgKind AS _BYTE, dgWidth AS INTEGER, dgItems AS STRING
+
+    DataGrid_Attach frameID
+    dgGrid = __UI_DGFind(frameID)
+    IF dgGrid = 0 THEN EXIT SUB
+    DataGrid_Clear frameID
+    FOR dgI = __UI_DGColCount(dgGrid) TO 1 STEP -1
+        DataGrid_RemoveColumn frameID, dgI
+    NEXT
+
+    __UI_DGSplitDefinition dgText, dgColumns, dgRows
+    FOR dgI = 1 TO __UI_DGPartCount(dgColumns, CHR$(10)) - 1
+        __UI_DGParseColumn __UI_DGPart(dgColumns, dgI, CHR$(10)), dgCaption, dgKind, dgWidth, dgItems
+        dgR = __UI_DGAddColumn(frameID, dgCaption, dgWidth, dgKind, Replace$(dgItems, ",", "|", _FALSE, 0))
+    NEXT
+    FOR dgI = 1 TO __UI_DGPartCount(dgRows, CHR$(10)) - 1
+        dgLine = __UI_DGPart(dgRows, dgI, CHR$(10))
+        dgR = DataGrid_AddRow(frameID, dgLine)
+    NEXT
+    __UI_DataGridDesign(dgGrid) = Text(frameID)
+END SUB
+
+''' @brief Called by __UI_Init (not in the designer): builds the grids of frames that have grid definitions.
+SUB __UI_DataGridsFromForm
+    DIM dgID AS LONG
+    IF __UI_DesignMode THEN EXIT SUB
+    FOR dgID = 1 TO UBOUND(Control)
+        IF NOT __UI_IsDataGridFrame(dgID) THEN _CONTINUE
+        IF __UI_DGFind(dgID) > 0 THEN _CONTINUE 'set up by the program already
+        __UI_DGBuild dgID, Text(dgID)
+        __UI_DataGridDesign(__UI_DGFind(dgID)) = _STR_EMPTY
+    NEXT
+END SUB
+
+''' @brief Called by __UI_DataGridsUpdate in the designer: frames whose Text is a grid definition show the grid,
+''' built again when the Text changes. Nothing reacts to the mouse or keyboard, except the wheel, which scrolls.
+SUB __UI_DataGridsFromDesign
+    DIM dgID AS LONG, dgGrid AS LONG, dgTop AS LONG, dgLeft AS LONG, dgLook AS STRING
+
+    FOR dgID = 1 TO UBOUND(Control)
+        IF Control(dgID).ID = 0 _ORELSE Control(dgID).Type <> __UI_Type_Frame THEN _CONTINUE
+        dgGrid = __UI_DGFind(dgID)
+        IF __UI_IsDataGridFrame(dgID) THEN
+            IF dgGrid = 0 THEN
+                __UI_DGBuild dgID, Text(dgID)
+                dgGrid = __UI_DGFind(dgID)
+            ELSEIF __UI_DataGridDesign(dgGrid) <> Text(dgID) THEN
+                'Rebuilt where it was scrolled to
+                dgTop = __UI_DataGrids(dgGrid).TopRow
+                dgLeft = __UI_DataGrids(dgGrid).LeftCol
+                __UI_DGBuild dgID, Text(dgID)
+                __UI_DataGrids(dgGrid).TopRow = dgTop
+                __UI_DataGrids(dgGrid).LeftCol = dgLeft
+            END IF
+            IF dgGrid = 0 THEN _CONTINUE
+            __UI_DGMeasure dgGrid
+            dgLook = MKL$(__UI_DataGrids(dgGrid).TopRow) + MKL$(__UI_DataGrids(dgGrid).LeftCol) + MKL$(Control(dgID).Width) + MKL$(Control(dgID).Height) + __UI_DataGridDesign(dgGrid)
+            IF dgLook <> __UI_DataGridLook(dgGrid) THEN
+                __UI_DataGridLook(dgGrid) = dgLook
+                Control(dgID).Redraw = _TRUE
+            END IF
+        ELSEIF dgGrid > 0 THEN
+            'No longer a grid definition
+            __UI_DataGridForget dgID
+            Control(dgID).Redraw = _TRUE
+        END IF
+    NEXT
+END SUB
+
+'-----------------------------------------------------------------------------------------------------------------------
 ' Public API
 '-----------------------------------------------------------------------------------------------------------------------
 
@@ -1126,12 +1539,15 @@ SUB DataGrid_Attach (frameID AS LONG)
         IF dgGrid > UBOUND(__UI_DataGrids) THEN
             REDIM _PRESERVE __UI_DataGrids(0 TO dgGrid + 3) AS __UI_DataGridTYPE
             REDIM _PRESERVE __UI_DataGridLook(0 TO dgGrid + 3) AS STRING
+            REDIM _PRESERVE __UI_DataGridDesign(0 TO dgGrid + 3) AS STRING
         END IF
     END IF
     __UI_DataGrids(dgGrid) = dgEmpty
     __UI_DataGrids(dgGrid).FrameID = frameID
     __UI_DataGridLook(dgGrid) = _STR_EMPTY
-    Control(frameID).CanHaveFocus = _TRUE
+    __UI_DataGridDesign(dgGrid) = _STR_EMPTY
+    'In the designer, the frame only shows the grid: whether it can have focus stays the frame's own setting
+    IF NOT __UI_DesignMode THEN Control(frameID).CanHaveFocus = _TRUE
     Control(frameID).Redraw = _TRUE
 END SUB
 
@@ -1140,8 +1556,11 @@ FUNCTION __UI_DGAddColumn& (frameID AS LONG, columnCaption AS STRING, columnWidt
     DataGrid_Attach frameID
     dgGrid = __UI_DGFind(frameID)
     IF dgGrid = 0 THEN EXIT FUNCTION
-    __UI_TotalDataGridCols = __UI_TotalDataGridCols + 1
-    dgC = __UI_TotalDataGridCols
+    'A place left by a removed column, or a new one
+    FOR dgC = 1 TO __UI_TotalDataGridCols
+        IF __UI_DataGridCols(dgC).Kind = 0 THEN EXIT FOR
+    NEXT
+    IF dgC > __UI_TotalDataGridCols THEN __UI_TotalDataGridCols = dgC
     IF dgC > UBOUND(__UI_DataGridCols) THEN
         REDIM _PRESERVE __UI_DataGridCols(0 TO dgC + 15) AS __UI_DataGridColumnTYPE
         REDIM _PRESERVE __UI_DataGridColCaption(0 TO dgC + 15) AS STRING
@@ -1526,4 +1945,53 @@ FUNCTION DataGrid_GridOf& (controlID AS LONG)
     DIM dgGrid AS LONG
     dgGrid = __UI_DGOwner(controlID)
     IF dgGrid THEN DataGrid_GridOf = __UI_DataGrids(dgGrid).FrameID
+END FUNCTION
+
+''' @brief Removes a column and its cells from every row.
+SUB DataGrid_RemoveColumn (frameID AS LONG, columnNumber AS LONG)
+    DIM dgGrid AS LONG, dgI AS LONG, dgSlot AS LONG, dgKinds AS STRING
+    dgGrid = __UI_DGFind(frameID)
+    IF dgGrid = 0 THEN EXIT SUB
+    IF columnNumber < 1 _ORELSE columnNumber > __UI_DGColCount(dgGrid) THEN EXIT SUB
+
+    IF __UI_DataGrids(dgGrid).Editing THEN
+        IF __UI_DataGrids(dgGrid).EditCol = columnNumber THEN
+            __UI_DGEndEdit dgGrid, _FALSE
+        ELSE
+            __UI_DGEndEdit dgGrid, _TRUE
+        END IF
+    END IF
+
+    FOR dgI = 1 TO __UI_DGRowCount(dgGrid)
+        dgSlot = __UI_DGSlot(dgGrid, dgI)
+        __UI_DataGridCells(dgSlot) = __UI_DGWithoutPart(__UI_DataGridCells(dgSlot), columnNumber, CHR$(0))
+        dgKinds = __UI_DataGridCellKinds(dgSlot)
+        IF LEN(dgKinds) >= columnNumber THEN __UI_DataGridCellKinds(dgSlot) = LEFT$(dgKinds, columnNumber - 1) + MID$(dgKinds, columnNumber + 1)
+    NEXT
+    __UI_DataGridCols(__UI_DGCol(dgGrid, columnNumber)).Kind = 0 'its place can be used again
+    __UI_DataGrids(dgGrid).Columns = LEFT$(__UI_DataGrids(dgGrid).Columns, (columnNumber - 1) * 4) + MID$(__UI_DataGrids(dgGrid).Columns, columnNumber * 4 + 1)
+
+    IF __UI_DataGrids(dgGrid).CurCol > columnNumber THEN __UI_DataGrids(dgGrid).CurCol = __UI_DataGrids(dgGrid).CurCol - 1
+    IF __UI_DataGrids(dgGrid).CurCol > __UI_DGColCount(dgGrid) THEN __UI_DataGrids(dgGrid).CurCol = __UI_DGColCount(dgGrid)
+    IF __UI_DGColCount(dgGrid) = 0 THEN __UI_DataGrids(dgGrid).CurRow = 0: __UI_DataGrids(dgGrid).SelAnchor = 0
+    __UI_DGMeasure dgGrid
+    Control(frameID).Redraw = _TRUE
+END SUB
+
+''' @brief Keeps a value of the program's own with a row (it isn't shown). It stays with the row when rows are moved.
+SUB DataGrid_SetRowTag (frameID AS LONG, rowNumber AS LONG, rowTag AS STRING)
+    DIM dgGrid AS LONG
+    dgGrid = __UI_DGFind(frameID)
+    IF dgGrid = 0 THEN EXIT SUB
+    IF rowNumber < 1 _ORELSE rowNumber > __UI_DGRowCount(dgGrid) THEN EXIT SUB
+    __UI_DataGridRowTag(__UI_DGSlot(dgGrid, rowNumber)) = rowTag
+END SUB
+
+''' @brief The value kept with a row by DataGrid_SetRowTag ("" when there is none).
+FUNCTION DataGrid_RowTag$ (frameID AS LONG, rowNumber AS LONG)
+    DIM dgGrid AS LONG
+    dgGrid = __UI_DGFind(frameID)
+    IF dgGrid = 0 THEN EXIT FUNCTION
+    IF rowNumber < 1 _ORELSE rowNumber > __UI_DGRowCount(dgGrid) THEN EXIT FUNCTION
+    DataGrid_RowTag = __UI_DataGridRowTag(__UI_DGSlot(dgGrid, rowNumber))
 END FUNCTION

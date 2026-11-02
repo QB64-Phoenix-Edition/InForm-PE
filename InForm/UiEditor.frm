@@ -327,6 +327,10 @@ SUB __UI_LoadForm
     ToolTip(__UI_NewID) = "New tab control"
     Control(__UI_NewID).CanHaveFocus = True
 
+    __UI_NewID = __UI_NewControl(__UI_Type_Button, "AddDataGrid", 22, 22, 445, 10, __UI_GetID("Toolbox"))
+    ToolTip(__UI_NewID) = "New data grid (a table of columns and rows)"
+    Control(__UI_NewID).CanHaveFocus = True
+
     __UI_NewID = __UI_NewControl(__UI_Type_Button, "AddPropertyGrid", 22, 22, 416, 10, __UI_GetID("Toolbox"))
     ToolTip(__UI_NewID) = "New property grid (rows of labels and values; double-click it to edit its rows)"
     Control(__UI_NewID).CanHaveFocus = True
@@ -582,6 +586,15 @@ SUB __UI_LoadForm
     Control(__UI_NewID).VAlign = __UI_Middle
 
     __UI_NewID = __UI_NewControl(__UI_Type_Button, "KeyboardComboBT", 230, 23, 129, 362, __UI_GetID("ControlProperties"))
+    Control(__UI_NewID).CanHaveFocus = True
+
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "ColumnsLB", 120, 23, 10, 384, __UI_GetID("ControlProperties"))
+    SetCaption __UI_NewID, "Columns"
+    Control(__UI_NewID).HasBorder = True
+    Control(__UI_NewID).VAlign = __UI_Middle
+
+    __UI_NewID = __UI_NewControl(__UI_Type_Button, "EditColumnsBT", 230, 23, 129, 384, __UI_GetID("ControlProperties"))
+    SetCaption __UI_NewID, "Edit columns..."
     Control(__UI_NewID).CanHaveFocus = True
 
     __UI_NewID = __UI_NewControl(__UI_Type_Label, "RowsLB", 120, 23, 10, 384, __UI_GetID("ControlProperties"))
@@ -993,6 +1006,7 @@ SUB __UI_AssignIDs
     AddFrame = __UI_GetID("AddFrame")
     AddToggleSwitch = __UI_GetID("AddToggleSwitch")
     AddTabControl = __UI_GetID("AddTabControl")
+    AddDataGrid = __UI_GetID("AddDataGrid")
     AddPropertyGrid = __UI_GetID("AddPropertyGrid")
     Stretch = __UI_GetID("Stretch")
     HasBorder = __UI_GetID("HasBorder")
@@ -1108,6 +1122,8 @@ SUB __UI_AssignIDs
     InvertBindingCB = __UI_GetID("InvertBindingCB")
     BindBT = __UI_GetID("BindBT")
     CancelBindBT = __UI_GetID("CancelBindBT")
+    ColumnsLB = __UI_GetID("ColumnsLB")
+    EditColumnsBT = __UI_GetID("EditColumnsBT")
     RowsLB = __UI_GetID("RowsLB")
     EditRowsBT = __UI_GetID("EditRowsBT")
     EditRowsDialog = __UI_GetID("EditRowsDialog")

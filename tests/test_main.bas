@@ -51,6 +51,8 @@ SUB __UI_BeforeInit
     Test_Timer
     Test_PropertyGrid
     Test_DataGrid
+    Test_DataGridScrolling
+    Test_DataGridDefinitions
 
     TEST_END_ALL
 END SUB
@@ -3435,6 +3437,146 @@ SUB Test_DataGrid
 
     TEST_CASE_END
     __UI_Focus = 0
+END SUB
+
+SUB Test_DataGridScrolling
+    DIM g AS LONG, r AS LONG, i AS LONG, k AS LONG, dg AS LONG, cols AS LONG, x AS LONG, y AS LONG
+
+    TEST_CASE_BEGIN "DataGrid: sideways scrolling"
+
+    'Four 80-pixel columns don't fit in 200 pixels
+    g = __UI_NewControl(__UI_Type_Frame, "TestDGWide", 200, 150, 0, 0, 0)
+    Control(g).HasBorder = False
+    FOR i = 1 TO 4
+        DataGrid_AddTextColumn g, "C" + LTRIM$(STR$(i)), 80
+    NEXT
+    r = DataGrid_AddRow(g, "a1|a2|a3|a4")
+    r = DataGrid_AddRow(g, "b1|b2|b3|b4")
+    dg = __UI_DGFind(g)
+    __UI_DGMeasure dg
+    TEST_CHECK __UI_DataGrids(dg).MaxLeftCol = 2, "Columns that don't fit scroll (two have to go for the last two to show)"
+    TEST_CHECK __UI_DataGrids(dg).BodyBottom = __UI_DataGrids(dg).AreaBottom - __UI_ScrollbarWidth, "The horizontal scrollbar takes room from the rows"
+    TEST_CHECK __UI_DataGrids(dg).LeftCol = 0, "Starts at the first column"
+
+    DataGrid_Select g, 1, 4
+    TEST_CHECK __UI_DataGrids(dg).LeftCol = 2, "Selecting a column out of view scrolls to it"
+    TEST_CHECK __UI_DataGridCols(__UI_DGCol(dg, 4)).Right <= __UI_DGContentRight(dg), "and it shows whole"
+    TEST_CHECK_FALSE __UI_DGColInView(dg, 1), "The first column is scrolled out"
+    DataGrid_Select g, 1, 2
+    TEST_CHECK __UI_DataGrids(dg).LeftCol = 1, "Going back left scrolls to the column"
+
+    DataGrid_Select g, 1, 1
+    __UI_Focus = g
+    k = TestDGKey(_KEY_RIGHT)
+    k = TestDGKey(_KEY_RIGHT)
+    TEST_CHECK DataGrid_Column(g) = 3 _ANDALSO __UI_DataGrids(dg).LeftCol = 1, "Arrow keys scroll sideways"
+    k = TestDGKey(_KEY_HOME)
+    TEST_CHECK __UI_DataGrids(dg).LeftCol = 0, "Home scrolls back"
+
+    'A click on the scrollbar's right button scrolls a column; the scrollbar isn't a cell
+    __UI_DGMeasure dg
+    x = __UI_DataGrids(dg).HbLeft + __UI_DataGrids(dg).HbWidth - 4
+    y = __UI_DataGrids(dg).HbTop + 4
+    TEST_CHECK __UI_DGHScrollbarPart(dg, x, y) = 2, "The right button is at the scrollbar's end"
+    TestDGClick g, x, y
+    TEST_CHECK __UI_DataGrids(dg).LeftCol = 1, "Clicking it scrolls a column"
+    TEST_CHECK DataGrid_Row(g) = 1 _ANDALSO DataGrid_Column(g) = 1, "and doesn't move the current cell"
+    TestDGClick g, __UI_DataGrids(dg).HbLeft + 3, y
+    TEST_CHECK __UI_DataGrids(dg).LeftCol = 0, "The left button scrolls back"
+
+    'The wheel scrolls sideways with Shift, or when every row fits
+    TEST_CHECK __UI_DataGridWheel(g, 1), "The wheel scrolls"
+    TEST_CHECK __UI_DataGrids(dg).LeftCol = 1, "sideways, when every row fits"
+    FOR i = 1 TO 10
+        r = DataGrid_AddRow(g, "")
+    NEXT
+    TEST_CHECK __UI_DataGridWheel(g, 1) _ANDALSO __UI_DataGrids(dg).LeftCol = 1 _ANDALSO __UI_DataGrids(dg).TopRow > 0, "With rows to scroll, the wheel scrolls them"
+    __UI_ShiftIsDown = True
+    TEST_CHECK __UI_DataGridWheel(g, -1) _ANDALSO __UI_DataGrids(dg).LeftCol = 0, "and Shift+wheel scrolls sideways"
+    __UI_ShiftIsDown = False
+
+    'Room enough: no sideways scrolling
+    Control(g).Width = 400
+    __UI_DGMeasure dg
+    TEST_CHECK __UI_DataGrids(dg).MaxLeftCol = 0, "Columns that fit don't scroll"
+
+    TEST_CASE_END
+
+    TEST_CASE_BEGIN "DataGrid: removing columns and row tags"
+
+    DataGrid_Clear g
+    r = DataGrid_AddRow(g, "a1|a2|a3|a4")
+    r = DataGrid_AddRow(g, "b1|b2|b3|b4")
+    DataGrid_SetCellKind g, 1, 3, __UI_DataGrid_Toggle
+    DataGrid_Select g, 2, 4
+    cols = __UI_TotalDataGridCols
+    DataGrid_RemoveColumn g, 2
+    TEST_CHECK DataGrid_ColumnCount(g) = 3, "A column is removed"
+    TEST_CHECK DataGrid_Cell(g, 1, 2) = "a3" _ANDALSO DataGrid_Cell(g, 2, 3) = "b4", "and its cells, in every row"
+    TEST_CHECK DataGrid_CellKind(g, 1, 2) = __UI_DataGrid_Toggle, "A cell's own kind moves with it"
+    TEST_CHECK DataGrid_Column(g) = 3, "The current cell stays on its column"
+    DataGrid_AddTextColumn g, "New", 0
+    TEST_CHECK __UI_TotalDataGridCols = cols, "A new column takes the removed one's place"
+    TEST_CHECK DataGrid_Cell(g, 1, 4) = "", "and starts empty"
+
+    TEST_CHECK DataGrid_RowTag(g, 1) = "", "Rows have no tag at first"
+    DataGrid_SetRowTag g, 1, "first"
+    DataGrid_MoveRow g, 1, 2
+    TEST_CHECK DataGrid_RowTag(g, 2) = "first" _ANDALSO DataGrid_RowTag(g, 1) = "", "A tag moves with its row"
+    DataGrid_RemoveRow g, 2
+    r = DataGrid_AddRow(g, "")
+    TEST_CHECK DataGrid_RowTag(g, r) = "", "A new row has no tag, even in a reused place"
+
+    __UI_DestroyControl Control(g)
+    TEST_CASE_END
+    __UI_Focus = 0
+END SUB
+
+SUB Test_DataGridDefinitions
+    DIM f AS LONG, f2 AS LONG, dg AS LONG
+
+    TEST_CASE_BEGIN "DataGrid: grids written in the designer"
+
+    TEST_CHECK __UI_IsDataGridDefinition("#columns\nName"), "A definition starts with #columns"
+    TEST_CHECK __UI_IsDataGridDefinition(CHR$(10) + "  #Columns " + CHR$(10) + "Name"), "after blank lines, in any case"
+    TEST_CHECK_FALSE __UI_IsDataGridDefinition("name|text|Name"), "Property grid rows aren't one"
+    TEST_CHECK_FALSE __UI_IsDataGridDefinition(""), "Nor is empty text"
+
+    f = __UI_NewControl(__UI_Type_Frame, "TestDGDef", 300, 150, 0, 0, 0)
+    Text(f) = "#columns\nName|text|100\nColor|choice|80|Red,Green\nQty|integer\n#rows\napple|Green|3\n\npear\n\n"
+    __UI_PropertyGridsFromForm
+    TEST_CHECK __UI_PGFind(f) = 0, "A grid definition doesn't make property grid rows"
+    __UI_DataGridsFromForm
+    dg = __UI_DGFind(f)
+    TEST_CHECK dg > 0, "The frame becomes a data grid when the program starts"
+    TEST_CHECK Control(f).CanHaveFocus, "that can have focus"
+    TEST_CHECK DataGrid_ColumnCount(f) = 3, "with its columns"
+    TEST_CHECK __UI_DataGridColCaption(__UI_DGCol(dg, 2)) = "Color" _ANDALSO __UI_DataGridCols(__UI_DGCol(dg, 1)).Width = 100, "Captions and widths"
+    TEST_CHECK DataGrid_CellKind(f, 1, 2) = __UI_DataGrid_Choice _ANDALSO __UI_DataGridColItems(__UI_DGCol(dg, 2)) = "Red|Green", "Kinds and items"
+    TEST_CHECK __UI_DataGridCols(__UI_DGCol(dg, 3)).Width = 0 _ANDALSO DataGrid_CellKind(f, 1, 3) = __UI_DataGrid_Integer, "A width left out shares the room"
+    TEST_CHECK DataGrid_RowCount(f) = 3, "and rows: a blank line between rows is a row, blank lines at the end aren't"
+    TEST_CHECK DataGrid_Cell(f, 1, 2) = "Green" _ANDALSO DataGrid_Cell(f, 1, 3) = "3", "Cells"
+    TEST_CHECK DataGrid_Cell(f, 3, 1) = "pear" _ANDALSO DataGrid_Cell(f, 3, 2) = "Red" _ANDALSO DataGrid_Cell(f, 3, 3) = "0", "Cells left out get their column's default"
+    __UI_DestroyControl Control(f)
+
+    'In the designer, the grid follows the frame's Text
+    __UI_DesignMode = True
+    f2 = __UI_NewControl(__UI_Type_Frame, "TestDGDesign", 300, 150, 0, 0, 0)
+    Control(f2).CanHaveFocus = False
+    Text(f2) = "#columns" + CHR$(10) + "A" + CHR$(10) + "B" + CHR$(10) + "#rows" + CHR$(10) + "1|2"
+    __UI_DataGridsUpdate
+    TEST_CHECK DataGrid_ColumnCount(f2) = 2 _ANDALSO DataGrid_RowCount(f2) = 1, "The designer shows the grid"
+    TEST_CHECK_FALSE Control(f2).CanHaveFocus, "without changing the frame's settings"
+    Text(f2) = Text(f2) + CHR$(10) + "3|4"
+    __UI_DataGridsUpdate
+    TEST_CHECK DataGrid_RowCount(f2) = 2 _ANDALSO DataGrid_Cell(f2, 2, 2) = "4", "A changed Text builds it again"
+    Text(f2) = "key|text|Label"
+    __UI_DataGridsUpdate
+    TEST_CHECK __UI_DGFind(f2) = 0, "Text that isn't a grid definition puts the frame back"
+    __UI_DestroyControl Control(f2)
+    __UI_DesignMode = False
+
+    TEST_CASE_END
 END SUB
 
 SUB __UI_LoadForm: END SUB

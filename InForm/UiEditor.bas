@@ -102,7 +102,7 @@ DIM SHARED AddCheckBox AS LONG, AddRadioButton AS LONG
 DIM SHARED AddListBox AS LONG, AddDropdownList AS LONG
 DIM SHARED AddTrackBar AS LONG, AddProgressBar AS LONG
 DIM SHARED AddPictureBox AS LONG, AddFrame AS LONG
-DIM SHARED AddToggleSwitch AS LONG, AddTabControl AS LONG, AddPropertyGrid AS LONG
+DIM SHARED AddToggleSwitch AS LONG, AddTabControl AS LONG, AddDataGrid AS LONG, AddPropertyGrid AS LONG
 
 'Control toggles
 DIM SHARED Stretch AS LONG, HasBorder AS LONG
@@ -123,7 +123,8 @@ DIM SHARED AddGifExtensionToggle AS LONG
 DIM SHARED ControlList AS LONG, UpBT AS LONG
 DIM SHARED DownBT AS LONG, CloseZOrderingBT AS LONG
 
-'Property grid rows dialog
+'Property grid rows dialog, also used for a data grid's columns and rows
+DIM SHARED ColumnsLB AS LONG, EditColumnsBT AS LONG
 DIM SHARED RowsLB AS LONG, EditRowsBT AS LONG, EditRowsDialog AS LONG, RowsDescriptionLB AS LONG
 DIM SHARED RowsFirstBT AS LONG, RowsPrevBT AS LONG, RowsPositionLB AS LONG, RowsNextBT AS LONG, RowsLastBT AS LONG
 DIM SHARED RowsAddBT AS LONG, RowsDeleteBT AS LONG, RowsUpBT AS LONG, RowsDownBT AS LONG
@@ -133,6 +134,11 @@ DIM SHARED RowsFrameName$ ' the frame whose rows are being edited
 DIM SHARED RowsOriginal$, RowsShown$ ' its rows when the dialog opened, and as the preview shows them now
 REDIM SHARED RowsHistory(0) AS STRING ' the table after each change, for undo (see RowsSnapshot$)
 DIM SHARED RowsHistoryPos AS LONG, RowsHistoryCount AS LONG
+CONST RowsModeProperties = 0 ' what the dialog's table holds: a property grid's rows,
+CONST RowsModeColumns = 1 '    a data grid's columns,
+CONST RowsModeGridRows = 2 '   or a data grid's rows
+DIM SHARED RowsMode AS _BYTE
+DIM SHARED RowsKeep$ ' the part of a data grid's definition the table doesn't hold (its rows, or its columns)
 
 'Set binding dialog
 DIM SHARED SourceControlLB AS LONG
@@ -375,6 +381,9 @@ SUB __UI_Click (id AS LONG)
         CASE AddButton, AddLabel, AddTextBox, AddCheckBox, AddRadioButton, AddListBox, AddDropdownList, AddTrackBar, AddProgressBar, AddPictureBox, AddFrame, AddToggleSwitch, AddTabControl
             b$ = "NEWCONTROL>" + MKI$(Dummy) + "<END>"
             Send Client, b$
+        CASE AddDataGrid
+            'A frame with a data grid's columns and rows in its Text (see InFormDataGrid.bm)
+            Send Client, "NEWDATAGRID><END>"
         CASE AddPropertyGrid
             'A frame with property grid rows in its Text (see InFormPropertyGrid.bm)
             Send Client, "NEWPROPERTYGRID><END>"
@@ -626,6 +635,8 @@ SUB __UI_Click (id AS LONG)
             END IF
         CASE EditRowsBT
             OpenRowsDialog
+        CASE EditColumnsBT
+            OpenRowsDialogFor RowsModeColumns
         CASE RowsOKBT
             ApplyRowsDialog
         CASE RowsCancelBT
@@ -1938,21 +1949,24 @@ SUB __UI_BeforeUpdateDisplay
     END IF
 
     IF PreviewControls(FirstSelected).Type = __UI_Type_Frame AND TotalSelected > 0 THEN
-        'A frame's Text holds its property grid rows, edited in a table (see OpenRowsDialog)
-        i = __UI_DGPartCount(PropertyGridRowList$(FirstSelected), CHR$(10)) - 1
-        IF i < 0 THEN i = 0
-        SELECT CASE i
-            CASE 0: Caption(EditRowsBT) = "None - add rows..."
-            CASE 1: Caption(EditRowsBT) = "1 row - edit..."
-            CASE ELSE: Caption(EditRowsBT) = LTRIM$(STR$(i)) + " rows - edit..."
-        END SELECT
-        ToolTip(EditRowsBT) = "Rows written here turn the frame into a property grid when the program runs"
+        'A frame's Text holds its property grid rows, or a data grid's columns and rows, edited in a table (see OpenRowsDialog)
+        IF IsDataGridFrame(FirstSelected) THEN
+            DIM GridColumns$, GridRows$
+            __UI_DGSplitDefinition PreviewTexts(FirstSelected), GridColumns$, GridRows$
+            Caption(EditColumnsBT) = CountCaption$(__UI_DGPartCount(GridColumns$, CHR$(10)) - 1, "column")
+            Caption(EditRowsBT) = CountCaption$(__UI_DGPartCount(GridRows$, CHR$(10)) - 1, "row")
+            ToolTip(EditColumnsBT) = "The data grid's columns: their captions, kinds and widths"
+            ToolTip(EditRowsBT) = "The rows the data grid has when the program starts"
+        ELSE
+            Caption(EditRowsBT) = CountCaption$(__UI_DGPartCount(PropertyGridRowList$(FirstSelected), CHR$(10)) - 1, "row")
+            ToolTip(EditRowsBT) = "Rows written here turn the frame into a property grid when the program runs"
+        END IF
     END IF
 
     IF RowsDialogOpen THEN UpdateRowsDialog
 
     'Hide the properties that don't apply
-    PropertyGrid_ShowRows ControlProperties, "align,boolean,valign,bullet,rows", False
+    PropertyGrid_ShowRows ControlProperties, "align,boolean,valign,bullet,rows,columns", False
     PropertyGrid_SetLabel ControlProperties, "text", "Text"
     PropertyGrid_SetLabel ControlProperties, "value", "Value"
     PropertyGrid_SetLabel ControlProperties, "max", "Max"
@@ -1979,9 +1993,13 @@ SUB __UI_BeforeUpdateDisplay
                 PropertyGrid_ShowRows ControlToggles, "transparent,autosize", True
                 PropertyGrid_ShowOnly ControlProperties, "name,caption,top,left,width,height,font,tooltip,padding,align,valign,fontlist"
             CASE __UI_Type_Frame
-                'Its Text holds property grid rows, edited in a table with the Rows button
+                'Its Text holds property grid rows, or a data grid's columns and rows, edited in a table
                 PropertyGrid_ShowRow ControlToggles, "transparent", False
-                PropertyGrid_ShowOnly ControlProperties, "name,caption,rows,top,left,width,height,font,tooltip,fontlist"
+                IF IsDataGridFrame(FirstSelected) THEN
+                    PropertyGrid_ShowOnly ControlProperties, "name,caption,columns,rows,top,left,width,height,font,tooltip,fontlist"
+                ELSE
+                    PropertyGrid_ShowOnly ControlProperties, "name,caption,rows,top,left,width,height,font,tooltip,fontlist"
+                END IF
             CASE __UI_Type_TextBox
                 STATIC PreviousNumericState AS _BYTE
                 PropertyGrid_ShowRow ControlToggles, "transparent", True
@@ -2544,6 +2562,7 @@ SUB __UI_OnLoad
     PropertyGrid_AdoptRow ControlProperties, "name", NameLB, NameTB
     PropertyGrid_AdoptRow ControlProperties, "caption", CaptionLB, CaptionTB
     PropertyGrid_AdoptRow ControlProperties, "text", TextLB, TextTB
+    PropertyGrid_AdoptRow ControlProperties, "columns", ColumnsLB, EditColumnsBT
     PropertyGrid_AdoptRow ControlProperties, "rows", RowsLB, EditRowsBT
     PropertyGrid_AdoptRow ControlProperties, "mask", MaskLB, MaskTB
     PropertyGrid_AdoptRow ControlProperties, "top", TopLB, TopTB
@@ -2592,11 +2611,8 @@ SUB __UI_OnLoad
     PropertyGrid_AdoptRow ControlToggles, "bordersize", 0, SizeTB
     PropertyGrid_SetFloating ControlToggles, "bordersize", True
 
-    'The table in the property grid rows dialog
-    DataGrid_AddTextColumn RowsGrid, "Key", 110
-    DataGrid_AddChoiceColumn RowsGrid, "Kind", 80, "text|integer|float|choice|toggle|button"
-    DataGrid_AddTextColumn RowsGrid, "Label", 140
-    DataGrid_AddTextColumn RowsGrid, "Items / value", 0
+    'The table in the property grid rows dialog (its columns are set when it opens, see SetRowsGridColumns)
+    DataGrid_Attach RowsGrid
     Control(RowsGrid).HasBorder = False
 
     ToolTip(FontTB) = "Multiple fonts can be specified by separating them with a question mark (?)." + CHR$(10) + "The first font that can be found/loaded is used."
@@ -3036,6 +3052,16 @@ SUB DrawEditorIcons
     IconLine 2.5, 11, 6, 11, 1.4, soft
     IconRoundRect 8, 9, 14, 13, 1, 1, fg
 
+    'Data grid: a table with a header row and a current cell
+    EditorIconCanvas AddDataGrid, 16
+    IconRoundRect 0, 1, 16, 15, 1.5, 0, paper
+    IconRoundRect 0.5, 1.5, 15.5, 5.5, 1, 0, soft
+    IconRoundRect 6, 6, 11, 10, 0, 0, acc
+    IconRoundRect 0.5, 1.5, 15.5, 14.5, 1.5, 1, fg
+    IconLine 0.5, 10, 15.5, 10, 1, fg
+    IconLine 5.5, 1.5, 5.5, 14.5, 1, fg
+    IconLine 10.5, 1.5, 10.5, 14.5, 1, fg
+
     'Paste list button: lines of text
     EditorIconCanvas PasteListBT, 17
     FOR i = 0 TO 2
@@ -3443,7 +3469,8 @@ SUB LoadPreview
 END SUB
 
 '---------------------------------------------------------------------------------
-'Property grid rows dialog: a frame's Text holds rows (key|kind|label|items, one per line), edited here in a table
+'Property grid rows dialog: a frame's Text holds rows (key|kind|label|items, one per line), edited here in a table.
+'The same dialog edits a data grid's columns and rows (see InFormDataGrid.bm for how its Text holds them).
 '---------------------------------------------------------------------------------
 
 ''' @brief The word a property grid row kind is written as.
@@ -3458,34 +3485,111 @@ FUNCTION RowKindName$ (Kind AS _BYTE)
     END SELECT
 END FUNCTION
 
-''' @brief Fills the table with the selected frame's rows and shows the dialog.
+''' @brief Opens the dialog on the selected frame: a data grid's rows (its columns, when it has none yet),
+''' or a property grid's rows.
 SUB OpenRowsDialog
-    DIM t$, l$, p AS LONG, k$, Kind AS _BYTE, Label$, Extra$, r AS LONG
+    DIM GridColumns$, GridRows$
+    IF FirstSelected = 0 OR TotalSelected <> 1 THEN EXIT SUB
+    IF IsDataGridFrame(FirstSelected) THEN
+        __UI_DGSplitDefinition PreviewTexts(FirstSelected), GridColumns$, GridRows$
+        IF LEN(GridColumns$) = 0 THEN OpenRowsDialogFor RowsModeColumns ELSE OpenRowsDialogFor RowsModeGridRows
+    ELSE
+        OpenRowsDialogFor RowsModeProperties
+    END IF
+END SUB
+
+''' @brief Sets up the table's columns for what it holds (see RowsMode).
+SUB SetRowsGridColumns
+    DIM c AS LONG, Caption$, Kind AS _BYTE, ColumnWidth AS INTEGER, Items$
+
+    DataGrid_Clear RowsGrid
+    FOR c = DataGrid_ColumnCount(RowsGrid) TO 1 STEP -1
+        DataGrid_RemoveColumn RowsGrid, c
+    NEXT
+    SELECT CASE RowsMode
+        CASE RowsModeProperties
+            DataGrid_AddTextColumn RowsGrid, "Key", 110
+            DataGrid_AddChoiceColumn RowsGrid, "Kind", 80, "text|integer|float|choice|toggle|button"
+            DataGrid_AddTextColumn RowsGrid, "Label", 140
+            DataGrid_AddTextColumn RowsGrid, "Items / value", 0
+        CASE RowsModeColumns
+            DataGrid_AddTextColumn RowsGrid, "Caption", 150
+            DataGrid_AddChoiceColumn RowsGrid, "Kind", 80, "text|integer|float|choice|toggle"
+            DataGrid_AddIntegerColumn RowsGrid, "Width", 70
+            DataGrid_AddTextColumn RowsGrid, "Items", 0
+        CASE RowsModeGridRows
+            'The data grid's own columns (RowsKeep$ holds them)
+            FOR c = 1 TO __UI_DGPartCount(RowsKeep$, CHR$(10)) - 1
+                __UI_DGParseColumn __UI_DGPart(RowsKeep$, c, CHR$(10)), Caption$, Kind, ColumnWidth, Items$
+                Items$ = Replace$(Items$, ",", "|", False, 0)
+                SELECT CASE Kind
+                    CASE __UI_DataGrid_Integer: DataGrid_AddIntegerColumn RowsGrid, Caption$, ColumnWidth
+                    CASE __UI_DataGrid_Float: DataGrid_AddFloatColumn RowsGrid, Caption$, ColumnWidth
+                    CASE __UI_DataGrid_Choice: DataGrid_AddChoiceColumn RowsGrid, Caption$, ColumnWidth, Items$
+                    CASE __UI_DataGrid_Toggle: DataGrid_AddToggleColumn RowsGrid, Caption$, ColumnWidth
+                    CASE ELSE: DataGrid_AddTextColumn RowsGrid, Caption$, ColumnWidth
+                END SELECT
+            NEXT
+    END SELECT
+END SUB
+
+''' @brief Fills the table with the selected frame's property grid rows, data grid columns or data grid rows
+''' (Mode is one of the RowsMode constants) and shows the dialog.
+SUB OpenRowsDialogFor (Mode AS _BYTE)
+    DIM t$, l$, p AS LONG, k$, Kind AS _BYTE, Label$, Extra$, r AS LONG, i AS LONG
+    DIM GridColumns$, GridRows$, ColumnWidth AS INTEGER, FrameName$
 
     IF FirstSelected = 0 OR TotalSelected <> 1 THEN EXIT SUB
     IF PreviewControls(FirstSelected).Type <> __UI_Type_Frame THEN EXIT SUB
+    IF Mode <> RowsModeProperties AND NOT IsDataGridFrame(FirstSelected) THEN EXIT SUB
 
-    DataGrid_Clear RowsGrid
-    t$ = Replace(PreviewTexts(FirstSelected), "\n", CHR$(10), False, 0)
-    t$ = Replace(t$, CHR$(13), "", False, 0) + CHR$(10)
-    DO
-        p = INSTR(t$, CHR$(10))
-        IF p = 0 THEN EXIT DO
-        l$ = LEFT$(t$, p - 1)
-        t$ = MID$(t$, p + 1)
-        IF __UI_PGParseLine(l$, k$, Kind, Label$, Extra$) THEN
-            r = DataGrid_AddRow(RowsGrid, "")
-            DataGrid_SetCell RowsGrid, r, 1, k$
-            DataGrid_SetCell RowsGrid, r, 2, RowKindName$(Kind)
-            DataGrid_SetCell RowsGrid, r, 3, Label$
-            DataGrid_SetCell RowsGrid, r, 4, Extra$
-            RowsValueKind r
-        END IF
-    LOOP
+    RowsMode = Mode
+    RowsKeep$ = ""
+    IF Mode <> RowsModeProperties THEN
+        __UI_DGSplitDefinition PreviewTexts(FirstSelected), GridColumns$, GridRows$
+        IF Mode = RowsModeColumns THEN RowsKeep$ = GridRows$ ELSE RowsKeep$ = GridColumns$
+    END IF
+    SetRowsGridColumns
+
+    SELECT CASE Mode
+        CASE RowsModeProperties
+            t$ = Replace(PreviewTexts(FirstSelected), "\n", CHR$(10), False, 0)
+            t$ = Replace(t$, CHR$(13), "", False, 0) + CHR$(10)
+            DO
+                p = INSTR(t$, CHR$(10))
+                IF p = 0 THEN EXIT DO
+                l$ = LEFT$(t$, p - 1)
+                t$ = MID$(t$, p + 1)
+                IF __UI_PGParseLine(l$, k$, Kind, Label$, Extra$) THEN
+                    r = DataGrid_AddRow(RowsGrid, "")
+                    DataGrid_SetCell RowsGrid, r, 1, k$
+                    DataGrid_SetCell RowsGrid, r, 2, RowKindName$(Kind)
+                    DataGrid_SetCell RowsGrid, r, 3, Label$
+                    DataGrid_SetCell RowsGrid, r, 4, Extra$
+                    RowsValueKind r
+                END IF
+            LOOP
+        CASE RowsModeColumns
+            'Each line remembers which column it was, so the rows' cells can follow when columns move or go
+            FOR i = 1 TO __UI_DGPartCount(GridColumns$, CHR$(10)) - 1
+                __UI_DGParseColumn __UI_DGPart(GridColumns$, i, CHR$(10)), Label$, Kind, ColumnWidth, Extra$
+                r = DataGrid_AddRow(RowsGrid, "")
+                DataGrid_SetCell RowsGrid, r, 1, Label$
+                DataGrid_SetCell RowsGrid, r, 2, __UI_DGKindName$(Kind)
+                DataGrid_SetCell RowsGrid, r, 3, LTRIM$(STR$(ColumnWidth))
+                DataGrid_SetCell RowsGrid, r, 4, Extra$
+                DataGrid_SetRowTag RowsGrid, r, LTRIM$(STR$(i))
+            NEXT
+        CASE RowsModeGridRows
+            FOR i = 1 TO __UI_DGPartCount(GridRows$, CHR$(10)) - 1
+                r = DataGrid_AddRow(RowsGrid, __UI_DGPart(GridRows$, i, CHR$(10)))
+            NEXT
+    END SELECT
     IF DataGrid_RowCount(RowsGrid) > 0 THEN DataGrid_Select RowsGrid, 1, 1
 
-    'Changes show in the preview as they're made; the rows as they were are put back when the dialog closes
-    RowsFrameName$ = RTRIM$(__UI_TrimAt0$(PreviewControls(FirstSelected).Name))
+    'Changes show in the preview as they're made; the frame's Text as it was is put back when the dialog closes
+    FrameName$ = RTRIM$(__UI_TrimAt0$(PreviewControls(FirstSelected).Name))
+    RowsFrameName$ = FrameName$
     RowsOriginal$ = PreviewTexts(FirstSelected)
     RowsShown$ = RowsOriginal$
     RowsHistoryCount = 1
@@ -3493,7 +3597,20 @@ SUB OpenRowsDialog
     REDIM RowsHistory(1 TO 16) AS STRING
     RowsHistory(1) = RowsSnapshot$
 
-    Caption(EditRowsDialog) = "Property grid rows: " + RTRIM$(__UI_TrimAt0$(PreviewControls(FirstSelected).Name))
+    SELECT CASE Mode
+        CASE RowsModeProperties
+            Caption(EditRowsDialog) = "Property grid rows: " + FrameName$
+            Caption(RowsDescriptionLB) = "Each line becomes a row of the frame's property grid, shown in the preview as you go. Click a cell twice, or press Enter or F2, to edit it. Shift or dragging selects rows; Ctrl+Z undoes."
+            Caption(StatusBar) = "Editing property grid rows"
+        CASE RowsModeColumns
+            Caption(EditRowsDialog) = "Data grid columns: " + FrameName$
+            Caption(RowsDescriptionLB) = "Each line becomes a column of the frame's data grid, shown in the preview as you go. Click a cell twice, or press Enter or F2, to edit it. Shift or dragging selects lines; Ctrl+Z undoes."
+            Caption(StatusBar) = "Editing data grid columns"
+        CASE RowsModeGridRows
+            Caption(EditRowsDialog) = "Data grid rows: " + FrameName$
+            Caption(RowsDescriptionLB) = "The rows the frame's data grid has when the program starts, shown in the preview as you go. Click a cell twice, or press Enter or F2, to edit it. Shift or dragging selects rows; Ctrl+Z undoes."
+            Caption(StatusBar) = "Editing data grid rows"
+    END SELECT
     Control(DialogBG).Left = 0: Control(DialogBG).Top = 0
     Control(EditRowsDialog).Left = 18: Control(EditRowsDialog).Top = 70
     Control(RowsGrid).Left = Control(EditRowsDialog).Left + 15
@@ -3502,7 +3619,6 @@ SUB OpenRowsDialog
     Send Client, "LOCKINPUT>" + MKI$(True) + "<END>" 'no editing in the preview while the dialog is open
     __UI_Focus = RowsGrid
     UpdateRowsDialog
-    Caption(StatusBar) = "Editing property grid rows"
     __UI_ForceRedraw = True
 END SUB
 
@@ -3524,34 +3640,55 @@ SUB CloseRowsDialog
     __UI_ForceRedraw = True
 END SUB
 
+''' @brief Points at a cell the table can't keep as it is, and says why.
+SUB RowsRefuse (r AS LONG, c AS LONG, Message$)
+    DataGrid_Select RowsGrid, r, c
+    __UI_Focus = RowsGrid
+    MessageBox Message$, UiEditorTitle$, MsgBox_Exclamation
+END SUB
+
 ''' @brief Writes the table back to the frame's Text (an edit that can be undone) and closes the dialog.
 SUB ApplyRowsDialog
-    DIM r AS LONG, k$, Label$, t$, Keys$
+    DIM r AS LONG, c AS LONG, k$, Label$, t$, Keys$
 
     DataGrid_StopEditing RowsGrid
-    Keys$ = CHR$(10)
-    FOR r = 1 TO DataGrid_RowCount(RowsGrid)
-        k$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 1))
-        Label$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 3))
-        IF LEN(k$) = 0 AND LEN(Label$) = 0 THEN _CONTINUE 'blank rows are left out
-        IF LEN(k$) = 0 THEN k$ = Label$
+    SELECT CASE RowsMode
+        CASE RowsModeProperties
+            Keys$ = CHR$(10)
+            FOR r = 1 TO DataGrid_RowCount(RowsGrid)
+                k$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 1))
+                Label$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 3))
+                IF LEN(k$) = 0 AND LEN(Label$) = 0 THEN _CONTINUE 'blank rows are left out
+                IF LEN(k$) = 0 THEN k$ = Label$
 
-        IF INSTR(k$, "|") > 0 OR INSTR(Label$, "|") > 0 THEN
-            IF INSTR(k$, "|") > 0 THEN DataGrid_Select RowsGrid, r, 1 ELSE DataGrid_Select RowsGrid, r, 3
-            __UI_Focus = RowsGrid
-            MessageBox "Keys and labels can't contain |.", UiEditorTitle$, MsgBox_Exclamation
-            EXIT SUB
-        END IF
-        IF INSTR(Keys$, CHR$(10) + LCASE$(k$) + CHR$(10)) THEN
-            DataGrid_Select RowsGrid, r, 1
-            __UI_Focus = RowsGrid
-            MessageBox "More than one row has the key '" + k$ + "'. Each row needs its own key.", UiEditorTitle$, MsgBox_Exclamation
-            EXIT SUB
-        END IF
-        Keys$ = Keys$ + LCASE$(k$) + CHR$(10)
-    NEXT
+                IF INSTR(k$, "|") > 0 OR INSTR(Label$, "|") > 0 THEN
+                    IF INSTR(k$, "|") > 0 THEN c = 1 ELSE c = 3
+                    RowsRefuse r, c, "Keys and labels can't contain |."
+                    EXIT SUB
+                END IF
+                IF INSTR(Keys$, CHR$(10) + LCASE$(k$) + CHR$(10)) THEN
+                    RowsRefuse r, 1, "More than one row has the key '" + k$ + "'. Each row needs its own key."
+                    EXIT SUB
+                END IF
+                Keys$ = Keys$ + LCASE$(k$) + CHR$(10)
+            NEXT
+        CASE RowsModeColumns
+            FOR r = 1 TO DataGrid_RowCount(RowsGrid)
+                IF INSTR(DataGrid_Cell(RowsGrid, r, 1), "|") THEN RowsRefuse r, 1, "Captions can't contain |.": EXIT SUB
+                IF INSTR(DataGrid_Cell(RowsGrid, r, 4), "|") THEN RowsRefuse r, 4, "Separate a choice's items with commas: they can't contain |.": EXIT SUB
+            NEXT
+        CASE RowsModeGridRows
+            FOR r = 1 TO DataGrid_RowCount(RowsGrid)
+                FOR c = 1 TO DataGrid_ColumnCount(RowsGrid)
+                    IF INSTR(DataGrid_Cell(RowsGrid, r, c), "|") THEN
+                        RowsRefuse r, c, "Cells written here can't contain |. Your code can put it in a cell with DataGrid_SetCell."
+                        EXIT SUB
+                    END IF
+                NEXT
+            NEXT
+    END SELECT
 
-    'The preview gets its rows back as they were, then the new ones as a property: one step to undo
+    'The preview gets the frame's Text back as it was, then the new one as a property: one step to undo
     t$ = RowsTableText$
     CloseRowsDialog
     IF t$ <> RowsOriginal$ THEN
@@ -3560,31 +3697,71 @@ SUB ApplyRowsDialog
     END IF
 END SUB
 
-''' @brief The table as a frame's rows: key|kind|label|items, one per line. Blank rows are left out.
+''' @brief What the frame's Text becomes with the table as it is: property grid rows (key|kind|label|items, one per
+''' line, blank rows left out), or a data grid's definition with the table as its columns or rows.
 FUNCTION RowsTableText$
-    DIM r AS LONG, k$, Kind$, Label$, Extra$, t$, Row$
-    FOR r = 1 TO DataGrid_RowCount(RowsGrid)
-        k$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 1))
-        Kind$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 2))
-        Label$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 3))
-        Extra$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 4))
-        IF LEN(k$) = 0 AND LEN(Label$) = 0 THEN _CONTINUE
-        IF LEN(k$) = 0 THEN k$ = Label$
-        Row$ = k$ + "|" + Kind$ + "|" + Label$
-        IF LEN(Extra$) THEN Row$ = Row$ + "|" + Extra$
-        IF LEN(t$) THEN t$ = t$ + CHR$(10)
-        t$ = t$ + Row$
-    NEXT
+    DIM r AS LONG, c AS LONG, i AS LONG, k$, Kind$, Label$, Extra$, t$, Row$, OldRow$, Tag AS LONG
+
+    SELECT CASE RowsMode
+        CASE RowsModeProperties
+            FOR r = 1 TO DataGrid_RowCount(RowsGrid)
+                k$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 1))
+                Kind$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 2))
+                Label$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 3))
+                Extra$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 4))
+                IF LEN(k$) = 0 AND LEN(Label$) = 0 THEN _CONTINUE
+                IF LEN(k$) = 0 THEN k$ = Label$
+                Row$ = k$ + "|" + Kind$ + "|" + Label$
+                IF LEN(Extra$) THEN Row$ = Row$ + "|" + Extra$
+                IF LEN(t$) THEN t$ = t$ + CHR$(10)
+                t$ = t$ + Row$
+            NEXT
+
+        CASE RowsModeColumns
+            t$ = "#columns" + CHR$(10)
+            FOR r = 1 TO DataGrid_RowCount(RowsGrid)
+                Row$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 1)) + "|" + _TRIM$(DataGrid_Cell(RowsGrid, r, 2)) + "|" + LTRIM$(STR$(_MAX(0, VAL(DataGrid_Cell(RowsGrid, r, 3)))))
+                Extra$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 4))
+                IF LEN(Extra$) THEN Row$ = Row$ + "|" + Extra$
+                t$ = t$ + Row$ + CHR$(10)
+            NEXT
+            t$ = t$ + "#rows"
+            'Each row's cells follow their columns; a new column's cells are left out (they get its default)
+            FOR i = 1 TO __UI_DGPartCount(RowsKeep$, CHR$(10)) - 1
+                OldRow$ = __UI_DGPart(RowsKeep$, i, CHR$(10))
+                Row$ = ""
+                FOR r = 1 TO DataGrid_RowCount(RowsGrid)
+                    IF r > 1 THEN Row$ = Row$ + "|"
+                    Tag = VAL(DataGrid_RowTag(RowsGrid, r))
+                    IF Tag > 0 THEN Row$ = Row$ + __UI_DGPart(OldRow$, Tag, "|")
+                NEXT
+                DO WHILE RIGHT$(Row$, 1) = "|"
+                    Row$ = LEFT$(Row$, LEN(Row$) - 1)
+                LOOP
+                t$ = t$ + CHR$(10) + Row$
+            NEXT
+
+        CASE RowsModeGridRows
+            t$ = "#columns" + CHR$(10) + RowsKeep$ + "#rows"
+            FOR r = 1 TO DataGrid_RowCount(RowsGrid)
+                Row$ = ""
+                FOR c = 1 TO DataGrid_ColumnCount(RowsGrid)
+                    IF c > 1 THEN Row$ = Row$ + "|"
+                    Row$ = Row$ + DataGrid_Cell(RowsGrid, r, c)
+                NEXT
+                t$ = t$ + CHR$(10) + Row$
+            NEXT
+    END SELECT
     RowsTableText$ = t$
 END FUNCTION
 
-''' @brief Shows rows on the frame being edited, without an undo step (see ApplyRowsDialog).
+''' @brief Shows the frame's Text as the table makes it, without an undo step (see ApplyRowsDialog).
 SUB ShowRowsInPreview (t$)
     Send Client, "ROWSPREVIEW>" + MKL$(LEN(RowsFrameName$)) + RowsFrameName$ + t$ + "<END>"
     RowsShown$ = t$
 END SUB
 
-''' @brief The table's cells, and the current cell, to go back to with undo.
+''' @brief The table's cells and row tags, and the current cell, to go back to with undo.
 FUNCTION RowsSnapshot$
     DIM r AS LONG, c AS LONG, s$
     s$ = MKL$(DataGrid_Row(RowsGrid)) + MKL$(DataGrid_Column(RowsGrid))
@@ -3592,13 +3769,15 @@ FUNCTION RowsSnapshot$
         FOR c = 1 TO DataGrid_ColumnCount(RowsGrid)
             s$ = s$ + DataGrid_Cell(RowsGrid, r, c) + CHR$(1)
         NEXT
-        s$ = s$ + CHR$(2)
+        s$ = s$ + DataGrid_RowTag(RowsGrid, r) + CHR$(1) + CHR$(2)
     NEXT
     RowsSnapshot$ = s$
 END FUNCTION
 
-''' @brief Makes a row's last cell a check box for a toggle and a number for an integer or float (text otherwise).
+''' @brief Property grid rows: makes a row's last cell a check box for a toggle and a number for an integer or float
+''' (text otherwise).
 SUB RowsValueKind (r AS LONG)
+    IF RowsMode <> RowsModeProperties THEN EXIT SUB
     SELECT CASE _TRIM$(DataGrid_Cell(RowsGrid, r, 2))
         CASE "toggle": DataGrid_SetCellKind RowsGrid, r, 4, __UI_DataGrid_Toggle
         CASE "integer": DataGrid_SetCellKind RowsGrid, r, 4, __UI_DataGrid_Integer
@@ -3617,8 +3796,20 @@ END FUNCTION
 
 ''' @brief A row's kind was changed in the table: its last cell changes kind with it, and its value is kept
 ''' only if it means the same thing for the new kind (e.g. a choice's items aren't a toggle's value).
+''' For a data grid column, only a choice has items: a new choice gets some to start with.
 SUB RowsKindChanged (r AS LONG)
     DIM s$, p AS LONG, i AS LONG, Row$, OldKind$, NewKind$, v$
+
+    NewKind$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 2))
+    IF RowsMode = RowsModeColumns THEN
+        IF NewKind$ = "choice" THEN
+            IF LEN(_TRIM$(DataGrid_Cell(RowsGrid, r, 4))) = 0 THEN DataGrid_SetCell RowsGrid, r, 4, "Item 1,Item 2,Item 3"
+        ELSE
+            DataGrid_SetCell RowsGrid, r, 4, ""
+        END IF
+        EXIT SUB
+    END IF
+    IF RowsMode <> RowsModeProperties THEN EXIT SUB
 
     'The row's kind before the change, from the last snapshot kept for undo
     s$ = MID$(RowsHistory(RowsHistoryPos), 9)
@@ -3630,7 +3821,6 @@ SUB RowsKindChanged (r AS LONG)
     NEXT
     p = INSTR(Row$, CHR$(1))
     IF p THEN OldKind$ = _TRIM$(MID$(Row$, p + 1, INSTR(p + 1, Row$, CHR$(1)) - p - 1))
-    NewKind$ = _TRIM$(DataGrid_Cell(RowsGrid, r, 2))
 
     v$ = DataGrid_Cell(RowsGrid, r, 4)
     IF RowsExtraMeaning$(OldKind$) <> RowsExtraMeaning$(NewKind$) THEN v$ = ""
@@ -3684,6 +3874,8 @@ SUB RowsUndo (Direction AS LONG)
             DataGrid_SetCell RowsGrid, r, c, LEFT$(Row$, p - 1)
             Row$ = MID$(Row$, p + 1)
         NEXT
+        p = INSTR(Row$, CHR$(1))
+        IF p THEN DataGrid_SetRowTag RowsGrid, r, LEFT$(Row$, p - 1)
         RowsValueKind r
     LOOP
     IF CurRow = 0 THEN CurRow = 1
@@ -3703,37 +3895,56 @@ SUB RowsGoTo (r AS LONG)
     __UI_Focus = RowsGrid
 END SUB
 
-''' @brief Adds a text row below the current one, with a key not used yet, and starts editing its key.
+''' @brief Adds a line below the current one and starts editing its first cell: a text row with a key not used yet,
+''' a text column with a caption not used yet, or a data grid row with its columns' defaults.
 SUB RowsAdd
-    DIM n AS LONG, r AS LONG, k$, Taken AS _BYTE
-    DO
-        n = n + 1
-        k$ = "text" + LTRIM$(STR$(n))
-        Taken = False
-        FOR r = 1 TO DataGrid_RowCount(RowsGrid)
-            IF LCASE$(_TRIM$(DataGrid_Cell(RowsGrid, r, 1))) = k$ THEN Taken = True: EXIT FOR
-        NEXT
-    LOOP WHILE Taken
-    r = DataGrid_InsertRow(RowsGrid, DataGrid_Row(RowsGrid) + 1, k$ + "|text|Text")
+    DIM n AS LONG, r AS LONG, k$, Taken AS _BYTE, Base$, NewLine$
+
+    SELECT CASE RowsMode
+        CASE RowsModeProperties: Base$ = "text"
+        CASE RowsModeColumns: Base$ = "Column "
+    END SELECT
+    IF LEN(Base$) THEN
+        DO
+            n = n + 1
+            k$ = Base$ + LTRIM$(STR$(n))
+            Taken = False
+            FOR r = 1 TO DataGrid_RowCount(RowsGrid)
+                IF LCASE$(_TRIM$(DataGrid_Cell(RowsGrid, r, 1))) = LCASE$(k$) THEN Taken = True: EXIT FOR
+            NEXT
+        LOOP WHILE Taken
+    END IF
+    SELECT CASE RowsMode
+        CASE RowsModeProperties: NewLine$ = k$ + "|text|Text"
+        CASE RowsModeColumns: NewLine$ = k$ + "|text|80"
+    END SELECT
+
+    r = DataGrid_InsertRow(RowsGrid, DataGrid_Row(RowsGrid) + 1, NewLine$)
     DataGrid_Select RowsGrid, r, 1
     RowsChanged
     __UI_Focus = RowsGrid
-    DataGrid_Edit RowsGrid
+    'A check box or a list in the first cell isn't typed in
+    SELECT CASE DataGrid_CellKind(RowsGrid, r, 1)
+        CASE __UI_DataGrid_Text, __UI_DataGrid_Integer, __UI_DataGrid_Float: DataGrid_Edit RowsGrid
+    END SELECT
 END SUB
 
 ''' @brief Keeps the dialog's position, buttons and hint in step with the table.
 SUB UpdateRowsDialog
-    DIM r AS LONG, n AS LONG, First AS LONG, Last AS LONG
+    DIM r AS LONG, n AS LONG, First AS LONG, Last AS LONG, Noun$, Nouns$, c AS LONG, Caption$, Kind AS _BYTE
+    DIM ColumnWidth AS INTEGER, Items$, Holds$
+
     r = DataGrid_Row(RowsGrid)
     n = DataGrid_RowCount(RowsGrid)
     First = DataGrid_SelectionFirst(RowsGrid)
     Last = DataGrid_SelectionLast(RowsGrid)
+    IF RowsMode = RowsModeColumns THEN Noun$ = "Column": Nouns$ = "Columns" ELSE Noun$ = "Row": Nouns$ = "Rows"
     IF n = 0 THEN
-        Caption(RowsPositionLB) = "No rows"
+        Caption(RowsPositionLB) = "No " + LCASE$(Nouns$)
     ELSEIF Last > First THEN
-        Caption(RowsPositionLB) = "Rows" + STR$(First) + "-" + LTRIM$(STR$(Last)) + " of" + STR$(n)
+        Caption(RowsPositionLB) = Nouns$ + STR$(First) + "-" + LTRIM$(STR$(Last)) + " of" + STR$(n)
     ELSE
-        Caption(RowsPositionLB) = "Row" + STR$(r) + " of" + STR$(n)
+        Caption(RowsPositionLB) = Noun$ + STR$(r) + " of" + STR$(n)
     END IF
     Control(RowsFirstBT).Disabled = r <= 1
     Control(RowsPrevBT).Disabled = r <= 1
@@ -3743,18 +3954,45 @@ SUB UpdateRowsDialog
     Control(RowsUpBT).Disabled = First <= 1
     Control(RowsDownBT).Disabled = First = 0 OR Last >= n
 
-    SELECT CASE DataGrid_Column(RowsGrid)
-        CASE 1: Caption(RowsHintLB) = "Key: the name your code uses for the row, as in PropertyGrid_Value$(frame, " + CHR$(34) + "key" + CHR$(34) + "). Each row needs its own."
-        CASE 2: Caption(RowsHintLB) = "Kind: a text, integer or float box, a choice (dropdown list), a toggle (check box) or a button. Space or a second click opens the list."
-        CASE 3: Caption(RowsHintLB) = "Label: shown to the left of the row (a toggle's caption)."
-        CASE 4
-            SELECT CASE _TRIM$(DataGrid_Cell(RowsGrid, r, 2))
-                CASE "choice": Caption(RowsHintLB) = "Items: the choice's items, separated by commas (Red,Green,Blue)."
-                CASE "button": Caption(RowsHintLB) = "Caption: the text on the button (the label when left empty)."
-                CASE "toggle": Caption(RowsHintLB) = "Value: whether the check box starts checked. A click or Space checks it."
-                CASE ELSE: Caption(RowsHintLB) = "Value: what the box starts with. Your code can change it with PropertyGrid_SetValue."
+    c = DataGrid_Column(RowsGrid)
+    IF r = 0 THEN c = 0
+    SELECT CASE RowsMode
+        CASE RowsModeProperties
+            SELECT CASE c
+                CASE 1: Caption(RowsHintLB) = "Key: the name your code uses for the row, as in PropertyGrid_Value$(frame, " + CHR$(34) + "key" + CHR$(34) + "). Each row needs its own."
+                CASE 2: Caption(RowsHintLB) = "Kind: a text, integer or float box, a choice (dropdown list), a toggle (check box) or a button. Space or a second click opens the list."
+                CASE 3: Caption(RowsHintLB) = "Label: shown to the left of the row (a toggle's caption)."
+                CASE 4
+                    SELECT CASE _TRIM$(DataGrid_Cell(RowsGrid, r, 2))
+                        CASE "choice": Caption(RowsHintLB) = "Items: the choice's items, separated by commas (Red,Green,Blue)."
+                        CASE "button": Caption(RowsHintLB) = "Caption: the text on the button (the label when left empty)."
+                        CASE "toggle": Caption(RowsHintLB) = "Value: whether the check box starts checked. A click or Space checks it."
+                        CASE ELSE: Caption(RowsHintLB) = "Value: what the box starts with. Your code can change it with PropertyGrid_SetValue."
+                    END SELECT
+                CASE ELSE: Caption(RowsHintLB) = "Add a row to start."
             END SELECT
-        CASE ELSE: Caption(RowsHintLB) = "Add a row to start."
+        CASE RowsModeColumns
+            SELECT CASE c
+                CASE 1: Caption(RowsHintLB) = "Caption: the column's header. Columns are numbered from 1 in this order, as in DataGrid_Cell$(frame, row, column)."
+                CASE 2: Caption(RowsHintLB) = "Kind: text, integer or float cells, a choice (dropdown list) or a toggle (check box). Space or a second click opens the list."
+                CASE 3: Caption(RowsHintLB) = "Width: in pixels. 0 shares the room the other columns leave. Columns that don't fit scroll sideways."
+                CASE 4: Caption(RowsHintLB) = "Items: a choice column's items, separated by commas (Red,Green,Blue)."
+                CASE ELSE: Caption(RowsHintLB) = "Add a column to start."
+            END SELECT
+        CASE RowsModeGridRows
+            IF c = 0 THEN
+                Caption(RowsHintLB) = "Add a row to start. Your code can also add rows with DataGrid_AddRow."
+            ELSE
+                __UI_DGParseColumn __UI_DGPart(RowsKeep$, c, CHR$(10)), Caption$, Kind, ColumnWidth, Items$
+                SELECT CASE Kind
+                    CASE __UI_DataGrid_Integer: Holds$ = "a whole number"
+                    CASE __UI_DataGrid_Float: Holds$ = "a number"
+                    CASE __UI_DataGrid_Choice: Holds$ = "one of its items (Space or a second click opens the list)"
+                    CASE __UI_DataGrid_Toggle: Holds$ = "a check box (a click or Space checks it)"
+                    CASE ELSE: Holds$ = "any text"
+                END SELECT
+                Caption(RowsHintLB) = Caption$ + ": " + Holds$ + ". Your code reads cells with DataGrid_Cell$ and changes them with DataGrid_SetCell."
+            END IF
     END SELECT
 END SUB
 
@@ -4701,6 +4939,8 @@ SUB SaveForm (ExitToQB64 AS _BYTE, SaveOnlyFrm AS _BYTE)
                                         IF i = 13 AND IsPropertyGridFrame(Dummy) THEN
                                             'A frame that became a property grid gets the explained CASE block
                                             addedItems$ = addedItems$ + PropertyGridValueChangedCase$(Dummy, indenting) + CHR$(10)
+                                        ELSEIF i = 13 AND IsDataGridFrame(Dummy) THEN
+                                            addedItems$ = addedItems$ + DataGridValueChangedCase$(Dummy, indenting) + CHR$(10)
                                         ELSE
                                             addedItems$ = addedItems$ + SPACE$(indenting) + "CASE " + RTRIM$(PreviewControls(Dummy).Name) + CHR$(10) + CHR$(10)
                                         END IF
@@ -4792,6 +5032,10 @@ SUB SaveForm (ExitToQB64 AS _BYTE, SaveOnlyFrm AS _BYTE)
                                 PrintLines TextFileNum, PropertyGridOnLoadHint$(Dummy)
                                 PRINT #TextFileNum,
                                 OnLoadHasCode = True
+                            ELSEIF IsDataGridFrame(Dummy) THEN
+                                PrintLines TextFileNum, DataGridOnLoadHint$(Dummy)
+                                PRINT #TextFileNum,
+                                OnLoadHasCode = True
                             END IF
                         NEXT
                         IF NOT OnLoadHasCode THEN PRINT #TextFileNum,
@@ -4851,6 +5095,9 @@ SUB SaveForm (ExitToQB64 AS _BYTE, SaveOnlyFrm AS _BYTE)
                                 PRINT #TextFileNum,
                             ELSEIF IsPropertyGridFrame(Dummy) THEN
                                 PrintLines TextFileNum, PropertyGridValueChangedCase$(Dummy, 8)
+                                PRINT #TextFileNum,
+                            ELSEIF IsDataGridFrame(Dummy) THEN
+                                PrintLines TextFileNum, DataGridValueChangedCase$(Dummy, 8)
                                 PRINT #TextFileNum,
                             END IF
                         NEXT
@@ -4914,7 +5161,7 @@ SUB SaveForm (ExitToQB64 AS _BYTE, SaveOnlyFrm AS _BYTE)
             END IF
 
         CASE 13 'Dropdown list, List box, Tab control, Track bar, ToggleSwitch, CheckBox, property grid frames
-            IF IsPropertyGridFrame(Dummy) THEN checkConditionResult = True
+            IF IsPropertyGridFrame(Dummy) OR IsDataGridFrame(Dummy) THEN checkConditionResult = True
             IF PreviewControls(Dummy).ID > 0 AND (PreviewControls(Dummy).Type = __UI_Type_ListBox OR PreviewControls(Dummy).Type = __UI_Type_DropdownList OR PreviewControls(Dummy).Type = __UI_Type_TabControl OR PreviewControls(Dummy).Type = __UI_Type_TrackBar OR PreviewControls(Dummy).Type = __UI_Type_ToggleSwitch OR PreviewControls(Dummy).Type = __UI_Type_CheckBox OR PreviewControls(Dummy).Type = __UI_Type_RadioButton) THEN
                 checkConditionResult = True
             END IF
@@ -4967,7 +5214,64 @@ END FUNCTION
 ''' @brief _TRUE for a frame that has property grid rows (see docs/PropertyGrid.md).
 FUNCTION IsPropertyGridFrame%% (i AS LONG)
     IF PreviewControls(i).ID = 0 OR PreviewControls(i).Type <> __UI_Type_Frame THEN EXIT FUNCTION
+    IF __UI_IsDataGridDefinition(PreviewTexts(i)) THEN EXIT FUNCTION
     IsPropertyGridFrame = LEN(_TRIM$(Replace$(PreviewTexts(i), CHR$(10), "", False, 0))) > 0
+END FUNCTION
+
+''' @brief _TRUE for a frame whose Text holds a data grid's columns and rows (see docs/DataGrid.md).
+FUNCTION IsDataGridFrame%% (i AS LONG)
+    IF i <= 0 OR i > UBOUND(PreviewControls) THEN EXIT FUNCTION
+    IF PreviewControls(i).ID = 0 OR PreviewControls(i).Type <> __UI_Type_Frame THEN EXIT FUNCTION
+    IsDataGridFrame = __UI_IsDataGridDefinition(PreviewTexts(i))
+END FUNCTION
+
+''' @brief A button caption that counts things: "None - add rows...", "1 row - edit...", "3 rows - edit...".
+FUNCTION CountCaption$ (n AS LONG, Noun$)
+    SELECT CASE n
+        CASE IS <= 0: CountCaption$ = "None - add " + Noun$ + "s..."
+        CASE 1: CountCaption$ = "1 " + Noun$ + " - edit..."
+        CASE ELSE: CountCaption$ = LTRIM$(STR$(n)) + " " + Noun$ + "s - edit..."
+    END SELECT
+END FUNCTION
+
+''' @brief The CASE block written in __UI_ValueChanged for a data grid frame, explaining how to use it.
+FUNCTION DataGridValueChangedCase$ (i AS LONG, Indent AS INTEGER)
+    DIM n$, p$, r$, LF$, GridColumns$, GridRows$, c AS LONG, Caption$, Kind AS _BYTE, ColumnWidth AS INTEGER, Items$
+
+    n$ = RTRIM$(PreviewControls(i).Name)
+    p$ = SPACE$(Indent)
+    LF$ = CHR$(10)
+    __UI_DGSplitDefinition PreviewTexts(i), GridColumns$, GridRows$
+    r$ = p$ + "CASE " + n$ + LF$
+    r$ = r$ + p$ + "    '" + n$ + " is a data grid. This runs when a cell is changed (Enter was pressed in it, an" + LF$
+    r$ = r$ + p$ + "    'item was picked or a box was checked) and when another cell becomes current." + LF$
+    r$ = r$ + p$ + "    'Cells are text: use VAL() for numbers. A toggle is " + CHR$(34) + "-1" + CHR$(34) + " when checked." + LF$
+    r$ = r$ + p$ + "    IF DataGrid_ChangedColumn(" + n$ + ") > 0 THEN" + LF$
+    r$ = r$ + p$ + "        SELECT CASE DataGrid_ChangedColumn(" + n$ + ")" + LF$
+    FOR c = 1 TO __UI_DGPartCount(GridColumns$, LF$) - 1
+        __UI_DGParseColumn __UI_DGPart(GridColumns$, c, LF$), Caption$, Kind, ColumnWidth, Items$
+        r$ = r$ + p$ + "            CASE" + STR$(c) + " '" + Caption$ + LF$
+        r$ = r$ + p$ + "                'The new value: DataGrid_Cell$(" + n$ + ", DataGrid_ChangedRow(" + n$ + ")," + STR$(c) + ")" + LF$
+        r$ = r$ + LF$
+    NEXT
+    r$ = r$ + p$ + "        END SELECT" + LF$
+    r$ = r$ + p$ + "    ELSE" + LF$
+    r$ = r$ + p$ + "        'Another cell became current: DataGrid_Row(" + n$ + "), DataGrid_Column(" + n$ + ")" + LF$
+    r$ = r$ + p$ + "    END IF" + LF$
+    DataGridValueChangedCase$ = r$
+END FUNCTION
+
+''' @brief Comments written in __UI_OnLoad for a data grid frame.
+FUNCTION DataGridOnLoadHint$ (i AS LONG)
+    DIM n$, r$, q$, LF$
+    n$ = RTRIM$(PreviewControls(i).Name)
+    q$ = CHR$(34)
+    LF$ = CHR$(10)
+    r$ = "    '" + n$ + " is a data grid: its columns and rows were built from the designer just before" + LF$
+    r$ = r$ + "    'this event, so you can add rows or change cells here, for example:" + LF$
+    r$ = r$ + "    'r = DataGrid_AddRow(" + n$ + ", " + q$ + "first cell|second cell" + q$ + ")" + LF$
+    r$ = r$ + "    'See docs/DataGrid.md for everything a data grid can do." + LF$
+    DataGridOnLoadHint$ = r$
 END FUNCTION
 
 ''' @brief The rows of a property grid frame, one "key|kind" per line (kind as a __UI_PropertyGrid_* number).
