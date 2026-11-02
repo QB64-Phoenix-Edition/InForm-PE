@@ -16,7 +16,7 @@ InForm-PE's main goal is to generate *event-driven* QB64-PE applications. This m
 - Tab control for multi-page forms ([TabControl](docs/TabControl.md))
 - Anchors: controls move and stretch with resizable forms ([Anchors](docs/Anchors.md))
 - Property grids: label/value rows with built-in editing, like the designer's properties panel ([PropertyGrid](docs/PropertyGrid.md))
-- Data grids: tables with column headers, keyboard navigation, editing in place and sideways scrolling, set up in code or in the designer ([DataGrid](docs/DataGrid.md))
+- Data grids: tables with column headers, keyboard navigation, editing in place, sideways scrolling and CSV loading and saving, set up in code or in the designer ([DataGrid](docs/DataGrid.md))
 
 ## DOCUMENTATION
 

@@ -106,6 +106,61 @@ While a cell is edited, the grid puts a text box or a dropdown list of its own o
 IF DataGrid_GridOf(id) = ListFrame THEN EXIT SUB
 ```
 
+## Loading and saving data
+
+A grid can be filled from CSV (comma-separated values), the format spreadsheets and most databases export, and saved back to it:
+
+```vb
+SUB __UI_OnLoad
+    n = DataGrid_LoadCSV(ListFrame, "groceries.csv", __UI_DataGrid_CSVHeader)
+    IF n = -1 THEN MessageBox "groceries.csv wasn't found.", "", MsgBox_Exclamation
+END SUB
+
+SUB __UI_Click (id AS LONG)
+    SELECT CASE id
+        CASE SaveBT
+            IF NOT DataGrid_SaveCSV(ListFrame, "groceries.csv", __UI_DataGrid_CSVHeader) THEN MessageBox "Couldn't save.", "", MsgBox_Exclamation
+    END SELECT
+END SUB
+```
+
+The options are added together:
+
+| Option | Loading | Saving |
+|---|---|---|
+| `__UI_DataGrid_CSVHeader` | The first line holds captions: each field goes to the column with its caption (in any case), in whatever order the file has them. Fields with no column are left out, and columns with no field get their default. | The captions are written first. |
+| `__UI_DataGrid_CSVTags` | Each line's first field is its row's tag (see `DataGrid_SetRowTag`), for example a record's ID. | Each row's tag is written first (its caption is `Tag`). |
+| `__UI_DataGrid_CSVAppend` | The rows are added to the ones the grid has. Without it, they replace them. | |
+| `__UI_DataGrid_CSVSemicolon` | Fields are separated by `;` (as spreadsheets save them where the decimal mark is a comma). | Same. |
+| `__UI_DataGrid_CSVTab` | Fields are separated by tabs. | Same. |
+
+- Without a header, fields go to the columns in order.
+- A grid with no columns gets a text column for each field: named after the header, or `Column 1`, `Column 2`... without one. So a plain frame can show any CSV file.
+- Fields in quotes can hold the separator, line breaks, `|` and quotes (written twice: `""`). A UTF-8 byte order mark at the start is left out, and so are blank lines.
+- Numbers are read with `VAL` (integers are rounded). A toggle is checked by `-1`, `1`, `true`, `yes`, `y`, `x` or `on`, in any case, and saved as `-1` or `0`.
+- Saving keeps what's being typed in a cell first, writes lines ending in CR+LF, and replaces the file.
+- Loading doesn't fire `__UI_ValueChanged`.
+
+The same text can come from (or go to) anywhere else, such as a database query, a web request or the clipboard, with `DataGrid_FromCSV` and `DataGrid_ToCSV$`:
+
+```vb
+n = DataGrid_FromCSV(ListFrame, _CLIPBOARD$, __UI_DataGrid_CSVTab) ' cells copied from a spreadsheet
+_CLIPBOARD$ = DataGrid_ToCSV(ListFrame, __UI_DataGrid_CSVTab + __UI_DataGrid_CSVHeader)
+```
+
+To keep a source up to date as the user edits, rather than saving it all at once, load the rows with their IDs as tags and write each change back in `__UI_ValueChanged`:
+
+```vb
+SUB __UI_ValueChanged (id AS LONG)
+    SELECT CASE id
+        CASE ListFrame
+            r = DataGrid_ChangedRow(ListFrame)
+            c = DataGrid_ChangedColumn(ListFrame)
+            IF c > 0 THEN UpdateRecord DataGrid_RowTag(ListFrame, r), c, DataGrid_Cell(ListFrame, r, c) ' your own SUB
+    END SELECT
+END SUB
+```
+
 ## API reference
 
 ```vb
@@ -216,3 +271,12 @@ FUNCTION DataGrid_GridOf& (controlID AS LONG)
 ```
 
 The frame a control belongs to: the frame itself, or the box or list that edits its cells. `0` for any other control.
+
+```vb
+FUNCTION DataGrid_LoadCSV& (frameID AS LONG, fileName AS STRING, csvOptions AS LONG)
+FUNCTION DataGrid_FromCSV& (frameID AS LONG, csvText AS STRING, csvOptions AS LONG)
+FUNCTION DataGrid_SaveCSV%% (frameID AS LONG, fileName AS STRING, csvOptions AS LONG)
+FUNCTION DataGrid_ToCSV$ (frameID AS LONG, csvOptions AS LONG)
+```
+
+Load rows from a CSV file or text, and get back how many were added (`-1` when the file doesn't exist or `frameID` isn't a frame). Save the rows to a file (`_FALSE` when `frameID` isn't a grid), or get them as text. See [Loading and saving data](#loading-and-saving-data) for the options.

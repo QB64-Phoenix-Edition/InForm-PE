@@ -53,6 +53,7 @@ SUB __UI_BeforeInit
     Test_DataGrid
     Test_DataGridScrolling
     Test_DataGridDefinitions
+    Test_DataGridCSV
 
     TEST_END_ALL
 END SUB
@@ -3575,6 +3576,79 @@ SUB Test_DataGridDefinitions
     TEST_CHECK __UI_DGFind(f2) = 0, "Text that isn't a grid definition puts the frame back"
     __UI_DestroyControl Control(f2)
     __UI_DesignMode = False
+
+    TEST_CASE_END
+END SUB
+
+SUB Test_DataGridCSV
+    DIM g AS LONG, g2 AS LONG, n AS LONG, csv AS STRING, nl AS STRING, f AS STRING
+
+    TEST_CASE_BEGIN "DataGrid: CSV"
+    nl = CHR$(13) + CHR$(10)
+
+    g = __UI_NewControl(__UI_Type_Frame, "TestDGCSV", 300, 150, 0, 0, 0)
+    DataGrid_AddTextColumn g, "Name", 0
+    DataGrid_AddChoiceColumn g, "Color", 80, "Red|Green|Blue"
+    DataGrid_AddIntegerColumn g, "Qty", 50
+    DataGrid_AddToggleColumn g, "On", 40
+
+    'Without a header, fields go to the columns in order
+    n = DataGrid_FromCSV(g, "apple,Green,3,yes" + nl + nl + "pear" + CHR$(10) + "fig,Blue,2.6,0", 0)
+    TEST_CHECK n = 3 _ANDALSO DataGrid_RowCount(g) = 3, "Rows from lines; blank lines are left out"
+    TEST_CHECK DataGrid_Cell(g, 1, 1) = "apple" _ANDALSO DataGrid_Cell(g, 1, 2) = "Green" _ANDALSO DataGrid_Cell(g, 1, 4) = "-1", "Cells from fields; yes checks a toggle"
+    TEST_CHECK DataGrid_Cell(g, 2, 2) = "Red" _ANDALSO DataGrid_Cell(g, 2, 3) = "0" _ANDALSO DataGrid_Cell(g, 2, 4) = "0", "Fields left out get their column's default"
+    TEST_CHECK DataGrid_Cell(g, 3, 3) = "3", "Integers are rounded"
+
+    'Quotes
+    n = DataGrid_FromCSV(g, CHR$(34) + "Smith, J" + CHR$(34) + ",Red" + nl + CHR$(34) + "say " + CHR$(34) + CHR$(34) + "hi" + CHR$(34) + CHR$(34) + CHR$(34) + nl + CHR$(34) + "two" + CHR$(10) + "lines|x" + CHR$(34) + ",Blue", 0)
+    TEST_CHECK n = 3, "Rows are replaced"
+    TEST_CHECK DataGrid_Cell(g, 1, 1) = "Smith, J", "A field in quotes can hold the separator"
+    TEST_CHECK DataGrid_Cell(g, 2, 1) = "say " + CHR$(34) + "hi" + CHR$(34), "and doubled quotes"
+    TEST_CHECK DataGrid_Cell(g, 3, 1) = "two" + CHR$(10) + "lines|x" _ANDALSO DataGrid_Cell(g, 3, 2) = "Blue", "and line breaks and |"
+
+    'Writing it back and reading it again gives the same cells
+    csv = DataGrid_ToCSV(g, __UI_DataGrid_CSVHeader)
+    TEST_CHECK LEFT$(csv, 18) = "Name,Color,Qty,On" + CHR$(13), "The header has the captions"
+    TEST_CHECK INSTR(csv, CHR$(34) + "Smith, J" + CHR$(34) + ",Red,0,0" + nl) > 0, "Fields that need quotes get them"
+    g2 = __UI_NewControl(__UI_Type_Frame, "TestDGCSV2", 300, 150, 0, 0, 0)
+    n = DataGrid_FromCSV(g2, csv, __UI_DataGrid_CSVHeader)
+    TEST_CHECK n = 3 _ANDALSO DataGrid_ColumnCount(g2) = 4, "A grid with no columns gets one per header field"
+    TEST_CHECK __UI_DataGridColCaption(__UI_DGCol(__UI_DGFind(g2), 2)) = "Color", "named after it"
+    TEST_CHECK DataGrid_Cell(g2, 2, 1) = DataGrid_Cell(g, 2, 1) _ANDALSO DataGrid_Cell(g2, 3, 1) = DataGrid_Cell(g, 3, 1), "The same cells come back"
+    TEST_CHECK DataGrid_ToCSV(g2, __UI_DataGrid_CSVHeader) = csv, "and the same text"
+    __UI_DestroyControl Control(g2)
+
+    'With a header, fields go to the column with their caption
+    n = DataGrid_FromCSV(g, "on;QTY;Extra;Name" + nl + "true;7;zzz;kiwi" + nl, __UI_DataGrid_CSVHeader + __UI_DataGrid_CSVSemicolon)
+    TEST_CHECK n = 1 _ANDALSO DataGrid_Cell(g, 1, 1) = "kiwi" _ANDALSO DataGrid_Cell(g, 1, 3) = "7" _ANDALSO DataGrid_Cell(g, 1, 4) = "-1", "Columns found by caption, in any case"
+    TEST_CHECK DataGrid_Cell(g, 1, 2) = "Red", "A column with no field gets its default"
+
+    'Tags and appending
+    n = DataGrid_FromCSV(g, "17" + CHR$(9) + "plum" + nl + "18" + CHR$(9) + "lime" + CHR$(9) + "Green", __UI_DataGrid_CSVTags + __UI_DataGrid_CSVTab + __UI_DataGrid_CSVAppend)
+    TEST_CHECK n = 2 _ANDALSO DataGrid_RowCount(g) = 3, "Rows are added to the ones there"
+    TEST_CHECK DataGrid_RowTag(g, 2) = "17" _ANDALSO DataGrid_Cell(g, 2, 1) = "plum" _ANDALSO DataGrid_RowTag(g, 3) = "18", "The first field is the row's tag"
+    TEST_CHECK DataGrid_RowTag(g, 1) = "", "Rows not loaded keep no tag"
+    csv = DataGrid_ToCSV(g, __UI_DataGrid_CSVTags + __UI_DataGrid_CSVHeader)
+    TEST_CHECK LEFT$(csv, 22) = "Tag,Name,Color,Qty,On" + CHR$(13), "Tags are written first"
+    TEST_CHECK INSTR(csv, nl + "18,lime,Green,0,0" + nl) > 0, "with their rows"
+
+    'Files
+    f = "test_datagrid_csv.tmp"
+    TEST_CHECK DataGrid_SaveCSV(g, f, __UI_DataGrid_CSVHeader + __UI_DataGrid_CSVTags), "Save to a file"
+    DataGrid_Clear g
+    n = DataGrid_LoadCSV(g, f, __UI_DataGrid_CSVHeader + __UI_DataGrid_CSVTags)
+    TEST_CHECK n = 3 _ANDALSO DataGrid_RowTag(g, 3) = "18" _ANDALSO DataGrid_Cell(g, 3, 1) = "lime", "and load it back"
+    KILL f
+    TEST_CHECK DataGrid_LoadCSV(g, f, 0) = -1 _ANDALSO DataGrid_RowCount(g) = 3, "A missing file loads nothing"
+    TEST_CHECK DataGrid_FromCSV(g, CHR$(239) + CHR$(187) + CHR$(191) + "x", 0) = 1 _ANDALSO DataGrid_Cell(g, 1, 1) = "x", "A byte order mark is left out"
+    TEST_CHECK DataGrid_FromCSV(g, "a,", 0) = 1 _ANDALSO DataGrid_Cell(g, 1, 2) = "", "An empty last field is a field (not the default)"
+    __UI_DestroyControl Control(g)
+
+    'Without a header or columns
+    g = __UI_NewControl(__UI_Type_Frame, "TestDGCSV3", 300, 150, 0, 0, 0)
+    n = DataGrid_FromCSV(g, "1,2,3", 0)
+    TEST_CHECK n = 1 _ANDALSO DataGrid_ColumnCount(g) = 3 _ANDALSO __UI_DataGridColCaption(__UI_DGCol(__UI_DGFind(g), 3)) = "Column 3", "Columns named by number"
+    __UI_DestroyControl Control(g)
 
     TEST_CASE_END
 END SUB

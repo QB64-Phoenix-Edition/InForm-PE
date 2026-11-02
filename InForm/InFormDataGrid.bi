@@ -15,6 +15,13 @@ CONST __UI_DataGrid_Float%% = 3%%
 CONST __UI_DataGrid_Choice%% = 4%% ' a dropdown list of items; the cell holds the chosen item's text
 CONST __UI_DataGrid_Toggle%% = 5%% ' a check box; the cell holds "-1" or "0"
 
+'Options for DataGrid_LoadCSV, DataGrid_SaveCSV, DataGrid_FromCSV and DataGrid_ToCSV (add the ones you want)
+CONST __UI_DataGrid_CSVHeader& = 1& ' the first line holds the column captions
+CONST __UI_DataGrid_CSVTags& = 2& ' each line's first field is its row's tag (see DataGrid_SetRowTag)
+CONST __UI_DataGrid_CSVAppend& = 4& ' loading keeps the rows the grid has and adds to them
+CONST __UI_DataGrid_CSVSemicolon& = 8& ' fields are separated by ";" instead of ","
+CONST __UI_DataGrid_CSVTab& = 16& ' fields are separated by tabs instead of ","
+
 CONST __UI_DataGrid_MinShare = 30 ' narrowest a column with no width of its own gets (narrower than that, the grid scrolls sideways)
 
 TYPE __UI_DataGridTYPE

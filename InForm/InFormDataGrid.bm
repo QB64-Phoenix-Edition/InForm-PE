@@ -1995,3 +1995,274 @@ FUNCTION DataGrid_RowTag$ (frameID AS LONG, rowNumber AS LONG)
     IF rowNumber < 1 _ORELSE rowNumber > __UI_DGRowCount(dgGrid) THEN EXIT FUNCTION
     DataGrid_RowTag = __UI_DataGridRowTag(__UI_DGSlot(dgGrid, rowNumber))
 END FUNCTION
+
+'-----------------------------------------------------------------------------------------------------------------------
+' CSV: loading rows from comma-separated text (a file, or text the program got elsewhere) and saving them back
+'-----------------------------------------------------------------------------------------------------------------------
+
+''' @brief The character that separates fields with these options.
+FUNCTION __UI_DGCSVSep~%% (csvOptions AS LONG)
+    IF csvOptions AND __UI_DataGrid_CSVTab THEN
+        __UI_DGCSVSep = 9
+    ELSEIF csvOptions AND __UI_DataGrid_CSVSemicolon THEN
+        __UI_DGCSVSep = 59
+    ELSE
+        __UI_DGCSVSep = 44
+    END IF
+END FUNCTION
+
+''' @brief Reads the CSV record that starts at dgPos and moves dgPos past it. Its fields come back separated by
+''' CHR$(0), and dgCount says how many there are (a blank line has one, empty). _FALSE when the text has ended.
+''' Fields in quotes can hold the separator, quotes (doubled) and line breaks.
+FUNCTION __UI_DGCSVNext%% (dgText AS STRING, dgPos AS LONG, dgSep AS _UNSIGNED _BYTE, dgFields AS STRING, dgCount AS LONG)
+    DIM dgLen AS LONG, dgC AS _UNSIGNED _BYTE, dgField AS STRING, dgStart AS LONG
+
+    dgFields = _STR_EMPTY
+    dgCount = 0
+    dgLen = LEN(dgText)
+    IF dgPos > dgLen THEN EXIT FUNCTION
+    DO
+        dgField = _STR_EMPTY
+        IF ASC(dgText, dgPos) = 34 THEN
+            dgPos = dgPos + 1
+            DO
+                dgStart = INSTR(dgPos, dgText, CHR$(34))
+                IF dgStart = 0 THEN 'no closing quote: the field takes the rest of the text
+                    dgField = dgField + MID$(dgText, dgPos)
+                    dgPos = dgLen + 1
+                    EXIT DO
+                END IF
+                dgField = dgField + MID$(dgText, dgPos, dgStart - dgPos)
+                dgPos = dgStart + 1
+                IF dgPos > dgLen THEN EXIT DO
+                IF ASC(dgText, dgPos) <> 34 THEN EXIT DO
+                dgField = dgField + CHR$(34) 'a doubled quote is one quote
+                dgPos = dgPos + 1
+            LOOP
+        END IF
+        'Text up to the separator or the end of the line (after a closing quote, there's usually none)
+        dgStart = dgPos
+        DO WHILE dgPos <= dgLen
+            dgC = ASC(dgText, dgPos)
+            IF dgC = dgSep _ORELSE dgC = 10 _ORELSE dgC = 13 THEN EXIT DO
+            dgPos = dgPos + 1
+        LOOP
+        dgField = dgField + MID$(dgText, dgStart, dgPos - dgStart)
+
+        dgCount = dgCount + 1
+        IF dgCount > 1 THEN dgFields = dgFields + CHR$(0)
+        dgFields = dgFields + Replace$(dgField, CHR$(0), _STR_EMPTY, _FALSE, 0)
+
+        IF dgPos > dgLen THEN EXIT DO
+        dgC = ASC(dgText, dgPos)
+        dgPos = dgPos + 1
+        IF dgC <> dgSep THEN 'end of the line
+            IF dgC = 13 _ANDALSO dgPos <= dgLen THEN
+                IF ASC(dgText, dgPos) = 10 THEN dgPos = dgPos + 1
+            END IF
+            EXIT DO
+        END IF
+        IF dgPos > dgLen THEN 'the text ends with a separator: one more empty field
+            dgCount = dgCount + 1
+            dgFields = dgFields + CHR$(0)
+            EXIT DO
+        END IF
+    LOOP
+    __UI_DGCSVNext = _TRUE
+END FUNCTION
+
+''' @brief A value read from CSV, made into what a cell of this kind holds.
+FUNCTION __UI_DGCSVValue$ (dgKind AS _BYTE, dgValue AS STRING)
+    SELECT CASE dgKind
+        CASE __UI_DataGrid_Integer
+            __UI_DGCSVValue = _TRIM$(STR$(_ROUND(VAL(dgValue))))
+        CASE __UI_DataGrid_Float
+            __UI_DGCSVValue = _TRIM$(STR$(VAL(dgValue)))
+        CASE __UI_DataGrid_Toggle
+            SELECT CASE LCASE$(_TRIM$(dgValue))
+                CASE "-1", "1", "true", "yes", "y", "x", "on"
+                    __UI_DGCSVValue = "-1"
+                CASE ELSE
+                    __UI_DGCSVValue = "0"
+            END SELECT
+        CASE ELSE
+            __UI_DGCSVValue = dgValue
+    END SELECT
+END FUNCTION
+
+''' @brief A value written as a CSV field: in quotes (with its quotes doubled) when it needs them.
+FUNCTION __UI_DGCSVField$ (dgValue AS STRING, dgSep AS _UNSIGNED _BYTE)
+    DIM dgOut AS STRING, dgPos AS LONG, dgQuote AS LONG
+    IF INSTR(dgValue, CHR$(dgSep)) = 0 _ANDALSO INSTR(dgValue, CHR$(34)) = 0 _ANDALSO INSTR(dgValue, CHR$(10)) = 0 _ANDALSO INSTR(dgValue, CHR$(13)) = 0 _ANDALSO LEFT$(dgValue, 1) <> " " _ANDALSO RIGHT$(dgValue, 1) <> " " THEN
+        __UI_DGCSVField = dgValue
+        EXIT FUNCTION
+    END IF
+    dgPos = 1
+    DO
+        dgQuote = INSTR(dgPos, dgValue, CHR$(34))
+        IF dgQuote = 0 THEN dgOut = dgOut + MID$(dgValue, dgPos): EXIT DO
+        dgOut = dgOut + MID$(dgValue, dgPos, dgQuote - dgPos + 1) + CHR$(34)
+        dgPos = dgQuote + 1
+    LOOP
+    __UI_DGCSVField = CHR$(34) + dgOut + CHR$(34)
+END FUNCTION
+
+''' @brief Adds rows from CSV text and returns how many were added (-1 when frameID isn't a frame).
+''' Without __UI_DataGrid_CSVHeader, fields go to the columns in order. With it, the first line's captions say
+''' which column each field goes to (captions are matched ignoring case); fields with no column of their own are
+''' left out, and columns with no field get their default. A grid with no columns gets a text column for each
+''' field: named after the first line with a header, "Column 1", "Column 2"... without one.
+''' The grid's rows are replaced, unless __UI_DataGrid_CSVAppend is given. Blank lines are left out.
+''' Numbers are read with VAL; toggles are checked for -1, 1, true, yes, y, x or on. This doesn't fire __UI_ValueChanged.
+FUNCTION DataGrid_FromCSV& (frameID AS LONG, csvText AS STRING, csvOptions AS LONG)
+    DIM dgGrid AS LONG, dgSep AS _UNSIGNED _BYTE, dgPos AS LONG, dgPeek AS LONG, dgFields AS STRING, dgCount AS LONG
+    DIM dgFirst AS LONG, dgCols AS LONG, dgI AS LONG, dgJ AS LONG, dgC AS LONG, dgR AS LONG, dgSlot AS LONG
+    DIM dgLoaded AS LONG, dgCells AS STRING, dgCaption AS STRING, dgMap AS STRING, dgHeader AS _BYTE, dgTaken AS _BYTE
+    DIM dgStart AS LONG, dgEnd AS LONG, dgField AS STRING, dgTag AS STRING
+
+    DataGrid_Attach frameID
+    dgGrid = __UI_DGFind(frameID)
+    IF dgGrid = 0 THEN DataGrid_FromCSV = -1: EXIT FUNCTION
+
+    dgSep = __UI_DGCSVSep(csvOptions)
+    dgPos = 1
+    IF LEFT$(csvText, 3) = CHR$(239) + CHR$(187) + CHR$(191) THEN dgPos = 4 'UTF-8 byte order mark
+    IF csvOptions AND __UI_DataGrid_CSVTags THEN dgFirst = 2 ELSE dgFirst = 1
+    dgHeader = (csvOptions AND __UI_DataGrid_CSVHeader) <> 0
+
+    IF dgHeader THEN
+        'dgMap: the column each field goes to (MKL$ per field, 0 = left out)
+        DO
+            IF NOT __UI_DGCSVNext(csvText, dgPos, dgSep, dgFields, dgCount) THEN EXIT DO
+        LOOP WHILE dgCount = 1 _ANDALSO LEN(dgFields) = 0
+        dgCols = __UI_DGColCount(dgGrid)
+        FOR dgI = 1 TO dgCount
+            dgC = 0
+            IF dgI >= dgFirst THEN
+                dgCaption = __UI_DGPart(dgFields, dgI, CHR$(0))
+                IF dgCols = 0 THEN
+                    dgC = __UI_DGAddColumn(frameID, dgCaption, 0, __UI_DataGrid_Text, _STR_EMPTY)
+                ELSE
+                    FOR dgJ = 1 TO dgCols
+                        IF UCASE$(_TRIM$(__UI_DataGridColCaption(__UI_DGCol(dgGrid, dgJ)))) <> UCASE$(_TRIM$(dgCaption)) THEN _CONTINUE
+                        dgTaken = _FALSE 'by an earlier field with the same caption
+                        FOR dgR = 1 TO LEN(dgMap) \ 4
+                            IF CVL(MID$(dgMap, dgR * 4 - 3, 4)) = dgJ THEN dgTaken = _TRUE: EXIT FOR
+                        NEXT
+                        IF NOT dgTaken THEN dgC = dgJ: EXIT FOR
+                    NEXT
+                END IF
+            END IF
+            dgMap = dgMap + MKL$(dgC)
+        NEXT
+    ELSEIF __UI_DGColCount(dgGrid) = 0 THEN
+        'No captions to go by: as many columns as the first line has fields
+        dgPeek = dgPos
+        DO
+            IF NOT __UI_DGCSVNext(csvText, dgPeek, dgSep, dgFields, dgCount) THEN EXIT DO
+        LOOP WHILE dgCount = 1 _ANDALSO LEN(dgFields) = 0
+        FOR dgI = dgFirst TO dgCount
+            dgC = __UI_DGAddColumn(frameID, "Column" + STR$(dgI - dgFirst + 1), 0, __UI_DataGrid_Text, _STR_EMPTY)
+        NEXT
+    END IF
+
+    IF (csvOptions AND __UI_DataGrid_CSVAppend) = 0 THEN DataGrid_Clear frameID
+
+    dgCols = __UI_DGColCount(dgGrid)
+    IF dgCols = 0 THEN EXIT FUNCTION
+    DIM dgValues(1 TO dgCols) AS STRING, dgDefaults(1 TO dgCols) AS STRING, dgKinds(1 TO dgCols) AS _BYTE
+    FOR dgC = 1 TO dgCols
+        dgDefaults(dgC) = __UI_DGDefault(dgGrid, dgC)
+        dgKinds(dgC) = __UI_DataGridCols(__UI_DGCol(dgGrid, dgC)).Kind
+    NEXT
+
+    DO WHILE __UI_DGCSVNext(csvText, dgPos, dgSep, dgFields, dgCount)
+        IF dgCount = 1 _ANDALSO LEN(dgFields) = 0 THEN _CONTINUE
+        FOR dgC = 1 TO dgCols
+            dgValues(dgC) = dgDefaults(dgC)
+        NEXT
+        dgTag = _STR_EMPTY
+        dgStart = 1
+        FOR dgI = 1 TO dgCount
+            dgEnd = INSTR(dgStart, dgFields, CHR$(0))
+            IF dgEnd = 0 THEN dgEnd = LEN(dgFields) + 1
+            dgField = MID$(dgFields, dgStart, dgEnd - dgStart)
+            dgStart = dgEnd + 1
+            IF dgI < dgFirst THEN dgTag = dgField: _CONTINUE
+            IF dgHeader THEN
+                dgC = 0
+                IF dgI <= LEN(dgMap) \ 4 THEN dgC = CVL(MID$(dgMap, dgI * 4 - 3, 4))
+            ELSE
+                dgC = dgI - dgFirst + 1
+            END IF
+            IF dgC >= 1 _ANDALSO dgC <= dgCols THEN dgValues(dgC) = __UI_DGCSVValue(dgKinds(dgC), dgField)
+        NEXT
+        dgCells = dgValues(1)
+        FOR dgC = 2 TO dgCols
+            dgCells = dgCells + CHR$(0) + dgValues(dgC)
+        NEXT
+        dgR = DataGrid_AddRow(frameID, _STR_EMPTY)
+        dgSlot = __UI_DGSlot(dgGrid, dgR)
+        __UI_DataGridCells(dgSlot) = dgCells
+        __UI_DataGridRowTag(dgSlot) = dgTag
+        dgLoaded = dgLoaded + 1
+    LOOP
+    DataGrid_FromCSV = dgLoaded
+END FUNCTION
+
+''' @brief Loads rows from a CSV file (see DataGrid_FromCSV) and returns how many were added, or -1 when the file
+''' doesn't exist or frameID isn't a frame.
+FUNCTION DataGrid_LoadCSV& (frameID AS LONG, fileName AS STRING, csvOptions AS LONG)
+    IF NOT _FILEEXISTS(fileName) THEN DataGrid_LoadCSV = -1: EXIT FUNCTION
+    DataGrid_LoadCSV = DataGrid_FromCSV(frameID, _READFILE$(fileName), csvOptions)
+END FUNCTION
+
+''' @brief The grid's rows as CSV text, one line per row (ending in CR+LF), with the captions first when
+''' __UI_DataGrid_CSVHeader is given and each row's tag first when __UI_DataGrid_CSVTags is (its caption is "Tag").
+''' A cell being edited keeps what was typed first. Toggles are written as -1 and 0.
+FUNCTION DataGrid_ToCSV$ (frameID AS LONG, csvOptions AS LONG)
+    DIM dgGrid AS LONG, dgSep AS _UNSIGNED _BYTE, dgTagged AS _BYTE, dgOut AS STRING, dgLine AS STRING
+    DIM dgR AS LONG, dgC AS LONG, dgCols AS LONG, dgSlot AS LONG, dgCells AS STRING, dgStart AS LONG, dgEnd AS LONG
+
+    dgGrid = __UI_DGFind(frameID)
+    IF dgGrid = 0 THEN EXIT FUNCTION
+    DataGrid_StopEditing frameID
+    dgSep = __UI_DGCSVSep(csvOptions)
+    dgTagged = (csvOptions AND __UI_DataGrid_CSVTags) <> 0
+    dgCols = __UI_DGColCount(dgGrid)
+
+    IF csvOptions AND __UI_DataGrid_CSVHeader THEN
+        IF dgTagged THEN dgLine = "Tag" ELSE dgLine = _STR_EMPTY
+        FOR dgC = 1 TO dgCols
+            IF dgC > 1 _ORELSE dgTagged THEN dgLine = dgLine + CHR$(dgSep)
+            dgLine = dgLine + __UI_DGCSVField(__UI_DataGridColCaption(__UI_DGCol(dgGrid, dgC)), dgSep)
+        NEXT
+        dgOut = dgLine + CHR$(13) + CHR$(10)
+    END IF
+
+    FOR dgR = 1 TO __UI_DGRowCount(dgGrid)
+        dgSlot = __UI_DGSlot(dgGrid, dgR)
+        IF dgTagged THEN dgLine = __UI_DGCSVField(__UI_DataGridRowTag(dgSlot), dgSep) ELSE dgLine = _STR_EMPTY
+        dgCells = __UI_DataGridCells(dgSlot)
+        dgStart = 1
+        FOR dgC = 1 TO dgCols
+            IF dgC > 1 _ORELSE dgTagged THEN dgLine = dgLine + CHR$(dgSep)
+            IF dgStart <= LEN(dgCells) + 1 THEN
+                dgEnd = INSTR(dgStart, dgCells, CHR$(0))
+                IF dgEnd = 0 THEN dgEnd = LEN(dgCells) + 1
+                dgLine = dgLine + __UI_DGCSVField(MID$(dgCells, dgStart, dgEnd - dgStart), dgSep)
+                dgStart = dgEnd + 1
+            END IF
+        NEXT
+        dgOut = dgOut + dgLine + CHR$(13) + CHR$(10)
+    NEXT
+    DataGrid_ToCSV = dgOut
+END FUNCTION
+
+''' @brief Saves the grid's rows to a CSV file (see DataGrid_ToCSV), replacing it if it exists.
+''' Returns _FALSE when frameID isn't a grid.
+FUNCTION DataGrid_SaveCSV%% (frameID AS LONG, fileName AS STRING, csvOptions AS LONG)
+    IF __UI_DGFind(frameID) = 0 THEN EXIT FUNCTION
+    _WRITEFILE fileName, DataGrid_ToCSV(frameID, csvOptions)
+    DataGrid_SaveCSV = _FILEEXISTS(fileName)
+END FUNCTION
