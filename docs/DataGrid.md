@@ -141,6 +141,8 @@ The options are added together:
 - Saving keeps what's being typed in a cell first, writes lines ending in CR+LF, and replaces the file.
 - Loading doesn't fire `__UI_ValueChanged`.
 
+The `DataGridCSVDemo` example keeps an inventory in a CSV file, with product IDs as row tags, and copies and pastes rows to and from spreadsheets.
+
 The same text can come from (or go to) anywhere else, such as a database query, a web request or the clipboard, with `DataGrid_FromCSV` and `DataGrid_ToCSV$`:
 
 ```vb

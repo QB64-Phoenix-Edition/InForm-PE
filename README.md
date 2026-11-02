@@ -102,6 +102,7 @@ InForm/extensions/*.*
 | Calculator | Terry Ritchie |
 | ClickTheVoid | Fellippe Heitor |
 | ClockPatience | Richard Notley |
+| DataGridCSVDemo | Fellippe Heitor |
 | DataGridDemo | Fellippe Heitor |
 | DuckShoot | Richard Notley |
 | ebacCalculator | George McGinn |
