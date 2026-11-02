@@ -50,6 +50,7 @@ DIM SHARED FileMenuRecent6 AS LONG
 DIM SHARED FileMenuRecent7 AS LONG
 DIM SHARED FileMenuRecent8 AS LONG
 DIM SHARED FileMenuRecent9 AS LONG
+DIM SHARED FileMenuRecentRemoveMissing AS LONG
 
 DIM SHARED EditMenuUndo AS LONG, EditMenuRedo AS LONG, EditMenuCut AS LONG
 DIM SHARED EditMenuCopy AS LONG, EditMenuPaste AS LONG
@@ -179,6 +180,7 @@ DIM SHARED prevScreenX AS INTEGER, prevScreenY AS INTEGER
 DIM SHARED UndoPointer AS INTEGER, TotalUndoImages AS INTEGER
 DIM SHARED totalBytesSent AS _UNSIGNED _INTEGER64
 DIM SHARED RecentMenuItem(1 TO 9) AS LONG, RecentListBuilt AS _BYTE
+DIM SHARED RecentFile(1 TO 9) AS STRING
 DIM SHARED LoadedWithGifExtension AS _BYTE, AddGifExtension AS _BYTE
 DIM SHARED TotalGifLoaded AS LONG, SetBindingDialogOpen AS _BYTE
 DIM SHARED InitialControlSet AS STRING
@@ -293,7 +295,7 @@ $END IF
 
 'Event procedures: ---------------------------------------------------------------
 SUB __UI_Click (id AS LONG)
-    DIM Answer AS _BYTE, Dummy AS LONG, b$
+    DIM Answer AS _BYTE, Dummy AS LONG, b$, i AS LONG
     STATIC LastClick#, LastClickedID AS LONG
 
     SendSignal -8
@@ -538,7 +540,6 @@ SUB __UI_Click (id AS LONG)
             IF _FILEEXISTS("InForm/UiEditorPreview.frmbin") THEN KILL "InForm/UiEditorPreview.frmbin"
             SYSTEM
         CASE EditMenuZOrdering
-            DIM i AS LONG
             Caption(StatusBar) = "Editing z-ordering/tab ordering"
             ZOrderLastMove = 0
             ZOrderListDirty = False
@@ -658,8 +659,14 @@ SUB __UI_Click (id AS LONG)
 
             __UI_ForceRedraw = True
 
+        CASE FileMenuRecentRemoveMissing
+            RemoveMissingFromRecentList
+
         CASE FileMenuRecent1, FileMenuRecent2, FileMenuRecent3, FileMenuRecent4, FileMenuRecent5, FileMenuRecent6, FileMenuRecent7, FileMenuRecent8, FileMenuRecent9
-            tmpFileName = ToolTip(id)
+            tmpFileName = ""
+            FOR i = 1 TO 9
+                IF RecentMenuItem(i) = id THEN tmpFileName = RecentFile(i): EXIT FOR
+            NEXT
             IF _FILEEXISTS(tmpFileName) THEN
                 IF Edited THEN
                     __UI_Delay COMMDLG_DELAY: Answer = _MESSAGEBOX(UiEditorTitle$, "Save the current form?", "yesnocancel", "question", 1)
@@ -1056,6 +1063,24 @@ SUB RemoveFromRecentList (FileName$)
     RecentListBuilt = False
 END SUB
 
+SUB RemoveMissingFromRecentList
+    DIM i AS LONG, total AS LONG, b$
+    DIM keep(1 TO 9) AS STRING
+
+    'Keep the files that still exist, in their current order
+    FOR i = 1 TO 9
+        b$ = Ini_ReadSetting("InForm/InForm.ini", "Recent Projects", STR$(i))
+        IF LEN(b$) THEN
+            IF _FILEEXISTS(b$) THEN total = total + 1: keep(total) = b$
+        END IF
+    NEXT
+
+    FOR i = 1 TO 9
+        Ini_WriteSetting "InForm/InForm.ini", "Recent Projects", STR$(i), keep(i)
+    NEXT
+    RecentListBuilt = False
+END SUB
+
 SUB SendNewRGB
     DIM b$, NewColor AS _UNSIGNED LONG
     NewColor = _RGB32(Control(Red).Value, Control(Green).Value, Control(Blue).Value)
@@ -1153,6 +1178,8 @@ SUB __UI_BeforeUpdateDisplay
     STATIC PrevFirstSelected AS LONG, PreviewHasMenuActive AS INTEGER
     STATIC ThisControlTurnsInto AS INTEGER
     STATIC LastChange AS SINGLE
+    STATIC FileMenuWasOpen AS _BYTE
+    DIM LastRecent AS LONG, MissingRecent AS LONG
 
     IF TIMER - BlinkStatusBar < 1 THEN
         IF TIMER - LastChange > .2 THEN
@@ -1185,35 +1212,56 @@ SUB __UI_BeforeUpdateDisplay
         Control(KeyboardComboBT).Redraw = True
     END IF
 
+    'Check the recent projects again every time the File menu opens,
+    'so files that were moved or deleted show up as missing
+    IF __UI_TotalActiveMenus > 0 AND __UI_ParentMenu(1) = FileMenu THEN
+        IF NOT FileMenuWasOpen THEN FileMenuWasOpen = True: RecentListBuilt = False
+    ELSE
+        FileMenuWasOpen = False
+    END IF
+
     IF RecentListBuilt = False THEN
         'Build list of recent projects
         RecentListBuilt = True
+        LastRecent = 0
+        MissingRecent = 0
         FOR i = 1 TO 9
-            b$ = Ini_ReadSetting("InForm/InForm.ini", "Recent Projects", STR$(i))
+            RecentFile(i) = Ini_ReadSetting("InForm/InForm.ini", "Recent Projects", STR$(i))
+            IF LEN(RecentFile(i)) THEN
+                LastRecent = i
+                IF NOT _FILEEXISTS(RecentFile(i)) THEN MissingRecent = MissingRecent + 1
+            END IF
+        NEXT
+
+        FOR i = 1 TO 9
+            b$ = RecentFile(i)
             IF LEN(b$) THEN
-                ToolTip(RecentMenuItem(i)) = b$
-                IF INSTR(b$, DIRECTORY_SEPARATOR) > 0 THEN
-                    FOR j = LEN(b$) TO 1 STEP -1
-                        IF MID$(b$, j, 1) = DIRECTORY_SEPARATOR THEN
-                            SetCaption RecentMenuItem(i), "&" + LTRIM$(STR$(i)) + " " + MID$(b$, j + 1)
-                            EXIT FOR
-                        END IF
-                    NEXT
+                b$ = "&" + LTRIM$(STR$(i)) + " " + Pathname_GetFileName(b$)
+                'A trailing - draws a separator above "Remove missing projects"
+                IF i = LastRecent AND MissingRecent > 0 THEN b$ = b$ + "-"
+                SetCaption RecentMenuItem(i), b$
+                IF _FILEEXISTS(RecentFile(i)) THEN
+                    ToolTip(RecentMenuItem(i)) = RecentFile(i)
+                    Control(RecentMenuItem(i)).Disabled = False
                 ELSE
-                    SetCaption RecentMenuItem(i), "&" + LTRIM$(STR$(i)) + " " + b$
+                    ToolTip(RecentMenuItem(i)) = RecentFile(i) + CHR$(10) + "(file not found)"
+                    Control(RecentMenuItem(i)).Disabled = True
                 END IF
-                Control(RecentMenuItem(i)).Disabled = False
                 Control(RecentMenuItem(i)).Hidden = False
             ELSE
                 IF i = 1 THEN
                     SetCaption RecentMenuItem(i), "No recent projects"
                     ToolTip(RecentMenuItem(i)) = ""
                     Control(RecentMenuItem(i)).Disabled = True
+                    Control(RecentMenuItem(i)).Hidden = False
                 ELSE
                     Control(RecentMenuItem(i)).Hidden = True
                 END IF
             END IF
         NEXT
+
+        'Only offer to clean up the list when something is missing
+        Control(FileMenuRecentRemoveMissing).Hidden = (MissingRecent = 0)
     END IF
 
     IF __UI_Focus = 0 THEN

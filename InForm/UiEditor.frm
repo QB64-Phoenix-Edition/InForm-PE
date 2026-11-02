@@ -97,6 +97,9 @@ SUB __UI_LoadForm
     __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "FileMenuRecent9", 91, 18, 0, 22, __UI_GetID("FileMenuRecent"))
     SetCaption __UI_NewID, "FileMenuRecent9"
 
+    __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "FileMenuRecentRemoveMissing", 91, 18, 0, 22, __UI_GetID("FileMenuRecent"))
+    SetCaption __UI_NewID, "Remove &missing projects"
+
     __UI_NewID = __UI_NewControl(__UI_Type_MenuItem, "FileMenuSave", 91, 18, 0, 22, __UI_GetID("FileMenu"))
     SetCaption __UI_NewID, "&Save project"
 
@@ -1002,6 +1005,7 @@ SUB __UI_AssignIDs
     FileMenuRecent7 = __UI_GetID("FileMenuRecent7")
     FileMenuRecent8 = __UI_GetID("FileMenuRecent8")
     FileMenuRecent9 = __UI_GetID("FileMenuRecent9")
+    FileMenuRecentRemoveMissing = __UI_GetID("FileMenuRecentRemoveMissing")
     KeyboardComboLB = __UI_GetID("KeyboardComboLB")
     KeyboardComboBT = __UI_GetID("KeyboardComboBT")
     SetControlBinding = __UI_GetID("SetControlBinding")
