@@ -368,6 +368,25 @@ SUB __UI_BeforeUpdateDisplay
                     END IF
                     SelectNewControl TempValue
                 END IF
+            CASE "NEWPROPERTYGRID"
+                'A frame with two sample property grid rows in its Text (see InFormPropertyGrid.bm);
+                'double-clicking it opens the editor's table to change them
+                SaveUndoImage
+                DIM pgName$, pgN AS LONG
+                pgN = 0
+                DO
+                    pgN = pgN + 1
+                    pgName$ = "PropertyGrid" + LTRIM$(STR$(pgN))
+                LOOP WHILE __UI_GetID(pgName$) > 0
+                defW = _MIN(260, Control(__UI_FormID).Width - 20)
+                defH = _MIN(110, Control(__UI_FormID).Height - __UI_MenuBarOffsetV - 20)
+                IF defW < 60 THEN defW = 60
+                IF defH < 60 THEN defH = 60
+                TempValue = __UI_NewControl(__UI_Type_Frame, pgName$, defW, defH, Control(__UI_FormID).Width \ 2 - defW \ 2, (Control(__UI_FormID).Height - __UI_MenuBarOffsetV) \ 2 + __UI_MenuBarOffsetV - defH \ 2, 0)
+                SetCaption TempValue, "Properties"
+                Text(TempValue) = "name|text|Name|Untitled" + CHR$(10) + "size|integer|Size|10"
+                IF __UI_TotalActiveMenus > 0 THEN __UI_CloseAllMenus
+                SelectNewControl TempValue
             CASE "LOCKCONTROLS"
                 'When the user starts editing a property in UiEditor,
                 'a list of the currently selected controls is built so

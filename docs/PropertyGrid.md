@@ -46,7 +46,9 @@ The `PropertyGridDemo` example shows a complete form.
 
 ## In the designer
 
-Any frame can be a property grid without writing code to build it:
+Any frame can be a property grid without writing code to build it. The quickest way is the toolbox's **Property grid** button: it adds a frame called `PropertyGrid1` with two sample rows (a text box and an integer box). Double-click it to change them.
+
+To turn a frame of your own into a property grid:
 
 1. Add a frame to your form.
 2. Right-click the frame and pick **Add property** and then a kind of row (text box, integer box, number box, choice, toggle or button). Each row is added with a key that isn't used yet (`text1`, `choice2`...), and the frame keeps its size: rows that don't fit get a scrollbar, which you can scroll with the mouse wheel. You can also type the rows straight into the frame's **Rows** property, one per line. Separate lines with `\n`, or paste several lines with the paste button next to the box.
