@@ -6137,6 +6137,8 @@ FUNCTION __UI_WordWrap$ (PassedText AS STRING, Width AS INTEGER, LongestLine AS 
                                     'This word alone is > than the width, can't fight that.
                                     IF LEN(Temp$) > 0 THEN Temp$ = Temp$ + _CHR_SOH
                                     Temp$ = Temp$ + LEFT$(TempLine$, FindSep - 1)
+                                    ThisLineWidth = __UI_PrintWidth(LEFT$(TempLine$, FindSep - 1))
+                                    IF LongestLine < ThisLineWidth THEN LongestLine = ThisLineWidth
                                     TempLine$ = MID$(TempLine$, FindSep + 1)
                                     Lines = Lines + 1
                                     EXIT DO
@@ -6199,6 +6201,8 @@ FUNCTION __UI_WordWrap$ (PassedText AS STRING, Width AS INTEGER, LongestLine AS 
                 ELSE
                     Lines = Lines + 1
                     Temp$ = Temp$ + _CHR_SOH + TempCaption$
+                    ThisLineWidth = __UI_PrintWidth(TempCaption$)
+                    IF LongestLine < ThisLineWidth THEN LongestLine = ThisLineWidth
                     EXIT DO
                 END IF
             LOOP
