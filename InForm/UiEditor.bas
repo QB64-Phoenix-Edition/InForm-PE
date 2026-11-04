@@ -16,8 +16,8 @@ $VERSIONINFO:OriginalFilename='UiEditor.exe'
 $VERSIONINFO:ProductName='InForm-PE Form Designer'
 $VERSIONINFO:Web='https://github.com/QB64-Phoenix-Edition/InForm-PE'
 $VERSIONINFO:Comments='https://github.com/QB64-Phoenix-Edition/InForm-PE'
-$VERSIONINFO:FILEVERSION#=1,5,8,0
-$VERSIONINFO:PRODUCTVERSION#=1,5,8,0
+$VERSIONINFO:FILEVERSION#=1,7,0,0
+$VERSIONINFO:PRODUCTVERSION#=1,7,0,0
 $EXEICON:'./resources/InForm.ico'
 
 'Controls: --------------------------------------------------------------------
