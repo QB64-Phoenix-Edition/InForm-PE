@@ -17,6 +17,7 @@ InForm-PE's main goal is to generate *event-driven* QB64-PE applications. This m
 - Anchors: controls move and stretch with resizable forms ([Anchors](docs/Anchors.md))
 - Property grids: label/value rows with built-in editing, like the designer's properties panel ([PropertyGrid](docs/PropertyGrid.md))
 - Data grids: tables with column headers, keyboard navigation, editing in place, sideways scrolling and CSV loading and saving, set up in code or in the designer ([DataGrid](docs/DataGrid.md))
+- Video playback in a PictureBox: MP4, MKV, WebM and other formats and streams through VLC 3.x, and SPV videos with no VLC needed ([VideoPlay](docs/VideoPlay.md))
 
 ## DOCUMENTATION
 
@@ -135,6 +136,7 @@ InForm/extensions/*.*
 | TicTacToe2 | Fellippe Heitor |
 | Trackword | Richard Notley |
 | VDrops | bobalooie |
+| VideoPlaySample | Fellippe Heitor |
 | WordClock | Fellippe Heitor |
 | wordSearch | George McGinn |
 
