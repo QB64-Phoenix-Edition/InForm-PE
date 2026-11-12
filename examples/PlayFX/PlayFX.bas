@@ -34,21 +34,12 @@ DIM SHARED PlayFXDesigner AS LONG
 DIM SHARED MasterFrame AS LONG
 DIM SHARED PresetLB AS LONG
 DIM SHARED PresetsDL AS LONG
-DIM SHARED MasterTempoLB AS LONG
-DIM SHARED MasterTempoSlider AS LONG
-DIM SHARED MasterTempoValLB AS LONG
 DIM SHARED PlayBT AS LONG
 DIM SHARED CopyCodeBT AS LONG
-DIM SHARED StatusLB AS LONG
 DIM SHARED MainTabs AS LONG
 
 DIM SHARED Voice1HeaderLB AS LONG
 DIM SHARED Voice1EnableCB AS LONG
-DIM SHARED Voice1WaveformDL AS LONG
-DIM SHARED V1VolLB AS LONG
-DIM SHARED Voice1VolSlider AS LONG
-DIM SHARED V1PanLB AS LONG
-DIM SHARED Voice1PanSlider AS LONG
 DIM SHARED Voice1SoloBT AS LONG
 DIM SHARED Voice1ClearBT AS LONG
 DIM SHARED Voice1MeterLB AS LONG
@@ -57,11 +48,6 @@ DIM SHARED Voice1MMLTB AS LONG
 
 DIM SHARED Voice2HeaderLB AS LONG
 DIM SHARED Voice2EnableCB AS LONG
-DIM SHARED Voice2WaveformDL AS LONG
-DIM SHARED V2VolLB AS LONG
-DIM SHARED Voice2VolSlider AS LONG
-DIM SHARED V2PanLB AS LONG
-DIM SHARED Voice2PanSlider AS LONG
 DIM SHARED Voice2MeterLB AS LONG
 DIM SHARED Voice2SoloBT AS LONG
 DIM SHARED Voice2ClearBT AS LONG
@@ -70,11 +56,6 @@ DIM SHARED Voice2MMLTB AS LONG
 
 DIM SHARED Voice3HeaderLB AS LONG
 DIM SHARED Voice3EnableCB AS LONG
-DIM SHARED Voice3WaveformDL AS LONG
-DIM SHARED V3VolLB AS LONG
-DIM SHARED Voice3VolSlider AS LONG
-DIM SHARED V3PanLB AS LONG
-DIM SHARED Voice3PanSlider AS LONG
 DIM SHARED Voice3MeterLB AS LONG
 DIM SHARED Voice3SoloBT AS LONG
 DIM SHARED Voice3ClearBT AS LONG
@@ -83,11 +64,6 @@ DIM SHARED Voice3MMLTB AS LONG
 
 DIM SHARED Voice4HeaderLB AS LONG
 DIM SHARED Voice4EnableCB AS LONG
-DIM SHARED Voice4WaveformDL AS LONG
-DIM SHARED V4VolLB AS LONG
-DIM SHARED Voice4VolSlider AS LONG
-DIM SHARED V4PanLB AS LONG
-DIM SHARED Voice4PanSlider AS LONG
 DIM SHARED Voice4MeterLB AS LONG
 DIM SHARED Voice4SoloBT AS LONG
 DIM SHARED Voice4ClearBT AS LONG
@@ -104,6 +80,7 @@ DIM SHARED CompLengthLB AS LONG
 DIM SHARED CompLengthDL AS LONG
 DIM SHARED CompArtLB AS LONG
 DIM SHARED CompArtDL AS LONG
+DIM SHARED CompTempoLB AS LONG, CompTempoSlider AS LONG, CompTempoValLB AS LONG
 DIM SHARED PianoHeaderLB AS LONG
 
 DIM SHARED KeyC AS LONG, KeyD AS LONG, KeyE AS LONG, KeyF AS LONG, KeyG AS LONG, KeyA AS LONG, KeyB AS LONG
@@ -178,26 +155,10 @@ END FUNCTION
 
 SUB SyncMixerControlsFromVoice (v AS LONG)
     SELECT CASE v
-        CASE 1
-            Control(Voice1EnableCB).Value = Voice(1).enabled
-            Control(Voice1WaveformDL).Value = Voice(1).waveform
-            Control(Voice1VolSlider).Value = Voice(1).volume
-            Control(Voice1PanSlider).Value = Voice(1).pan
-        CASE 2
-            Control(Voice2EnableCB).Value = Voice(2).enabled
-            Control(Voice2WaveformDL).Value = Voice(2).waveform
-            Control(Voice2VolSlider).Value = Voice(2).volume
-            Control(Voice2PanSlider).Value = Voice(2).pan
-        CASE 3
-            Control(Voice3EnableCB).Value = Voice(3).enabled
-            Control(Voice3WaveformDL).Value = Voice(3).waveform
-            Control(Voice3VolSlider).Value = Voice(3).volume
-            Control(Voice3PanSlider).Value = Voice(3).pan
-        CASE 4
-            Control(Voice4EnableCB).Value = Voice(4).enabled
-            Control(Voice4WaveformDL).Value = Voice(4).waveform
-            Control(Voice4VolSlider).Value = Voice(4).volume
-            Control(Voice4PanSlider).Value = Voice(4).pan
+        CASE 1: Control(Voice1EnableCB).Value = Voice(1).enabled
+        CASE 2: Control(Voice2EnableCB).Value = Voice(2).enabled
+        CASE 3: Control(Voice3EnableCB).Value = Voice(3).enabled
+        CASE 4: Control(Voice4EnableCB).Value = Voice(4).enabled
     END SELECT
 END SUB
 
@@ -234,7 +195,8 @@ SUB SyncComposerFromActiveVoice
     updatingText = _TRUE
     Text(ActiveVoiceMMLTB) = Text(GetVoiceMMLTB(v))
     updatingText = _FALSE
-    SetCaption ActiveVoiceStatusLB, "Voice " + LTRIM$(STR$(v)) + " loaded for editing."
+    SetCaption ActiveVoiceHeaderLB, "Channel " + LTRIM$(STR$(v)) + " MML Stream:"
+    SetCaption ActiveVoiceStatusLB, "Channel " + LTRIM$(STR$(v)) + " ready."
 END SUB
 
 SUB ApplyComposerToActiveVoice
@@ -256,7 +218,7 @@ SUB ApplyComposerToActiveVoice
     updatingText = _TRUE
     Text(GetVoiceMMLTB(v)) = Text(ActiveVoiceMMLTB)
     updatingText = _FALSE
-    SetCaption ActiveVoiceStatusLB, "Voice " + LTRIM$(STR$(v)) + " settings applied."
+    SetCaption ActiveVoiceStatusLB, "Channel " + LTRIM$(STR$(v)) + " settings applied."
 END SUB
 
 FUNCTION BuildVoiceSetupHeader$ (v AS LONG)
@@ -292,13 +254,10 @@ FUNCTION BuildFinalVoiceString$ (v AS LONG)
 
     ' If the raw MML doesn't already specify tempo, add master tempo
     IF INSTR(UCASE$(rawMML), "T") = 0 THEN
-        res = res + "T" + LTRIM$(STR$(Control(MasterTempoSlider).Value)) + " "
+        res = res + "T" + LTRIM$(STR$(Control(CompTempoSlider).Value)) + " "
     END IF
 
-    ' If raw MML doesn't already specify waveform @, prepend voice setup header
-    IF INSTR(rawMML, "@") = 0 _ANDALSO INSTR(UCASE$(rawMML), "W") = 0 THEN
-        res = res + BuildVoiceSetupHeader(v)
-    END IF
+
 
     res = res + rawMML
     BuildFinalVoiceString = res
@@ -312,7 +271,7 @@ SUB PlayAllVoices
     v4 = BuildFinalVoiceString(4)
 
     IF LEN(v1) = 0 _ANDALSO LEN(v2) = 0 _ANDALSO LEN(v3) = 0 _ANDALSO LEN(v4) = 0 THEN
-        SetCaption StatusLB, "No active voice MML to play."
+        MessageBox "No active channels to play." + _CHR_LF + _CHR_LF + "Please enable at least one channel with MML text.", "PlayFX - Player", MsgBox_OkOnly OR MsgBox_Information
         EXIT SUB
     END IF
 
@@ -329,13 +288,13 @@ SUB PlayAllVoices
         IF LEN(vStr) > 0 THEN
             valErr = ValidateMML(vStr)
             IF LEN(valErr) > 0 THEN
-                combinedErr = combinedErr + "* Voice " + LTRIM$(STR$(i)) + ": " + valErr + _CHR_LF
+                combinedErr = combinedErr + "* Channel " + LTRIM$(STR$(i)) + ": " + valErr + _CHR_LF
             END IF
         END IF
     NEXT i
 
     IF LEN(combinedErr) > 0 THEN
-        SetCaption StatusLB, "MML syntax error detected! Check your voice MML."
+        ' MML syntax error detected
         MessageBox "The following MML syntax errors were found:" + _CHR_LF + _CHR_LF + combinedErr + _CHR_LF + "Please correct them and try again.", "PlayFX - MML Syntax Error", MsgBox_OkOnly OR MsgBox_Critical
         EXIT SUB
     END IF
@@ -348,10 +307,10 @@ SUB PlayAllVoices
     ON ERROR GOTO _LASTHANDLER
 
     IF mmlHadError THEN
-        SetCaption StatusLB, "MML runtime error: " + mmlErrorMessage
+        ' MML runtime error
         MessageBox "A runtime error occurred during MML playback:" + _CHR_LF + _CHR_LF + mmlErrorMessage + _CHR_LF + _CHR_LF + "Please verify all MML parameters.", "PlayFX - MML Playback Error", MsgBox_OkOnly OR MsgBox_Critical
     ELSE
-        SetCaption StatusLB, "Playing 4-voice MML tune..."
+        ' Playing 4-voice MML tune
     END IF
 END SUB
 
@@ -613,7 +572,7 @@ SUB SoloVoice (v AS LONG)
         Voice(i).enabled = _IIF(i = v, _TRUE, _FALSE)
         SyncMixerControlsFromVoice i
     NEXT i
-    SetCaption StatusLB, "Soloing Voice " + LTRIM$(STR$(v)) + "."
+    ' Solo Channel
 END SUB
 
 SUB ClearVoiceMML (v AS LONG)
@@ -621,7 +580,7 @@ SUB ClearVoiceMML (v AS LONG)
     Text(GetVoiceMMLTB(v)) = ""
     IF v = activeCompVoice THEN Text(ActiveVoiceMMLTB) = ""
     updatingText = _FALSE
-    SetCaption StatusLB, "Cleared MML for Voice " + LTRIM$(STR$(v)) + "."
+    ' Cleared MML for Channel
 END SUB
 
 SUB AppendNoteToActiveVoice (noteToken AS STRING)
@@ -669,7 +628,7 @@ SUB AuditionTone (noteName AS STRING, octaveShift AS LONG)
 
     ' Single note preview play
     DIM previewMML AS STRING
-    previewMML = "MB T140 @" + LTRIM$(STR$(Control(SynthWaveDL).Value))
+    previewMML = "MB T" + LTRIM$(STR$(Control(CompTempoSlider).Value)) + " @" + LTRIM$(STR$(Control(SynthWaveDL).Value))
     IF Control(SynthWaveDL).Value = 8 _ORELSE Control(SynthWaveDL).Value = 9 THEN
         previewMML = previewMML + "Y" + LTRIM$(STR$(Control(SynthDutySlider).Value))
     END IF
@@ -684,7 +643,7 @@ SUB AuditionTone (noteName AS STRING, octaveShift AS LONG)
     ON ERROR GOTO _LASTHANDLER
 
     IF mmlHadError THEN
-        SetCaption StatusLB, "Audition error: " + mmlErrorMessage
+        MessageBox "Audition error:" + _CHR_LF + _CHR_LF + mmlErrorMessage, "PlayFX - Composer", MsgBox_OkOnly OR MsgBox_Critical
         EXIT SUB
     END IF
 
@@ -717,7 +676,7 @@ SUB CopyQB64CodeToClipboard
     code = code + "WEND" + _CHR_LF
 
     _CLIPBOARD$ = code
-    SetCaption StatusLB, "QB64-PE code copied to clipboard!"
+    MessageBox "QB64-PE multi-voice code copied to clipboard!", "PlayFX - Export", MsgBox_OkOnly OR MsgBox_Information
 END SUB
 
 SUB LoadPreset (idx AS LONG)
@@ -729,8 +688,8 @@ SUB LoadPreset (idx AS LONG)
     updatingText = _TRUE
     SELECT CASE idx
         CASE 1 ' Korobeiniki (Tetris Chiptune - 4 Voices)
-            Control(MasterTempoSlider).Value = 144
-            SetCaption MasterTempoValLB, "144"
+            Control(CompTempoSlider).Value = 144
+            SetCaption CompTempoValLB, "144"
 
             Voice(1).waveform = 9 ' Pulse lead
             Voice(1).waveParam = 50
@@ -760,8 +719,8 @@ SUB LoadPreset (idx AS LONG)
             Text(Voice4MMLTB) = "T144 @5 Q6 V24 S50 O0 L8 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 P4"
 
         CASE 2 ' Wilbert Brants - Chamber Allegro (3 Voices) [from play_demo.bas Demo 2]
-            Control(MasterTempoSlider).Value = 103
-            SetCaption MasterTempoValLB, "103"
+            Control(CompTempoSlider).Value = 103
+            SetCaption CompTempoValLB, "103"
 
             Voice(1).waveform = 1: Voice(1).volume = 35: Voice(1).pan = 40: Voice(1).octave = 3
             Voice(2).waveform = 1: Voice(2).volume = 33: Voice(2).pan = 60: Voice(2).octave = 1
@@ -774,8 +733,8 @@ SUB LoadPreset (idx AS LONG)
             Text(Voice4MMLTB) = ""
 
         CASE 3 ' Wilbert Brants - Polyphony in C (3 Voices) [from play_demo.bas Demo 3]
-            Control(MasterTempoSlider).Value = 144
-            SetCaption MasterTempoValLB, "144"
+            Control(CompTempoSlider).Value = 144
+            SetCaption CompTempoValLB, "144"
 
             Voice(1).waveform = 3: Voice(1).volume = 22: Voice(1).pan = 40: Voice(1).octave = 3
             Voice(2).waveform = 1: Voice(2).volume = 20: Voice(2).pan = 60: Voice(2).octave = 1
@@ -788,8 +747,8 @@ SUB LoadPreset (idx AS LONG)
             Text(Voice4MMLTB) = ""
 
         CASE 4 ' J. Baker - Multi-Wave Groove (4 Voices) [from play_demo.bas Demo 1]
-            Control(MasterTempoSlider).Value = 144
-            SetCaption MasterTempoValLB, "144"
+            Control(CompTempoSlider).Value = 144
+            SetCaption CompTempoValLB, "144"
 
             Voice(1).waveform = 2: Voice(1).volume = 33: Voice(1).pan = 35: Voice(1).octave = 3
             Voice(2).waveform = 1: Voice(2).volume = 31: Voice(2).pan = 65: Voice(2).octave = 2
@@ -802,8 +761,8 @@ SUB LoadPreset (idx AS LONG)
             Text(Voice4MMLTB) = "t144 q0 w9 y15 o3 _100 v29 l8 d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d"
 
         CASE 5 ' Wilbert Brants - Baroque Canon (3 Voices) [from play_demo.bas Demo 5]
-            Control(MasterTempoSlider).Value = 103
-            SetCaption MasterTempoValLB, "103"
+            Control(CompTempoSlider).Value = 103
+            SetCaption CompTempoValLB, "103"
 
             Voice(1).waveform = 4: Voice(1).volume = 38: Voice(1).pan = 40: Voice(1).octave = 3
             Voice(2).waveform = 1: Voice(2).volume = 25: Voice(2).pan = 60: Voice(2).octave = 2
@@ -816,8 +775,8 @@ SUB LoadPreset (idx AS LONG)
             Text(Voice4MMLTB) = ""
 
         CASE 6 ' Pachelbel - Canon in D (4 Voices)
-            Control(MasterTempoSlider).Value = 96
-            SetCaption MasterTempoValLB, "96"
+            Control(CompTempoSlider).Value = 96
+            SetCaption CompTempoValLB, "96"
 
             Voice(1).waveform = 4: Voice(1).volume = 38: Voice(1).pan = 30: Voice(1).octave = 3
             Voice(2).waveform = 1: Voice(2).volume = 30: Voice(2).pan = 70: Voice(2).octave = 2
@@ -830,8 +789,8 @@ SUB LoadPreset (idx AS LONG)
             Text(Voice4MMLTB) = "T96 @3 V42 S50 O1 L2 D < A B F# G D G A > D < A B F# G D G A >"
 
         CASE 7 ' J.S. Bach - Minuet in G (4 Voices)
-            Control(MasterTempoSlider).Value = 120
-            SetCaption MasterTempoValLB, "120"
+            Control(CompTempoSlider).Value = 120
+            SetCaption CompTempoValLB, "120"
 
             Voice(1).waveform = 1: Voice(1).volume = 38: Voice(1).pan = 35: Voice(1).octave = 3
             Voice(2).waveform = 4: Voice(2).volume = 30: Voice(2).pan = 65: Voice(2).octave = 2
@@ -844,8 +803,8 @@ SUB LoadPreset (idx AS LONG)
             Text(Voice4MMLTB) = "T120 @3 V40 S50 O1 G2 > C4 < G2 > C4 E2 C4 G2 > C4 < C2 D4 G2 D4 D2 D4 G2."
 
         CASE 8 ' J. Baker - Dual-Voice Counterpoint (2 Voices) [from play_demo.bas Demo 4]
-            Control(MasterTempoSlider).Value = 120
-            SetCaption MasterTempoValLB, "120"
+            Control(CompTempoSlider).Value = 120
+            SetCaption CompTempoValLB, "120"
 
             Voice(1).waveform = 1: Voice(1).volume = 21: Voice(1).pan = 40: Voice(1).octave = 1
             Voice(2).waveform = 1: Voice(2).volume = 20: Voice(2).pan = 60: Voice(2).octave = 0
@@ -858,8 +817,8 @@ SUB LoadPreset (idx AS LONG)
             Text(Voice4MMLTB) = ""
 
         CASE 9 ' Retro Arcade SFX (4 Voices)
-            Control(MasterTempoSlider).Value = 180
-            SetCaption MasterTempoValLB, "180"
+            Control(CompTempoSlider).Value = 180
+            SetCaption CompTempoValLB, "180"
 
             Voice(1).waveform = 2: Voice(1).volume = 38: Voice(1).pan = 25: Voice(1).octave = 4
             Voice(2).waveform = 9: Voice(2).waveParam = 25: Voice(2).volume = 34: Voice(2).pan = 75: Voice(2).octave = 2
@@ -872,8 +831,8 @@ SUB LoadPreset (idx AS LONG)
             Text(Voice4MMLTB) = "T180 @7 Q15 L16 O0 N15 N13 N11 N9 N7 N5 N3 N1 N15 N13 N11 N9 N7 N5 N3 P16"
 
         CASE 10 ' J.S. Bach - Jesu, Joy of Man's Desiring (4 Voices) [from AmigaBasic sound_wave_demo.bas]
-            Control(MasterTempoSlider).Value = 120
-            SetCaption MasterTempoValLB, "120"
+            Control(CompTempoSlider).Value = 120
+            SetCaption CompTempoValLB, "120"
 
             Voice(1).waveform = 4: Voice(1).volume = 34: Voice(1).pan = 25: Voice(1).quickRamp = 1: Voice(1).octave = 3
             Voice(2).waveform = 4: Voice(2).volume = 36: Voice(2).pan = 75: Voice(2).quickRamp = 1: Voice(2).octave = 3
@@ -945,7 +904,7 @@ SUB LoadPreset (idx AS LONG)
     NEXT j
 
     SyncComposerFromActiveVoice
-    SetCaption StatusLB, "Loaded preset: " + GetItem$(PresetsDL, idx)
+    ' Preset loaded
 END SUB
 
 ': Event procedures: ---------------------------------------------------------------
@@ -981,7 +940,7 @@ SUB __UI_BeforeUpdateDisplay
         IF p2 > maxT THEN maxT = p2
         IF p3 > maxT THEN maxT = p3
 
-        SetCaption StatusLB, "Playing 4-voice MML tune (" + LTRIM$(STR$(INT(maxT * 10) / 10)) + "s remaining)..."
+        ' Playing
         lastPlayingState = _TRUE
     ELSEIF lastPlayingState THEN
         lastPlayingState = _FALSE
@@ -989,7 +948,7 @@ SUB __UI_BeforeUpdateDisplay
         SetCaption Voice2MeterLB, "Idle (0.00s)"
         SetCaption Voice3MeterLB, "Idle (0.00s)"
         SetCaption Voice4MeterLB, "Idle (0.00s)"
-        SetCaption StatusLB, "Playback complete. Ready."
+        ' Playback complete
     END IF
 END SUB
 
@@ -999,278 +958,30 @@ END SUB
 
 SUB __UI_Click (id AS LONG)
     SELECT CASE id
-        ' Master controls
-        CASE PlayFXDesigner
-
-        CASE MasterFrame
-
-        CASE PresetLB
-
-        CASE PresetsDL
-
-        CASE MasterTempoLB
-
-        CASE MasterTempoSlider
-
-        CASE MasterTempoValLB
-
-        CASE StatusLB
-
-        CASE MainTabs
-
-        CASE Voice1HeaderLB
-
-        CASE Voice1EnableCB
-
-        CASE Voice1WaveformDL
-
-        CASE V1VolLB
-
-        CASE Voice1VolSlider
-
-        CASE V1PanLB
-
-        CASE Voice1PanSlider
-
-        CASE Voice1SoloBT
-
-        CASE Voice1ClearBT
-
-        CASE Voice1MeterLB
-
-        CASE V1MMLLB
-
-        CASE Voice1MMLTB
-
-        CASE Voice2HeaderLB
-
-        CASE Voice2EnableCB
-
-        CASE Voice2WaveformDL
-
-        CASE V2VolLB
-
-        CASE Voice2VolSlider
-
-        CASE V2PanLB
-
-        CASE Voice2PanSlider
-
-        CASE Voice2SoloBT
-
-        CASE Voice2ClearBT
-
-        CASE Voice2MeterLB
-
-        CASE V2MMLLB
-
-        CASE Voice2MMLTB
-
-        CASE Voice3HeaderLB
-
-        CASE Voice3EnableCB
-
-        CASE Voice3WaveformDL
-
-        CASE V3VolLB
-
-        CASE Voice3VolSlider
-
-        CASE V3PanLB
-
-        CASE Voice3PanSlider
-
-        CASE Voice3SoloBT
-
-        CASE Voice3ClearBT
-
-        CASE Voice3MeterLB
-
-        CASE V3MMLLB
-
-        CASE Voice3MMLTB
-
-        CASE Voice4HeaderLB
-
-        CASE Voice4EnableCB
-
-        CASE Voice4WaveformDL
-
-        CASE V4VolLB
-
-        CASE Voice4VolSlider
-
-        CASE V4PanLB
-
-        CASE Voice4PanSlider
-
-        CASE Voice4SoloBT
-
-        CASE Voice4ClearBT
-
-        CASE Voice4MeterLB
-
-        CASE V4MMLLB
-
-        CASE Voice4MMLTB
-
-        CASE MixerInfoLB
-
-        CASE CompTargetLB
-
-        CASE CompVoiceDL
-
-        CASE CompOctaveLB
-
-        CASE CompOctaveDL
-
-        CASE CompLengthLB
-
-        CASE CompLengthDL
-
-        CASE CompArtLB
-
-        CASE CompArtDL
-
-        CASE PianoHeaderLB
-
-        CASE KeyC
-
-        CASE KeyD
-
-        CASE KeyE
-
-        CASE KeyF
-
-        CASE KeyG
-
-        CASE KeyA
-
-        CASE KeyB
-
-        CASE KeyC2
-
-        CASE KeyD2
-
-        CASE KeyE2
-
-        CASE KeyF2
-
-        CASE KeyG2
-
-        CASE KeyA2
-
-        CASE KeyB2
-
-        CASE KeyCs
-
-        CASE KeyDs
-
-        CASE KeyFs
-
-        CASE KeyGs
-
-        CASE KeyAs
-
-        CASE KeyCs2
-
-        CASE KeyDs2
-
-        CASE KeyFs2
-
-        CASE KeyGs2
-
-        CASE KeyAs2
-
-        CASE SynthHeaderLB
-
-        CASE SynthWaveLB
-
-        CASE SynthWaveDL
-
-        CASE SynthDutyLB
-
-        CASE SynthDutySlider
-
-        CASE SynthDutyValLB
-
-        CASE SynthVolLB
-
-        CASE SynthVolSlider
-
-        CASE SynthVolValLB
-
-        CASE SynthPanLB
-
-        CASE SynthPanSlider
-
-        CASE AttackLB
-
-        CASE AttackSlider
-
-        CASE AttackValLB
-
-        CASE DecayLB
-
-        CASE DecaySlider
-
-        CASE DecayValLB
-
-        CASE SustainLB
-
-        CASE SustainSlider
-
-        CASE SustainValLB
-
-        CASE ReleaseLB
-
-        CASE ReleaseSlider
-
-        CASE ReleaseValLB
-
-        CASE QuickRampLB
-
-        CASE QuickRampSlider
-
-        CASE QuickRampValLB
-
-        CASE ActiveVoiceHeaderLB
-
-        CASE ActiveVoiceMMLTB
-
-        CASE ActiveVoiceStatusLB
-
-        CASE RefHeaderLB
-
-        CASE RefNotesTitleLB
-
-        CASE RefNotesLB
-
-        CASE RefSynthTitleLB
-
-        CASE RefSynthLB
-
-        CASE RefEnvelopeTitleLB
-
-        CASE RefEnvelopeLB
-
         CASE PlayBT
             PlayAllVoices
 
         CASE CopyCodeBT
             CopyQB64CodeToClipboard
 
-            ' Voice 1-4 Mixer Buttons
+        ' Channel 1-4 Mixer Controls
+        CASE Voice1EnableCB: Voice(1).enabled = Control(Voice1EnableCB).Value
         CASE Voice1SoloBT: SoloVoice 1
         CASE Voice1ClearBT: ClearVoiceMML 1
+
+        CASE Voice2EnableCB: Voice(2).enabled = Control(Voice2EnableCB).Value
         CASE Voice2SoloBT: SoloVoice 2
         CASE Voice2ClearBT: ClearVoiceMML 2
+
+        CASE Voice3EnableCB: Voice(3).enabled = Control(Voice3EnableCB).Value
         CASE Voice3SoloBT: SoloVoice 3
         CASE Voice3ClearBT: ClearVoiceMML 3
+
+        CASE Voice4EnableCB: Voice(4).enabled = Control(Voice4EnableCB).Value
         CASE Voice4SoloBT: SoloVoice 4
         CASE Voice4ClearBT: ClearVoiceMML 4
 
-            ' Interactive Piano Keyboard Keys (Octave 1)
+        ' Interactive Piano Keyboard Keys
         CASE KeyC: AuditionTone "C", 0
         CASE KeyCs: AuditionTone "C#", 0
         CASE KeyD: AuditionTone "D", 0
@@ -1284,7 +995,6 @@ SUB __UI_Click (id AS LONG)
         CASE KeyAs: AuditionTone "A#", 0
         CASE KeyB: AuditionTone "B", 0
 
-            ' Interactive Piano Keyboard Keys (Octave 2)
         CASE KeyC2: AuditionTone "C", 1
         CASE KeyCs2: AuditionTone "C#", 1
         CASE KeyD2: AuditionTone "D", 1
@@ -1298,7 +1008,6 @@ SUB __UI_Click (id AS LONG)
         CASE KeyAs2: AuditionTone "A#", 1
         CASE KeyB2: AuditionTone "B", 1
 
-            ' Note Helper Buttons
         CASE KeyRest
             DIM rLen AS LONG
             SELECT CASE Control(CompLengthDL).Value
@@ -1345,7 +1054,7 @@ SUB __UI_Click (id AS LONG)
         CASE KeyClearMML
             ClearVoiceMML activeCompVoice
 
-            ' Composer Synth Buttons
+        ' Composer Synth Buttons
         CASE ApplySynthBT
             ApplyComposerToActiveVoice
 
@@ -1360,7 +1069,7 @@ SUB __UI_Click (id AS LONG)
                 valOneErr = ValidateMML(oneVoiceMML)
                 IF LEN(valOneErr) > 0 THEN
                     SetCaption ActiveVoiceStatusLB, "MML Error: " + valOneErr
-                    MessageBox "MML syntax error in Voice " + LTRIM$(STR$(activeCompVoice)) + ":" + _CHR_LF + _CHR_LF + valOneErr + _CHR_LF + _CHR_LF + "Please correct it and try again.", "PlayFX - MML Syntax Error", MsgBox_OkOnly OR MsgBox_Critical
+                    MessageBox "MML syntax error in Channel " + LTRIM$(STR$(activeCompVoice)) + ":" + _CHR_LF + _CHR_LF + valOneErr + _CHR_LF + _CHR_LF + "Please correct it and try again.", "PlayFX - MML Syntax Error", MsgBox_OkOnly OR MsgBox_Critical
                     EXIT SUB
                 END IF
 
@@ -1372,12 +1081,12 @@ SUB __UI_Click (id AS LONG)
 
                 IF mmlHadError THEN
                     SetCaption ActiveVoiceStatusLB, "MML runtime error: " + mmlErrorMessage
-                    MessageBox "A runtime error occurred during playback of Voice " + LTRIM$(STR$(activeCompVoice)) + ":" + _CHR_LF + _CHR_LF + mmlErrorMessage, "PlayFX - MML Playback Error", MsgBox_OkOnly OR MsgBox_Critical
+                    MessageBox "A runtime error occurred during playback of Channel " + LTRIM$(STR$(activeCompVoice)) + ":" + _CHR_LF + _CHR_LF + mmlErrorMessage, "PlayFX - MML Playback Error", MsgBox_OkOnly OR MsgBox_Critical
                 ELSE
-                    SetCaption ActiveVoiceStatusLB, "Playing Voice " + LTRIM$(STR$(activeCompVoice)) + "..."
+                    SetCaption ActiveVoiceStatusLB, "Playing Channel " + LTRIM$(STR$(activeCompVoice)) + "..."
                 END IF
             ELSE
-                SetCaption ActiveVoiceStatusLB, "Voice " + LTRIM$(STR$(activeCompVoice)) + " is empty or muted."
+                SetCaption ActiveVoiceStatusLB, "Channel " + LTRIM$(STR$(activeCompVoice)) + " is empty or muted."
             END IF
     END SELECT
 END SUB
@@ -1394,7 +1103,7 @@ SUB __UI_FocusIn (id AS LONG)
     SELECT CASE id
         CASE PresetsDL
 
-        CASE MasterTempoSlider
+        CASE CompTempoSlider
 
         CASE PlayBT
 
@@ -1404,12 +1113,6 @@ SUB __UI_FocusIn (id AS LONG)
 
         CASE Voice1EnableCB
 
-        CASE Voice1WaveformDL
-
-        CASE Voice1VolSlider
-
-        CASE Voice1PanSlider
-
         CASE Voice1SoloBT
 
         CASE Voice1ClearBT
@@ -1417,12 +1120,6 @@ SUB __UI_FocusIn (id AS LONG)
         CASE Voice1MMLTB
 
         CASE Voice2EnableCB
-
-        CASE Voice2WaveformDL
-
-        CASE Voice2VolSlider
-
-        CASE Voice2PanSlider
 
         CASE Voice2SoloBT
 
@@ -1432,12 +1129,6 @@ SUB __UI_FocusIn (id AS LONG)
 
         CASE Voice3EnableCB
 
-        CASE Voice3WaveformDL
-
-        CASE Voice3VolSlider
-
-        CASE Voice3PanSlider
-
         CASE Voice3SoloBT
 
         CASE Voice3ClearBT
@@ -1445,12 +1136,6 @@ SUB __UI_FocusIn (id AS LONG)
         CASE Voice3MMLTB
 
         CASE Voice4EnableCB
-
-        CASE Voice4WaveformDL
-
-        CASE Voice4VolSlider
-
-        CASE Voice4PanSlider
 
         CASE Voice4SoloBT
 
@@ -1596,81 +1281,19 @@ END SUB
 
 SUB __UI_ValueChanged (id AS LONG)
     SELECT CASE id
-        CASE MainTabs
-
-        CASE Voice1EnableCB
-
-        CASE Voice1WaveformDL
-
-        CASE Voice1VolSlider
-
-        CASE Voice1PanSlider
-
-        CASE Voice2EnableCB
-
-        CASE Voice2WaveformDL
-
-        CASE Voice2VolSlider
-
-        CASE Voice2PanSlider
-
-        CASE Voice3EnableCB
-
-        CASE Voice3WaveformDL
-
-        CASE Voice3VolSlider
-
-        CASE Voice3PanSlider
-
-        CASE Voice4EnableCB
-
-        CASE Voice4WaveformDL
-
-        CASE Voice4VolSlider
-
-        CASE Voice4PanSlider
-
-        CASE CompOctaveDL
-
-        CASE CompLengthDL
-
-        CASE CompArtDL
-
-        CASE SynthWaveDL
-
-        CASE SynthPanSlider
-
         CASE PresetsDL
             LoadPreset Control(PresetsDL).Value
 
-        CASE MasterTempoSlider
-            SetCaption MasterTempoValLB, LTRIM$(STR$(Control(MasterTempoSlider).Value))
+        CASE CompTempoSlider
+            SetCaption CompTempoValLB, LTRIM$(STR$(Control(CompTempoSlider).Value))
 
-            ' Voice 1 Mixer controls
+        ' Channel 1-4 Enable Toggles
         CASE Voice1EnableCB: Voice(1).enabled = Control(Voice1EnableCB).Value
-        CASE Voice1WaveformDL: Voice(1).waveform = Control(Voice1WaveformDL).Value: IF activeCompVoice = 1 THEN Control(SynthWaveDL).Value = Voice(1).waveform
-        CASE Voice1VolSlider: Voice(1).volume = Control(Voice1VolSlider).Value: IF activeCompVoice = 1 THEN Control(SynthVolSlider).Value = Voice(1).volume: SetCaption SynthVolValLB, LTRIM$(STR$(Voice(1).volume))
-        CASE Voice1PanSlider: Voice(1).pan = Control(Voice1PanSlider).Value: IF activeCompVoice = 1 THEN Control(SynthPanSlider).Value = Voice(1).pan
-
-            ' Voice 2 Mixer controls
         CASE Voice2EnableCB: Voice(2).enabled = Control(Voice2EnableCB).Value
-        CASE Voice2WaveformDL: Voice(2).waveform = Control(Voice2WaveformDL).Value: IF activeCompVoice = 2 THEN Control(SynthWaveDL).Value = Voice(2).waveform
-        CASE Voice2VolSlider: Voice(2).volume = Control(Voice2VolSlider).Value: IF activeCompVoice = 2 THEN Control(SynthVolSlider).Value = Voice(2).volume: SetCaption SynthVolValLB, LTRIM$(STR$(Voice(2).volume))
-        CASE Voice2PanSlider: Voice(2).pan = Control(Voice2PanSlider).Value: IF activeCompVoice = 2 THEN Control(SynthPanSlider).Value = Voice(2).pan
-
-            ' Voice 3 Mixer controls
         CASE Voice3EnableCB: Voice(3).enabled = Control(Voice3EnableCB).Value
-        CASE Voice3WaveformDL: Voice(3).waveform = Control(Voice3WaveformDL).Value: IF activeCompVoice = 3 THEN Control(SynthWaveDL).Value = Voice(3).waveform
-        CASE Voice3VolSlider: Voice(3).volume = Control(Voice3VolSlider).Value: IF activeCompVoice = 3 THEN Control(SynthVolSlider).Value = Voice(3).volume: SetCaption SynthVolValLB, LTRIM$(STR$(Voice(3).volume))
-        CASE Voice3PanSlider: Voice(3).pan = Control(Voice3PanSlider).Value: IF activeCompVoice = 3 THEN Control(SynthPanSlider).Value = Voice(3).pan
-
-            ' Voice 4 Mixer controls
         CASE Voice4EnableCB: Voice(4).enabled = Control(Voice4EnableCB).Value
-        CASE Voice4WaveformDL: Voice(4).waveform = Control(Voice4WaveformDL).Value: IF activeCompVoice = 4 THEN Control(SynthWaveDL).Value = Voice(4).waveform
-        CASE Voice4VolSlider: Voice(4).volume = Control(Voice4VolSlider).Value: IF activeCompVoice = 4 THEN Control(SynthVolSlider).Value = Voice(4).volume: SetCaption SynthVolValLB, LTRIM$(STR$(Voice(4).volume))
-        CASE Voice4PanSlider: Voice(4).pan = Control(Voice4PanSlider).Value: IF activeCompVoice = 4 THEN Control(SynthPanSlider).Value = Voice(4).pan
 
-            ' Composer Tab 2 controls
+        ' Composer Tab 2 controls
         CASE CompVoiceDL
             activeCompVoice = Control(CompVoiceDL).Value
             SyncComposerFromActiveVoice
