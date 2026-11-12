@@ -74,7 +74,7 @@ END FUNCTION
 ''' @brief Set the value at the specified index.
 ''' @param array The array to set.
 ''' @param index The 1-based index to set.
-''' @param value The value to set.
+''' @param v The value to set.
 ''' @param dataType The data type constant for the value being stored.
 SUB __Array_Set (array() AS Array, index AS _UNSIGNED _OFFSET, v AS STRING, dataType AS _UNSIGNED _BYTE)
     IF index < 1 _ORELSE index > _CV(_UNSIGNED _OFFSET, array(0).V) THEN
@@ -99,7 +99,7 @@ END FUNCTION
 
 ''' @brief Add an item to the end of the array.
 ''' @param array The array to add to.
-''' @param value The value to add.
+''' @param v The value to add.
 ''' @param dataType The data type constant for the value being stored.
 SUB __Array_PushBack (array() AS Array, v AS STRING, dataType AS _UNSIGNED _BYTE)
     DIM count AS _UNSIGNED _OFFSET: count = 1 + _CV(_UNSIGNED _OFFSET, array(0).V)
@@ -131,7 +131,7 @@ END FUNCTION
 ''' @brief Set the value at the specified index.
 ''' @param array The array to set.
 ''' @param index The 1-based index to set.
-''' @param value The STRING value to set.
+''' @param v The STRING value to set.
 SUB Array_SetString (array() AS Array, index AS _UNSIGNED _OFFSET, v AS STRING)
     __Array_Set array(), index, v, QBDS_TYPE_STRING
 END SUB
@@ -146,7 +146,7 @@ END FUNCTION
 
 ''' @brief Add an item to the end of the array.
 ''' @param array The array to add to.
-''' @param value The STRING value to add.
+''' @param v The STRING value to add.
 SUB Array_PushBackString (array() AS Array, v AS STRING)
     __Array_PushBack array(), v, QBDS_TYPE_STRING
 END SUB
