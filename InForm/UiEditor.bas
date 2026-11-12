@@ -817,6 +817,7 @@ SUB __UI_Click (id AS LONG)
         CASE ViewMenuThemeDark
             SetPreviewTheme "dark"
         CASE ViewMenuThemeEdit
+            __UI_DoEvents ' allow the menu to close before opening the theme editor
             OpenThemeEditor
         CASE ViewMenuThemeFile
             DIM ThemeFile$
