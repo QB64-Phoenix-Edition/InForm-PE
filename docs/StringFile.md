@@ -279,6 +279,21 @@ FUNCTION StringFile_ReadDouble# (stringFile AS StringFile)
 
 ***
 
+Reads an `_OFFSET` from the current cursor position.
+
+**Parameters:**
+
+* `stringFile`: The `StringFile` object.
+
+**Returns:**
+The `_UNSIGNED _OFFSET` value.
+
+```vb
+FUNCTION StringFile_ReadOffset~%& (stringFile AS StringFile)
+```
+
+***
+
 ### Data Writing
 
 ***
@@ -370,4 +385,17 @@ Writes a `DOUBLE` (8 bytes) to the buffer at the current cursor position.
 
 ```vb
 SUB StringFile_WriteDouble (stringFile AS StringFile, src AS DOUBLE)
+```
+
+***
+
+Writes an `_OFFSET` to the buffer at the current cursor position.
+
+**Parameters:**
+
+* `stringFile`: The `StringFile` object.
+* `src`: The `_UNSIGNED _OFFSET` to write.
+
+```vb
+SUB StringFile_WriteOffset (stringFile AS StringFile, src AS _UNSIGNED _OFFSET)
 ```

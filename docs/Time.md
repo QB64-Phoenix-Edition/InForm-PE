@@ -59,3 +59,13 @@ This function must be called continuously (e.g., inside a loop) to provide a mea
 ```vb
 FUNCTION Time_MeasureHertz~&
 ```
+
+***
+
+### Constants
+
+The following constants are defined in `Time.bi`:
+
+| Constant | Type | Value | Description |
+| - | - | - | - |
+| `TIME_TICKS_PER_SECOND` | `_UNSIGNED _INTEGER64` | `1000` | Number of ticks per second (1 millisecond per tick). |

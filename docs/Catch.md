@@ -56,49 +56,49 @@ SUB TEST_CASE_END
 Checks if the condition is `_TRUE`. If `_FALSE`, records a failure but continues the test case.
 
 ```vb
-SUB TEST_CHECK (condition AS _INTEGER64, message AS STRING)
+SUB TEST_CHECK (cond AS _INTEGER64, expr AS STRING)
 ```
 
-Same as `TEST_CHECK` but without a custom message.
+Same as `TEST_CHECK` but without an expression message.
 
 ```vb
-SUB TEST_CHECK2 (condition AS _INTEGER64)
+SUB TEST_CHECK2 (cond AS _INTEGER64)
 ```
 
 Checks if the condition is `_FALSE`. If `_TRUE`, records a failure but continues the test case.
 
 ```vb
-SUB TEST_CHECK_FALSE (condition AS _INTEGER64, message AS STRING)
+SUB TEST_CHECK_FALSE (cond AS _INTEGER64, expr AS STRING)
 ```
 
-Same as `TEST_CHECK_FALSE` but without a custom message.
+Same as `TEST_CHECK_FALSE` but without an expression message.
 
 ```vb
-SUB TEST_CHECK_FALSE2 (condition AS _INTEGER64)
+SUB TEST_CHECK_FALSE2 (cond AS _INTEGER64)
 ```
 
 Requires the condition to be `_TRUE`. If `_FALSE`, records a failure and aborts the current test case.
 
 ```vb
-SUB TEST_REQUIRE (condition AS _INTEGER64, message AS STRING)
+SUB TEST_REQUIRE (cond AS _INTEGER64, expr AS STRING)
 ```
 
-Same as `TEST_REQUIRE` but without a custom message.
+Same as `TEST_REQUIRE` but without an expression message.
 
 ```vb
-SUB TEST_REQUIRE2 (condition AS _INTEGER64)
+SUB TEST_REQUIRE2 (cond AS _INTEGER64)
 ```
 
 Requires the condition to be `_FALSE`. If `_TRUE`, records a failure and aborts the current test case.
 
 ```vb
-SUB TEST_REQUIRE_FALSE (condition AS _INTEGER64, message AS STRING)
+SUB TEST_REQUIRE_FALSE (cond AS _INTEGER64, expr AS STRING)
 ```
 
-Same as `TEST_REQUIRE_FALSE` but without a custom message.
+Same as `TEST_REQUIRE_FALSE` but without an expression message.
 
 ```vb
-SUB TEST_REQUIRE_FALSE2 (condition AS _INTEGER64)
+SUB TEST_REQUIRE_FALSE2 (cond AS _INTEGER64)
 ```
 
 ### Control Functions
