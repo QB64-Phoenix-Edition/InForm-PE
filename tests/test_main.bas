@@ -18,6 +18,7 @@ $LET TEST_CONSOLE_ONLY = TRUE
 '$INCLUDE:'../InForm/extensions/String.bi'
 '$INCLUDE:'../InForm/extensions/StringFile.bi'
 '$INCLUDE:'../InForm/extensions/Timer.bi'
+'$INCLUDE:'../InForm/extensions/FontMgr.bi'
 
 '$INCLUDE:'../InForm/InForm.bi'
 
@@ -48,6 +49,7 @@ SUB __UI_BeforeInit
     Test_InFormUIUnicodeUtils
     Test_Theme
     Test_TabControl
+    Test_FontMgr
     Test_Timer
     Test_PropertyGrid
     Test_DataGrid
@@ -2579,6 +2581,42 @@ SUB Test_TabControl
     __UI_DestroyControl Control(c2)
     __UI_DestroyControl Control(c3)
     __UI_DestroyControl Control(t)
+
+    TEST_CASE_END
+END SUB
+
+SUB Test_FontMgr
+    TEST_CASE_BEGIN "FontMgr"
+
+    REDIM fl(0) AS STRING
+    DIM count AS _UNSIGNED LONG: count = FontMgr_BuildList(fl())
+    TEST_CHECK count >= 1, "FontMgr_BuildList returns at least 1 font"
+    TEST_CHECK LBOUND(fl) = 1, "FontMgr_BuildList returns array starting at index 1"
+    TEST_CHECK UBOUND(fl) = count, "FontMgr_BuildList array UBOUND matches count"
+    TEST_CHECK fl(1) = "", "Index 1 is empty string for built-in VGA font"
+
+    ' Built-in VGA font tests
+    TEST_CHECK FontMgr_GetName("", 0, FONTMGR_NAME_FULL) = "Built-in VGA font", "VGA font full name"
+    TEST_CHECK FontMgr_GetName("", 0, FONTMGR_NAME_FAMILY) = "Built-in VGA font", "VGA font family name"
+    TEST_CHECK FontMgr_GetName("", 1, FONTMGR_NAME_FULL) = "", "VGA font invalid index returns empty"
+    TEST_CHECK FontMgr_GetCount("") = 1, "VGA font count is 1"
+
+    DIM AS _UNSIGNED _BYTE minS, maxS
+    TEST_CHECK FontMgr_GetSizeRange("", 0, minS, maxS) = _TRUE, "VGA font size range succeeds"
+    TEST_CHECK minS = 8 AND maxS = 16, "VGA font size range is 8-16"
+
+    ' Invalid file handling
+    TEST_CHECK FontMgr_GetCount("non_existent_file.xyz") = 0, "Non-existent file count is 0"
+    TEST_CHECK FontMgr_GetName("non_existent_file.xyz", 0, FONTMGR_NAME_FULL) = "", "Non-existent file name is empty"
+    TEST_CHECK FontMgr_GetSizeRange("non_existent_file.xyz", 0, minS, maxS) = _FALSE, "Non-existent file size range returns false"
+
+    ' If system fonts were found, verify index 2 has a valid name and count
+    IF count > 1 THEN
+        TEST_CHECK LEN(fl(2)) > 0, "Second font path is non-empty"
+        TEST_CHECK FontMgr_GetCount(fl(2)) >= 1, "Second font count is at least 1"
+        TEST_CHECK LEN(FontMgr_GetName(fl(2), 0, FONTMGR_NAME_FULL)) > 0, "Second font has non-empty full name"
+        TEST_CHECK FontMgr_GetSizeRange(fl(2), 0, minS, maxS) = _TRUE, "Second font size range succeeds"
+    END IF
 
     TEST_CASE_END
 END SUB

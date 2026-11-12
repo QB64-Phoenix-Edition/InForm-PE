@@ -79,294 +79,305 @@ TYPE __FontMgr_TTNameRecordType
     uStringOffset AS _UNSIGNED INTEGER
 END TYPE
 
-'-----------------------------------------------------------------------------------------------------------------------
-' Test code for debugging the library
-'-----------------------------------------------------------------------------------------------------------------------
-'$DEBUG
-'$CONSOLE:ONLY
-'_DEFINE A-Z AS LONG
-'OPTION _EXPLICIT
-
-'REDIM fl(0) AS STRING
-
-'IF FontMgr_BuildList(fl()) > 0 THEN
-'    DIM i AS _UNSIGNED LONG
-'    FOR i = 1 TO UBOUND(fl)
-'        DIM count AS _UNSIGNED LONG: count = FontMgr_GetCount(fl(i))
-
-'        DIM j AS _UNSIGNED LONG
-'        FOR j = 0 TO count - 1
-'            DIM fontName AS STRING: fontName = FontMgr_GetName(fl(i), j, FONTMGR_NAME_FULL)
-
-'            PRINT i; "-"; j; ": "; fl(i); " ("; fontName; ")";
-
-'            DIM AS _UNSIGNED _BYTE L, U
-'            IF FontMgr_GetSizeRange(fl(i), j, L, U) THEN
-'                PRINT " [ Size range:"; L; "-"; U; "]"
-'            ELSE
-'                PRINT
-'            END IF
-'        NEXT j
-'    NEXT i
-'ELSE
-'    PRINT "Failed to build font list!"
-'END IF
-
-'END
-'-----------------------------------------------------------------------------------------------------------------------
-
-''' @brief Builds an array of fonts from that are available in the host OS (user installed + system installed).
-''' @param fontList This a dynamic string array. The function will re-dimension fontList starting from 1.
+''' @brief Builds an array of fonts that are available in the host OS (user installed + system installed).
+''' @param fontList This is a dynamic string array. The function will re-dimension fontList starting from 1.
 ''' @return The count of fonts found.
 FUNCTION FontMgr_BuildList~& (fontList() AS STRING)
     ' dirStack is a stack of directories that we'll need to traverse
-    REDIM dirStack(0 TO 0) AS STRING
+    REDIM dirStack(1 TO 8) AS STRING
+    DIM stackCount AS _UNSIGNED LONG
 
-    ' Add the user font directory to the stack
-    dirStack(0) = _DIR$("USERFONT")
-
-    ' Check if a user font directory even exists
-    IF dirStack(0) <> _DIR$("HOME") THEN
-        ' It does exists. So, make a spot for the system font directory
-        REDIM _PRESERVE dirStack(0 TO 1) AS STRING
+    ' Add the system font directory
+    DIM sysFontDir AS STRING: sysFontDir = _DIR$("FONT")
+    IF _DIREXISTS(sysFontDir) THEN
+        stackCount = stackCount + 1
+        IF stackCount > UBOUND(dirStack) THEN REDIM _PRESERVE dirStack(1 TO stackCount * 2) AS STRING
+        dirStack(stackCount) = Pathname_AddDirectorySeparator(sysFontDir)
     END IF
 
-    ' Add the system font directory to the stack
-    ' This may overwrite the user font directory in the stack based on the check above
-    dirStack(UBOUND(dirStack)) = _DIR$("FONT")
+    ' Add the user font directory if it exists and is distinct from HOME and system font directory
+    DIM userFontDir AS STRING: userFontDir = _DIR$("USERFONT")
+    IF _DIREXISTS(userFontDir) _ANDALSO userFontDir <> _DIR$("HOME") _ANDALSO userFontDir <> sysFontDir THEN
+        stackCount = stackCount + 1
+        IF stackCount > UBOUND(dirStack) THEN REDIM _PRESERVE dirStack(1 TO stackCount * 2) AS STRING
+        dirStack(stackCount) = Pathname_AddDirectorySeparator(userFontDir)
+    END IF
 
     ' This keeps the total count of fonts that we found and is returned to the caller
     DIM fontCount AS _UNSIGNED LONG
 
-    ' Add a placeholder for the internal VGA font
+    ' Add a placeholder for the internal VGA font at index 1
     fontCount = 1
-    REDIM FontFile(1 TO 1) AS STRING
-    FontFile(1) = _STR_EMPTY
+    REDIM fontList(1 TO 64) AS STRING
+    fontList(1) = _STR_EMPTY
 
-    ' Keep reading the directories unless we have exhausted everything in the stack
-    WHILE LEN(dirStack(UBOUND(dirStack))) > 0
-        ' Get the directory at the top of the stack
-        DIM directory AS STRING: directory = dirStack(UBOUND(dirStack))
+    ' Keep reading directories until the stack is exhausted
+    WHILE stackCount > 0
+        DIM directory AS STRING: directory = dirStack(stackCount)
+        stackCount = stackCount - 1
 
-        ' Pop the directory
-        IF UBOUND(dirStack) > 0 THEN
-            REDIM _PRESERVE dirStack(0 TO UBOUND(dirStack) - 1) AS STRING
-        ELSE
-            dirStack(0) = _STR_EMPTY ' clear the last directory
-        END IF
-
-        ' Start getting the entries from the directory
         DIM entry AS STRING: entry = _FILES$(directory)
 
-        DO
+        DO WHILE LEN(entry) > 0
             IF entry <> PATHNAME_DIR_CURRENT _ANDALSO entry <> PATHNAME_DIR_PARENT _ANDALSO RIGHT$(entry, 1) = PATHNAME_DIR_SEPARATOR THEN
-                ' If the entry is a legit directory, then push it to the stack
-                IF LEN(dirStack(0)) > 0 THEN
-                    REDIM _PRESERVE dirStack(0 TO UBOUND(dirStack) + 1) AS STRING
-                    dirStack(UBOUND(dirStack)) = directory + entry
-                ELSE
-                    dirStack(0) = directory + entry ' this then becomes the only directory in the stack
-                END IF
+                ' If the entry is a directory, push it onto the stack
+                stackCount = stackCount + 1
+                IF stackCount > UBOUND(dirStack) THEN REDIM _PRESERVE dirStack(1 TO stackCount * 2) AS STRING
+                dirStack(stackCount) = directory + entry
             ELSE
                 SELECT CASE LCASE$(Pathname_GetFileExtension(entry))
                     ' Add the entry to the fontList() array if it is a legit font file name
                     ' TODO: .fon support is not implemented. See comments in other functions
-                    CASE ".ttf", ".ttc", ".otf", ".fnt", ".pcf", ".bdf" ' , ".fon"
-                        ' Grow the fontList array and add the complete font pathname to it
+                    CASE ".ttf", ".ttc", ".otf", ".otc", ".fnt", ".pcf", ".bdf" ' , ".fon"
                         fontCount = fontCount + 1
-                        REDIM _PRESERVE fontList(1 TO fontCount) AS STRING
+                        IF fontCount > UBOUND(fontList) THEN
+                            REDIM _PRESERVE fontList(1 TO UBOUND(fontList) * 2) AS STRING
+                        END IF
                         fontList(fontCount) = directory + entry
                 END SELECT
             END IF
 
             entry = _FILES$
-        LOOP WHILE LEN(entry) > 0
+        LOOP
     WEND
 
-    ' Sort the array (else it looks really ugly)
+    ' Shrink fontList to exact size found
+    REDIM _PRESERVE fontList(1 TO fontCount) AS STRING
+
+    ' Sort the array (index 1 empty VGA font remains at index 1)
     IF fontCount > 1 THEN Sort_StringArray fontList()
 
     FontMgr_BuildList = fontCount
 END FUNCTION
 
-''' @brief Returns the font name by directly probing a true-type font file.
+''' @brief Returns the font name by directly probing a TrueType / OpenType font file.
 ''' Adapted from https://www.codeproject.com/articles/2293/retrieving-font-name-from-ttf-file.
-''' QB64-PE port and TTC support by a740g.
-''' Note that this has just enough code to fetch the font name and is by no means a complete TTF / TTC parser.
-''' @param filePath This the font file path name.
-''' @param fontIndex This is the font index inside a TTC and it is always zero based. Must be 0 for TTF & OTF.
+''' QB64-PE port, TTC/OTC support, and OpenType OTTO support by a740g.
+''' Note that this has just enough code to fetch font names and is by no means a complete TTF / OTF parser.
+''' @param filePath The font file path name.
+''' @param fontIndex The font index inside a TTC/OTC collection (zero-based). Must be 0 for TTF & OTF.
 ''' @param nameId The component needed from the font's name table.
-''' @return The name of the font. Invalid filePath or fontIndex will return an empty string.
+''' @return The name of the font. An invalid filePath or fontIndex will return an empty string.
 FUNCTION FontMgr_GetName$ (filePath AS STRING, fontIndex AS _UNSIGNED LONG, nameId AS _UNSIGNED _BYTE)
     IF LEN(filePath) = 0 _ANDALSO fontIndex = 0 THEN
         ' VGA font special-case
         FontMgr_GetName = "Built-in VGA font"
-    ELSEIF _FILEEXISTS(filePath) THEN
-        ' Only proceed if the font file exists
+        EXIT FUNCTION
+    END IF
 
-        ' Check for non-ttf fonts and simply return the file name without the extension
-        ' TODO: This is a ugly and needs a proper implementation (possibly a QB64-PE internal one ;)
-        SELECT CASE LCASE$(Pathname_GetFileExtension(filePath))
-            ' TODO: .fon support is not implemented. See comments in other functions
-            CASE ".fnt", ".pcf", ".bdf" ', ".fon"
-                IF fontIndex = 0 THEN
-                    SELECT CASE nameId
-                        CASE FONTMGR_NAME_FAMILY, FONTMGR_NAME_FULL, FONTMGR_NAME_PREFERRED_FAMILY, FONTMGR_NAME_COMPATIBLE_FULL
-                            FontMgr_GetName = Pathname_RemoveFileExtension(Pathname_GetFileName(filePath))
-                    END SELECT
-                END IF
-                EXIT FUNCTION
-        END SELECT
+    IF NOT _FILEEXISTS(filePath) THEN EXIT FUNCTION
 
-        DIM f AS LONG: f = FREEFILE
-        OPEN filePath FOR BINARY ACCESS READ AS f
-
-        ' Attempt to read the TTC header
-        DIM ttcHeader AS __FontMgr_TTCHeaderType
-        GET f, , ttcHeader
-
-        IF ttcHeader.szTag = "ttcf" THEN ' TTC format
-            ttcHeader.uNumFonts = Memory_SwapByte32(ttcHeader.uNumFonts)
-
-            IF fontIndex >= ttcHeader.uNumFonts THEN
-                CLOSE f
-                EXIT FUNCTION ' out of range
+    ' Check for non-ttf/otf fonts and return file name without extension
+    SELECT CASE LCASE$(Pathname_GetFileExtension(filePath))
+        ' TODO: .fon support is not implemented. See comments in other functions
+        CASE ".fnt", ".pcf", ".bdf" ', ".fon"
+            IF fontIndex = 0 THEN
+                SELECT CASE nameId
+                    CASE FONTMGR_NAME_FAMILY, FONTMGR_NAME_FULL, FONTMGR_NAME_PREFERRED_FAMILY, FONTMGR_NAME_COMPATIBLE_FULL
+                        FontMgr_GetName = Pathname_RemoveFileExtension(Pathname_GetFileName(filePath))
+                END SELECT
             END IF
+            EXIT FUNCTION
+    END SELECT
 
-            DIM fontBaseOffset AS _UNSIGNED LONG
-            GET f, 1 + LEN(ttcHeader) + (fontIndex * _SIZE_OF_LONG), fontBaseOffset
-            fontBaseOffset = Memory_SwapByte32(fontBaseOffset)
-        ELSEIF fontIndex > 0 THEN
+    DIM f AS LONG: f = FREEFILE
+    OPEN filePath FOR BINARY ACCESS READ AS f
+
+    IF LOF(f) < 12 THEN
+        CLOSE f
+        EXIT FUNCTION
+    END IF
+
+    ' Attempt to read TTC/OTC header
+    DIM ttcHeader AS __FontMgr_TTCHeaderType
+    GET f, 1, ttcHeader
+
+    DIM fontBaseOffset AS _UNSIGNED LONG
+    IF ttcHeader.szTag = "ttcf" THEN ' TTC / OTC format
+        ttcHeader.uNumFonts = Memory_SwapByte32(ttcHeader.uNumFonts)
+
+        IF fontIndex >= ttcHeader.uNumFonts THEN
             CLOSE f
-            EXIT FUNCTION ' not TTC format
+            EXIT FUNCTION ' out of range
         END IF
 
-        ' If this is not a TTC, then fontBaseOffset will be set to zero. So, no harm done
-        SEEK f, 1 + fontBaseOffset
-
-        ' Read the first main table header
-        DIM ttOffsetTable AS __FontMgr_TTOffsetTableType
-        GET f, , ttOffsetTable
-        ttOffsetTable.uMajorVersion = Memory_SwapByte16(ttOffsetTable.uMajorVersion)
-        ttOffsetTable.uMinorVersion = Memory_SwapByte16(ttOffsetTable.uMinorVersion)
-
-        ' Check is this is a true type font and the version is 1.0
-        IF ttOffsetTable.uMajorVersion <> 1 _ORELSE ttOffsetTable.uMinorVersion <> 0 THEN EXIT FUNCTION
-
-        ttOffsetTable.uNumOfTables = Memory_SwapByte16(ttOffsetTable.uNumOfTables)
-
-        DIM i AS _UNSIGNED LONG
-        WHILE i < ttOffsetTable.uNumOfTables
-            DIM tblDir AS __FontMgr_TTTableDirectoryType
-            GET f, , tblDir
-
-            IF tblDir.szTag = "name" THEN
-                ' We have found the name table header, now we get the length and offset of name record
-                tblDir.uLength = Memory_SwapByte32(tblDir.uLength)
-                tblDir.uOffset = Memory_SwapByte32(tblDir.uOffset)
-
-                DIM ttNTHeader AS __FontMgr_TTNameTableHeaderType
-                GET f, 1 + tblDir.uOffset, ttNTHeader
-                ttNTHeader.uNRCount = Memory_SwapByte16(ttNTHeader.uNRCount)
-                ttNTHeader.uStorageOffset = Memory_SwapByte16(ttNTHeader.uStorageOffset)
-
-                DIM j AS _UNSIGNED LONG: j = 0
-                DO WHILE j < ttNTHeader.uNRCount
-                    DIM ttRecord AS __FontMgr_TTNameRecordType
-                    GET f, , ttRecord
-                    ttRecord.uNameID = Memory_SwapByte16(ttRecord.uNameID)
-                    ttRecord.uLanguageID = Memory_SwapByte16(ttRecord.uLanguageID)
-                    ttRecord.uPlatformID = Memory_SwapByte16(ttRecord.uPlatformID)
-
-                    ' 1 specifies font name, this could be modified to get other info
-                    ' mac and unicode platform id should be 0 for english
-                    IF ttRecord.uNameID = nameId THEN
-                        IF (ttRecord.uPlatformID = __FONTMGR_PLATFORM_ID_UNI _ANDALSO ttRecord.uLanguageID = __FONTMGR_LANGUAGE_ID_UNI) _ORELSE (ttRecord.uPlatformID = __FONTMGR_PLATFORM_ID_MAC _ANDALSO ttRecord.uLanguageID = __FONTMGR_LANGUAGE_ID_MAC) _ORELSE (ttRecord.uPlatformID = __FONTMGR_PLATFORM_ID_WIN _ANDALSO ttRecord.uLanguageID = __FONTMGR_LANGUAGE_ID_WIN) THEN
-                            ttRecord.uStringLength = Memory_SwapByte16(ttRecord.uStringLength)
-                            ttRecord.uStringOffset = Memory_SwapByte16(ttRecord.uStringOffset)
-
-                            DIM nPos AS _UNSIGNED LONG: nPos = LOC(f) ' save current file position
-
-                            IF ttRecord.uStringLength > 0 THEN
-                                DIM nameBuffer AS STRING: nameBuffer = SPACE$(ttRecord.uStringLength)
-                                GET f, 1 + tblDir.uOffset + ttRecord.uStringOffset + ttNTHeader.uStorageOffset, nameBuffer
-
-                                EXIT WHILE ' break from the outer while loop
-                            END IF
-
-                            SEEK f, nPos ' search more
-                        END IF
-                    END IF
-
-                    j = j + 1
-                LOOP
-            END IF
-
-            i = i + 1
-        WEND
-
+        GET f, 1 + LEN(ttcHeader) + (fontIndex * _SIZE_OF_LONG), fontBaseOffset
+        fontBaseOffset = Memory_SwapByte32(fontBaseOffset)
+    ELSEIF fontIndex > 0 THEN
         CLOSE f
-
-        ' Get rid of null characters if the name is in unicode format
-        DIM sanitizedName AS STRING
-        FOR i = 1 TO LEN(nameBuffer)
-            DIM char AS _UNSIGNED _BYTE: char = ASC(nameBuffer, i)
-            IF char > 0 THEN sanitizedName = sanitizedName + CHR$(char)
-        NEXT
-
-        FontMgr_GetName = _TRIM$(sanitizedName)
+        EXIT FUNCTION ' not a collection, non-zero fontIndex is invalid
     END IF
+
+    SEEK f, 1 + fontBaseOffset
+
+    ' Read the table directory header
+    DIM ttOffsetTable AS __FontMgr_TTOffsetTableType
+    GET f, , ttOffsetTable
+    ttOffsetTable.uMajorVersion = Memory_SwapByte16(ttOffsetTable.uMajorVersion)
+    ttOffsetTable.uMinorVersion = Memory_SwapByte16(ttOffsetTable.uMinorVersion)
+
+    ' Check if this is a supported TrueType / OpenType font:
+    ' 0x00010000 = TrueType 1.0
+    ' 0x4F54544F = OpenType with CFF outlines ("OTTO")
+    ' 0x74727565 = Apple TrueType ("true")
+    ' 0x74797031 = Type 1 in sfnt wrapper ("typ1")
+    DIM isSupportedFont AS _BYTE
+    IF ttOffsetTable.uMajorVersion = 1 _ANDALSO ttOffsetTable.uMinorVersion = 0 THEN
+        isSupportedFont = _TRUE
+    ELSEIF ttOffsetTable.uMajorVersion = &H4F54 _ANDALSO ttOffsetTable.uMinorVersion = &H544F THEN
+        isSupportedFont = _TRUE
+    ELSEIF ttOffsetTable.uMajorVersion = &H7472 _ANDALSO ttOffsetTable.uMinorVersion = &H7565 THEN
+        isSupportedFont = _TRUE
+    ELSEIF ttOffsetTable.uMajorVersion = &H7479 _ANDALSO ttOffsetTable.uMinorVersion = &H7031 THEN
+        isSupportedFont = _TRUE
+    END IF
+
+    IF NOT isSupportedFont THEN
+        CLOSE f
+        EXIT FUNCTION
+    END IF
+
+    ttOffsetTable.uNumOfTables = Memory_SwapByte16(ttOffsetTable.uNumOfTables)
+
+    ' Locate the "name" table in the table directory
+    DIM tblDir AS __FontMgr_TTTableDirectoryType
+    DIM hasNameTable AS _BYTE
+    DIM i AS _UNSIGNED LONG
+    FOR i = 1 TO ttOffsetTable.uNumOfTables
+        GET f, , tblDir
+        IF tblDir.szTag = "name" THEN
+            tblDir.uLength = Memory_SwapByte32(tblDir.uLength)
+            tblDir.uOffset = Memory_SwapByte32(tblDir.uOffset)
+            hasNameTable = _TRUE
+            EXIT FOR
+        END IF
+    NEXT i
+
+    IF NOT hasNameTable THEN
+        CLOSE f
+        EXIT FUNCTION
+    END IF
+
+    ' Read the name table header
+    DIM ttNTHeader AS __FontMgr_TTNameTableHeaderType
+    GET f, 1 + tblDir.uOffset, ttNTHeader
+    ttNTHeader.uNRCount = Memory_SwapByte16(ttNTHeader.uNRCount)
+    ttNTHeader.uStorageOffset = Memory_SwapByte16(ttNTHeader.uStorageOffset)
+
+    DIM nameBuffer AS STRING
+    DIM fallbackOffset AS _UNSIGNED LONG
+    DIM fallbackLength AS _UNSIGNED INTEGER
+
+    DIM j AS _UNSIGNED LONG
+    FOR j = 1 TO ttNTHeader.uNRCount
+        DIM ttRecord AS __FontMgr_TTNameRecordType
+        GET f, , ttRecord
+        ttRecord.uNameID = Memory_SwapByte16(ttRecord.uNameID)
+        ttRecord.uLanguageID = Memory_SwapByte16(ttRecord.uLanguageID)
+        ttRecord.uPlatformID = Memory_SwapByte16(ttRecord.uPlatformID)
+
+        IF ttRecord.uNameID = nameId THEN
+            ttRecord.uStringLength = Memory_SwapByte16(ttRecord.uStringLength)
+            ttRecord.uStringOffset = Memory_SwapByte16(ttRecord.uStringOffset)
+
+            IF ttRecord.uStringLength > 0 THEN
+                ' Check for exact preferred language match (Unicode/Mac English/Windows US English)
+                IF (ttRecord.uPlatformID = __FONTMGR_PLATFORM_ID_UNI _ANDALSO ttRecord.uLanguageID = __FONTMGR_LANGUAGE_ID_UNI) _
+                    _ORELSE (ttRecord.uPlatformID = __FONTMGR_PLATFORM_ID_MAC _ANDALSO ttRecord.uLanguageID = __FONTMGR_LANGUAGE_ID_MAC) _
+                    _ORELSE (ttRecord.uPlatformID = __FONTMGR_PLATFORM_ID_WIN _ANDALSO ttRecord.uLanguageID = __FONTMGR_LANGUAGE_ID_WIN) THEN
+                    nameBuffer = SPACE$(ttRecord.uStringLength)
+                    GET f, 1 + tblDir.uOffset + ttRecord.uStringOffset + ttNTHeader.uStorageOffset, nameBuffer
+                    EXIT FOR
+                ELSEIF fallbackLength = 0 THEN
+                    ' Keep the first candidate matching nameId as fallback if no preferred language match is found
+                    fallbackOffset = ttRecord.uStringOffset
+                    fallbackLength = ttRecord.uStringLength
+                END IF
+            END IF
+        END IF
+    NEXT j
+
+    ' If no preferred language record was matched, use fallback candidate
+    IF LEN(nameBuffer) = 0 _ANDALSO fallbackLength > 0 THEN
+        nameBuffer = SPACE$(fallbackLength)
+        GET f, 1 + tblDir.uOffset + fallbackOffset + ttNTHeader.uStorageOffset, nameBuffer
+    END IF
+
+    CLOSE f
+
+    ' Get rid of null characters if the name is in UTF-16BE / unicode format
+    DIM sanitizedName AS STRING
+    FOR i = 1 TO LEN(nameBuffer)
+        DIM char AS _UNSIGNED _BYTE: char = ASC(nameBuffer, i)
+        IF char > 0 THEN sanitizedName = sanitizedName + CHR$(char)
+    NEXT
+
+    FontMgr_GetName = _TRIM$(sanitizedName)
 END FUNCTION
 
-''' @brief Returns the number of fonts in a collection (TTC).
-''' @param filePath This the font file path name.
+''' @brief Returns the number of fonts in a font file or collection (TTC/OTC).
+''' @param filePath The font file path name.
 ''' @return 1 or more for valid font files. 0 for invalid font files.
 FUNCTION FontMgr_GetCount~& (filePath AS STRING)
     IF LEN(filePath) = 0 THEN
         ' VGA font special-case
         FontMgr_GetCount = 1
-    ELSEIF _FILEEXISTS(filePath) THEN
-        ' Check for non-ttf fonts and simply return 1
-        ' TODO: This is a ugly and needs a proper implementation (possibly a QB64-PE internal one ;)
-        DIM extension AS STRING: extension = LCASE$(Pathname_GetFileExtension(filePath))
-        SELECT CASE extension
-            ' TODO: .fon files are muti-font resource files and should be handled correctly
-            ' NOTE: Some .otf font have a ttc header but contains bogus
-            CASE ".fnt", ".pcf", ".bdf", ".otf" ', ".fon"
-                FontMgr_GetCount = 1
-                EXIT FUNCTION
-        END SELECT
-
-        DIM f AS LONG: f = FREEFILE
-        OPEN filePath FOR BINARY ACCESS READ AS f
-
-        DIM ttcHeader AS __FontMgr_TTCHeaderType
-        GET f, , ttcHeader
-
-        IF ttcHeader.szTag = "ttcf" THEN ' TTC format
-            FontMgr_GetCount = Memory_SwapByte32(ttcHeader.uNumFonts)
-            CLOSE f
-            EXIT FUNCTION
-        END IF
-
-        SEEK f, 1
-
-        DIM ttOffsetTable AS __FontMgr_TTOffsetTableType
-        GET f, , ttOffsetTable
-        ttOffsetTable.uMajorVersion = Memory_SwapByte16(ttOffsetTable.uMajorVersion)
-        ttOffsetTable.uMinorVersion = Memory_SwapByte16(ttOffsetTable.uMinorVersion)
-
-        IF ttOffsetTable.uMajorVersion = 1 _ANDALSO ttOffsetTable.uMinorVersion = 0 _ANDALSO extension = ".ttf" THEN ' also do a file extension check (.otf checked above)
-            FontMgr_GetCount = 1 ' regular TTF
-        END IF
-
-        CLOSE f
+        EXIT FUNCTION
     END IF
+
+    IF NOT _FILEEXISTS(filePath) THEN EXIT FUNCTION
+
+    ' Bitmap fonts contain a single font face
+    DIM extension AS STRING: extension = LCASE$(Pathname_GetFileExtension(filePath))
+    SELECT CASE extension
+        ' TODO: .fon files are multi-font resource files and should be handled correctly
+        CASE ".fnt", ".pcf", ".bdf" ', ".fon"
+            FontMgr_GetCount = 1
+            EXIT FUNCTION
+    END SELECT
+
+    DIM f AS LONG: f = FREEFILE
+    OPEN filePath FOR BINARY ACCESS READ AS f
+
+    IF LOF(f) < 12 THEN
+        CLOSE f
+        EXIT FUNCTION
+    END IF
+
+    DIM ttcHeader AS __FontMgr_TTCHeaderType
+    GET f, 1, ttcHeader
+
+    IF ttcHeader.szTag = "ttcf" THEN ' TTC / OTC format
+        FontMgr_GetCount = Memory_SwapByte32(ttcHeader.uNumFonts)
+        CLOSE f
+        EXIT FUNCTION
+    END IF
+
+    SEEK f, 1
+
+    DIM ttOffsetTable AS __FontMgr_TTOffsetTableType
+    GET f, , ttOffsetTable
+    ttOffsetTable.uMajorVersion = Memory_SwapByte16(ttOffsetTable.uMajorVersion)
+    ttOffsetTable.uMinorVersion = Memory_SwapByte16(ttOffsetTable.uMinorVersion)
+
+    ' Verify valid TrueType / OpenType header:
+    ' 0x00010000 = TrueType 1.0
+    ' 0x4F54544F = OpenType with CFF outlines ("OTTO")
+    ' 0x74727565 = Apple TrueType ("true")
+    ' 0x74797031 = Type 1 in sfnt wrapper ("typ1")
+    IF (ttOffsetTable.uMajorVersion = 1 _ANDALSO ttOffsetTable.uMinorVersion = 0) _
+        _ORELSE (ttOffsetTable.uMajorVersion = &H4F54 _ANDALSO ttOffsetTable.uMinorVersion = &H544F) _
+        _ORELSE (ttOffsetTable.uMajorVersion = &H7472 _ANDALSO ttOffsetTable.uMinorVersion = &H7565) _
+        _ORELSE (ttOffsetTable.uMajorVersion = &H7479 _ANDALSO ttOffsetTable.uMinorVersion = &H7031) THEN
+        FontMgr_GetCount = 1
+    END IF
+
+    CLOSE f
 END FUNCTION
 
 ''' @brief Probes and returns the supported font size range (useful for bitmap fonts).
-''' @param filePath This the font file path name.
-''' @param fontIndex This is the font index inside a TTC and it is always zero based. Must be 0 for TTF & OTF.
+''' @param filePath The font file path name.
+''' @param fontIndex The font index inside a TTC/OTC collection (zero-based). Must be 0 for TTF & OTF.
 ''' @param outMinSize [OUT] The minimum size supported by the font.
 ''' @param outMaxSize [OUT] The maximum size supported by the font.
 ''' @return True if a valid size range was probed.
@@ -379,10 +390,9 @@ FUNCTION FontMgr_GetSizeRange%% (filePath AS STRING, fontIndex AS _UNSIGNED LONG
 
         FontMgr_GetSizeRange = _TRUE
     ELSEIF _FILEEXISTS(filePath) THEN
-        ' There is no point doing this for scalable fonts
-        ' Just set the min and max and exit
+        ' Scalable fonts support arbitrary sizes; return the full probe range directly
         SELECT CASE LCASE$(Pathname_GetFileExtension(filePath))
-            CASE ".ttf", ".ttc", ".otf"
+            CASE ".ttf", ".ttc", ".otf", ".otc"
                 outMinSize = __FONTMGR_PROBE_SIZE_MIN
                 outMaxSize = __FONTMGR_PROBE_SIZE_MAX
 

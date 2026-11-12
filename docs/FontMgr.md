@@ -44,10 +44,10 @@ Builds a list of available fonts from standard user and system font directories.
 
 **Parameters:**
 
-* `fontList()`: A dynamic `STRING` array that will be re-dimensioned and populated with the full file paths of all found fonts. The array is re-dimensioned from `0 TO totalCount`, and index 0 is intentionally an empty `STRING`.
+* `fontList()`: A dynamic `STRING` array that will be re-dimensioned and populated with the full file paths of all found fonts. The array is re-dimensioned from `1 TO totalCount`, and index 1 is intentionally an empty `STRING` representing the built-in VGA font.
 
 **Returns:**
-The total count of font files found.
+The total count of fonts found (at least 1, accounting for the built-in VGA font).
 
 ```vb
 FUNCTION FontMgr_BuildList~& (fontList() AS STRING)
@@ -55,7 +55,7 @@ FUNCTION FontMgr_BuildList~& (fontList() AS STRING)
 
 ***
 
-Returns the number of fonts contained within a single font file. For `.ttf`, `.otf`, and bitmap fonts, this will be `1`. For TrueType Collections (`.ttc`), this can be greater than `1`.
+Returns the number of fonts contained within a single font file or collection. For `.ttf`, `.otf`, and bitmap fonts, this will be `1`. For font collections (`.ttc`, `.otc`), this can be greater than `1`.
 
 **Parameters:**
 
