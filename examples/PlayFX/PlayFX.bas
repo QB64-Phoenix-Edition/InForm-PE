@@ -22,26 +22,11 @@ TYPE VoiceConfig
     articulation AS LONG
 END TYPE
 
-TYPE WaveformType
-    active AS LONG
-    waveform AS LONG
-    note AS LONG
-    length AS LONG
-    lengthType AS LONG
-    tempo AS LONG
-    volume AS LONG
-    volRamp AS LONG
-END TYPE
-
 DIM SHARED Voice(1 TO 4) AS VoiceConfig
 DIM SHARED isPaused AS _BYTE
 DIM SHARED lastPlayingState AS _BYTE
 DIM SHARED activeCompVoice AS LONG: activeCompVoice = 1
 DIM SHARED updatingText AS _BYTE
-
-DIM SHARED FXWaveform(1 TO 5) AS WaveformType
-DIM SHARED currentFXWaveform AS LONG: currentFXWaveform = 1
-DIM SHARED currentFXControl AS LONG
 
 ': Controls' IDs: ------------------------------------------------------------------
 DIM SHARED PlayFXDesigner AS LONG
@@ -144,17 +129,6 @@ DIM SHARED ActiveVoiceHeaderLB AS LONG
 DIM SHARED ActiveVoiceMMLTB AS LONG
 DIM SHARED PlayActiveVoiceBT AS LONG
 DIM SHARED ActiveVoiceStatusLB AS LONG
-
-DIM SHARED FXSlotsHeaderLB AS LONG
-DIM SHARED Waveform1TB AS LONG, Waveform2TB AS LONG, Waveform3TB AS LONG, Waveform4TB AS LONG, Waveform5TB AS LONG
-DIM SHARED FXConfigHeaderLB AS LONG
-DIM SHARED WaveformLB AS LONG, WaveformSlider AS LONG, WaveformNameLB AS LONG
-DIM SHARED NoteLB AS LONG, NoteSlider AS LONG
-DIM SHARED LengthLB AS LONG, LengthSlider AS LONG, LengthEffectsDL AS LONG
-DIM SHARED TempoLB AS LONG, TempoSlider AS LONG
-DIM SHARED VolumeLB AS LONG, VolumeSlider AS LONG
-DIM SHARED VolRampLB AS LONG, VolRampSlider AS LONG
-DIM SHARED PlayFXTB AS LONG, PlayFXPlayBT AS LONG
 
 DIM SHARED RefHeaderLB AS LONG
 DIM SHARED RefNotesTitleLB AS LONG, RefNotesLB AS LONG
@@ -620,19 +594,6 @@ SUB LoadPreset (idx AS LONG)
             Text(Voice3MMLTB) = "T180 @1 L16 O3 C G C G C G C G"
             Text(Voice4MMLTB) = "T160 @7 Q15 L16 O0 N10 N8 N6 N4 N3 N2 N1"
 
-        CASE 10 ' Original PlayFX Chords (5 Slots)
-            Control(MasterTempoSlider).Value = 120
-            SetCaption MasterTempoValLB, "120"
-            Voice(1).waveform = 3: Voice(1).volume = 45: Voice(1).pan = 50: Voice(1).octave = 2
-            Voice(2).waveform = 3: Voice(2).volume = 38: Voice(2).pan = 35: Voice(2).octave = 2
-            Voice(3).waveform = 3: Voice(3).volume = 38: Voice(3).pan = 65: Voice(3).octave = 2
-            Voice(4).waveform = 5: Voice(4).volume = 25: Voice(4).pan = 50: Voice(4).octave = 1
-
-            Text(Voice1MMLTB) = "T120 L4 MN V45 Q10 @3 N30"
-            Text(Voice2MMLTB) = "T120 L4 MN V38 Q10 @3 N34"
-            Text(Voice3MMLTB) = "T120 L4 MN V38 Q10 @3 N37"
-            Text(Voice4MMLTB) = "T120 L4 MN V25 Q10 @5 N15"
-
         CASE ELSE ' Custom / Empty
             DIM i AS LONG
             FOR i = 1 TO 4
@@ -649,56 +610,6 @@ SUB LoadPreset (idx AS LONG)
     SetCaption StatusLB, "Loaded preset: " + GetItem$(PresetsDL, idx)
 END SUB
 
-': FX Synthesizer (Tab 3) Procedures: ----------------------------------------------
-SUB SetFXConfigControls (id AS LONG, curCtrl AS LONG)
-    Control(WaveformSlider).Value = FXWaveform(id).waveform
-    Control(NoteSlider).Value = FXWaveform(id).note
-    Control(LengthSlider).Value = FXWaveform(id).length
-    Control(LengthEffectsDL).Value = FXWaveform(id).lengthType
-    Control(TempoSlider).Value = FXWaveform(id).tempo
-    Control(VolumeSlider).Value = FXWaveform(id).volume
-    Control(VolRampSlider).Value = FXWaveform(id).volRamp
-
-    currentFXWaveform = id
-    currentFXControl = curCtrl
-END SUB
-
-SUB ClearFXWaveform (id AS LONG)
-    FXWaveform(id).active = _FALSE
-    FXWaveform(id).waveform = 3
-    FXWaveform(id).note = 42
-    FXWaveform(id).length = 4
-    FXWaveform(id).lengthType = 1
-    FXWaveform(id).tempo = 120
-    FXWaveform(id).volume = 100
-    FXWaveform(id).volRamp = 10
-END SUB
-
-SUB MakePlayFXSlotString
-    DIM s AS STRING
-    IF FXWaveform(currentFXWaveform).active THEN
-        s = "T" + LTRIM$(STR$(FXWaveform(currentFXWaveform).tempo)) + "L" + LTRIM$(STR$(FXWaveform(currentFXWaveform).length))
-        SELECT CASE FXWaveform(currentFXWaveform).lengthType
-            CASE 1: s = s + "MN"
-            CASE 2: s = s + "ML"
-            CASE 3: s = s + "MS"
-        END SELECT
-        s = s + "V" + LTRIM$(STR$(FXWaveform(currentFXWaveform).volume)) + "Q" + LTRIM$(STR$(FXWaveform(currentFXWaveform).volRamp))
-        s = s + "@" + LTRIM$(STR$(FXWaveform(currentFXWaveform).waveform)) + "N" + LTRIM$(STR$(FXWaveform(currentFXWaveform).note))
-    END IF
-    IF currentFXControl > 0 THEN Text(currentFXControl) = s
-END SUB
-
-SUB MakeCombinedPlayFXString
-    DIM s AS STRING: s = "MB"
-    IF LEN(Text(Waveform1TB)) > 0 THEN s = s + Text(Waveform1TB)
-    IF LEN(Text(Waveform2TB)) > 0 THEN s = s + "," + Text(Waveform2TB)
-    IF LEN(Text(Waveform3TB)) > 0 THEN s = s + "," + Text(Waveform3TB)
-    IF LEN(Text(Waveform4TB)) > 0 THEN s = s + "," + Text(Waveform4TB)
-    IF LEN(Text(Waveform5TB)) > 0 THEN s = s + "," + Text(Waveform5TB)
-    Text(PlayFXTB) = s
-END SUB
-
 ': Event procedures: ---------------------------------------------------------------
 
 SUB __UI_BeforeInit
@@ -707,13 +618,6 @@ END SUB
 
 SUB __UI_OnLoad
     InitDefaultVoiceSettings
-
-    DIM i AS LONG
-    FOR i = 1 TO 5
-        ClearFXWaveform i
-    NEXT i
-
-    SetFXConfigControls 1, Waveform1TB
     LoadPreset 1
     SyncComposerFromActiveVoice
 END SUB
@@ -1000,50 +904,6 @@ SUB __UI_Click (id AS LONG)
 
         CASE ActiveVoiceStatusLB
 
-        CASE FXSlotsHeaderLB
-
-        CASE Waveform1TB
-
-        CASE Waveform2TB
-
-        CASE Waveform3TB
-
-        CASE Waveform4TB
-
-        CASE Waveform5TB
-
-        CASE FXConfigHeaderLB
-
-        CASE WaveformLB
-
-        CASE WaveformSlider
-
-        CASE WaveformNameLB
-
-        CASE NoteLB
-
-        CASE NoteSlider
-
-        CASE LengthLB
-
-        CASE LengthSlider
-
-        CASE LengthEffectsDL
-
-        CASE TempoLB
-
-        CASE TempoSlider
-
-        CASE VolumeLB
-
-        CASE VolumeSlider
-
-        CASE VolRampLB
-
-        CASE VolRampSlider
-
-        CASE PlayFXTB
-
         CASE RefHeaderLB
 
         CASE RefNotesTitleLB
@@ -1168,10 +1028,6 @@ SUB __UI_Click (id AS LONG)
             ELSE
                 SetCaption ActiveVoiceStatusLB, "Voice " + LTRIM$(STR$(activeCompVoice)) + " is empty or muted."
             END IF
-
-            ' Tab 3: Sound FX Designer
-        CASE PlayFXPlayBT
-            PLAY Text(PlayFXTB)
     END SELECT
 END SUB
 
@@ -1350,40 +1206,6 @@ SUB __UI_FocusIn (id AS LONG)
         CASE ActiveVoiceMMLTB
 
         CASE PlayActiveVoiceBT
-
-        CASE Waveform1TB
-
-        CASE Waveform2TB
-
-        CASE Waveform3TB
-
-        CASE Waveform4TB
-
-        CASE Waveform5TB
-
-        CASE WaveformSlider
-
-        CASE NoteSlider
-
-        CASE LengthSlider
-
-        CASE LengthEffectsDL
-
-        CASE TempoSlider
-
-        CASE VolumeSlider
-
-        CASE VolRampSlider
-
-        CASE PlayFXTB
-
-        CASE PlayFXPlayBT
-
-        CASE Waveform1TB: SetFXConfigControls 1, Waveform1TB
-        CASE Waveform2TB: SetFXConfigControls 2, Waveform2TB
-        CASE Waveform3TB: SetFXConfigControls 3, Waveform3TB
-        CASE Waveform4TB: SetFXConfigControls 4, Waveform4TB
-        CASE Waveform5TB: SetFXConfigControls 5, Waveform5TB
     END SELECT
 END SUB
 
@@ -1408,8 +1230,6 @@ SUB __UI_TextChanged (id AS LONG)
     updatingText = _TRUE
 
     SELECT CASE id
-        CASE PlayFXTB
-
         CASE Voice1MMLTB
             IF activeCompVoice = 1 THEN Text(ActiveVoiceMMLTB) = Text(Voice1MMLTB)
         CASE Voice2MMLTB
@@ -1420,18 +1240,6 @@ SUB __UI_TextChanged (id AS LONG)
             IF activeCompVoice = 4 THEN Text(ActiveVoiceMMLTB) = Text(Voice4MMLTB)
         CASE ActiveVoiceMMLTB
             Text(GetVoiceMMLTB(activeCompVoice)) = Text(ActiveVoiceMMLTB)
-
-            ' Tab 3 slots
-        CASE Waveform1TB
-            IF Text(id) = "" THEN ClearFXWaveform 1: SetFXConfigControls 1, Waveform1TB
-        CASE Waveform2TB
-            IF Text(id) = "" THEN ClearFXWaveform 2: SetFXConfigControls 2, Waveform2TB
-        CASE Waveform3TB
-            IF Text(id) = "" THEN ClearFXWaveform 3: SetFXConfigControls 3, Waveform3TB
-        CASE Waveform4TB
-            IF Text(id) = "" THEN ClearFXWaveform 4: SetFXConfigControls 4, Waveform4TB
-        CASE Waveform5TB
-            IF Text(id) = "" THEN ClearFXWaveform 5: SetFXConfigControls 5, Waveform5TB
     END SELECT
 
     updatingText = _FALSE
@@ -1482,18 +1290,6 @@ SUB __UI_ValueChanged (id AS LONG)
         CASE SynthWaveDL
 
         CASE SynthPanSlider
-
-        CASE NoteSlider
-
-        CASE LengthSlider
-
-        CASE LengthEffectsDL
-
-        CASE TempoSlider
-
-        CASE VolumeSlider
-
-        CASE VolRampSlider
 
         CASE PresetsDL
             LoadPreset Control(PresetsDL).Value
@@ -1550,39 +1346,7 @@ SUB __UI_ValueChanged (id AS LONG)
 
         CASE QuickRampSlider
             SetCaption QuickRampValLB, LTRIM$(STR$(Control(QuickRampSlider).Value)) + "%"
-
-            ' Tab 3: Sound FX Designer controls
-        CASE WaveformSlider
-            SELECT CASE Control(id).Value
-                CASE 1: SetCaption WaveformNameLB, "Square"
-                CASE 2: SetCaption WaveformNameLB, "Sawtooth"
-                CASE 3: SetCaption WaveformNameLB, "Triangle"
-                CASE 4: SetCaption WaveformNameLB, "Sine"
-                CASE 5: SetCaption WaveformNameLB, "White Noise"
-                CASE 6: SetCaption WaveformNameLB, "Pink Noise"
-                CASE 7: SetCaption WaveformNameLB, "Brownian Noise"
-                CASE 8: SetCaption WaveformNameLB, "LFSR Noise"
-                CASE 9: SetCaption WaveformNameLB, "Pulse"
-            END SELECT
-
-        CASE NoteSlider, LengthSlider, LengthEffectsDL, TempoSlider, VolumeSlider, VolRampSlider
-            ' Handled below
     END SELECT
-
-    ' Update Tab 3 FX Slot if a Tab 3 control changed
-    IF id = WaveformSlider _ORELSE id = NoteSlider _ORELSE id = LengthSlider _ORELSE id = LengthEffectsDL _ORELSE id = TempoSlider _ORELSE id = VolumeSlider _ORELSE id = VolRampSlider THEN
-        FXWaveform(currentFXWaveform).waveform = Control(WaveformSlider).Value
-        FXWaveform(currentFXWaveform).note = Control(NoteSlider).Value
-        FXWaveform(currentFXWaveform).length = Control(LengthSlider).Value
-        FXWaveform(currentFXWaveform).lengthType = Control(LengthEffectsDL).Value
-        FXWaveform(currentFXWaveform).tempo = Control(TempoSlider).Value
-        FXWaveform(currentFXWaveform).volume = Control(VolumeSlider).Value
-        FXWaveform(currentFXWaveform).volRamp = Control(VolRampSlider).Value
-        FXWaveform(currentFXWaveform).active = _TRUE
-
-        MakePlayFXSlotString
-        MakeCombinedPlayFXString
-    END IF
 END SUB
 
 SUB __UI_FormResized

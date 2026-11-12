@@ -25,7 +25,6 @@ SUB __UI_LoadForm
     __UI_RegisterResult = 0
     AddItem __UI_NewID, "4-Voice Mixer"
     AddItem __UI_NewID, "Composer & Piano"
-    AddItem __UI_NewID, "Sound FX Designer"
     AddItem __UI_NewID, "MML Reference"
     Control(__UI_NewID).HasBorder = True
     Control(__UI_NewID).Value = 1
@@ -49,8 +48,7 @@ SUB __UI_LoadForm
     AddItem __UI_NewID, "7. J.S. Bach - Minuet in G (4 Voices)"
     AddItem __UI_NewID, "8. Greensleeves (4 Voices Traditional)"
     AddItem __UI_NewID, "9. Retro Arcade SFX (4 Voices)"
-    AddItem __UI_NewID, "10. Original PlayFX Chords (5 Slots)"
-    AddItem __UI_NewID, "11. Custom / Empty Project"
+    AddItem __UI_NewID, "10. Custom / Empty Project"
     Control(__UI_NewID).HasBorder = True
     Control(__UI_NewID).Value = 1
     Control(__UI_NewID).CanHaveFocus = True
@@ -1026,225 +1024,47 @@ SUB __UI_LoadForm
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).TabPage = 2
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "FXSlotsHeaderLB", 750, 18, 15, 36, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "Waveform Slots (1 to 5):"
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 3
-
-    __UI_NewID = __UI_NewControl(__UI_Type_TextBox, "Waveform1TB", 750, 23, 15, 56, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "Waveform1"
-    Control(__UI_NewID).HasBorder = True
-    Control(__UI_NewID).TabPage = 3
-    Control(__UI_NewID).CanHaveFocus = True
-    Control(__UI_NewID).BorderSize = 1
-
-    __UI_NewID = __UI_NewControl(__UI_Type_TextBox, "Waveform2TB", 750, 23, 15, 82, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "Waveform2"
-    Control(__UI_NewID).HasBorder = True
-    Control(__UI_NewID).TabPage = 3
-    Control(__UI_NewID).CanHaveFocus = True
-    Control(__UI_NewID).BorderSize = 1
-
-    __UI_NewID = __UI_NewControl(__UI_Type_TextBox, "Waveform3TB", 750, 23, 15, 108, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "Waveform3"
-    Control(__UI_NewID).HasBorder = True
-    Control(__UI_NewID).TabPage = 3
-    Control(__UI_NewID).CanHaveFocus = True
-    Control(__UI_NewID).BorderSize = 1
-
-    __UI_NewID = __UI_NewControl(__UI_Type_TextBox, "Waveform4TB", 750, 23, 15, 134, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "Waveform4"
-    Control(__UI_NewID).HasBorder = True
-    Control(__UI_NewID).TabPage = 3
-    Control(__UI_NewID).CanHaveFocus = True
-    Control(__UI_NewID).BorderSize = 1
-
-    __UI_NewID = __UI_NewControl(__UI_Type_TextBox, "Waveform5TB", 750, 23, 15, 160, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "Waveform5"
-    Control(__UI_NewID).HasBorder = True
-    Control(__UI_NewID).TabPage = 3
-    Control(__UI_NewID).CanHaveFocus = True
-    Control(__UI_NewID).BorderSize = 1
-
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "FXConfigHeaderLB", 750, 18, 15, 192, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "Configure Waveform Slot:"
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 3
-
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "WaveformLB", 65, 22, 15, 214, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "Waveform:"
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 3
-
-    __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "WaveformSlider", 540, 24, 85, 212, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).Value = 3
-    Control(__UI_NewID).TabPage = 3
-    Control(__UI_NewID).Min = 1
-    Control(__UI_NewID).Max = 9
-    Control(__UI_NewID).CanHaveFocus = True
-    Control(__UI_NewID).Interval = 1
-
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "WaveformNameLB", 115, 24, 640, 212, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "Triangle"
-    Control(__UI_NewID).HasBorder = True
-    Control(__UI_NewID).TabPage = 3
-    Control(__UI_NewID).BorderSize = 1
-
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "NoteLB", 40, 22, 15, 244, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "Note:"
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 3
-
-    __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "NoteSlider", 670, 24, 85, 242, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).Value = 42
-    Control(__UI_NewID).TabPage = 3
-    Control(__UI_NewID).Max = 84
-    Control(__UI_NewID).CanHaveFocus = True
-    Control(__UI_NewID).Interval = 1
-
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "LengthLB", 50, 22, 15, 274, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "Length:"
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 3
-
-    __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "LengthSlider", 540, 24, 85, 272, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).Value = 4
-    Control(__UI_NewID).TabPage = 3
-    Control(__UI_NewID).Min = 1
-    Control(__UI_NewID).Max = 64
-    Control(__UI_NewID).CanHaveFocus = True
-    Control(__UI_NewID).Interval = 1
-
-    __UI_NewID = __UI_NewControl(__UI_Type_DropdownList, "LengthEffectsDL", 115, 23, 640, 272, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    AddItem __UI_NewID, "Normal"
-    AddItem __UI_NewID, "Legato"
-    AddItem __UI_NewID, "Staccato"
-    Control(__UI_NewID).HasBorder = True
-    Control(__UI_NewID).Value = 1
-    Control(__UI_NewID).TabPage = 3
-    Control(__UI_NewID).CanHaveFocus = True
-    Control(__UI_NewID).BorderSize = 1
-
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "TempoLB", 50, 22, 15, 304, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "Tempo:"
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 3
-
-    __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "TempoSlider", 670, 24, 85, 302, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).Value = 120
-    Control(__UI_NewID).TabPage = 3
-    Control(__UI_NewID).Min = 32
-    Control(__UI_NewID).Max = 255
-    Control(__UI_NewID).CanHaveFocus = True
-    Control(__UI_NewID).Interval = 1
-
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "VolumeLB", 50, 22, 15, 334, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "Volume:"
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 3
-
-    __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "VolumeSlider", 670, 24, 85, 332, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).Value = 100
-    Control(__UI_NewID).TabPage = 3
-    Control(__UI_NewID).Max = 100
-    Control(__UI_NewID).CanHaveFocus = True
-    Control(__UI_NewID).Interval = 1
-
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "VolRampLB", 65, 22, 15, 364, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "Vol. Ramp:"
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 3
-
-    __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "VolRampSlider", 670, 24, 85, 362, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).Value = 10
-    Control(__UI_NewID).TabPage = 3
-    Control(__UI_NewID).Max = 100
-    Control(__UI_NewID).CanHaveFocus = True
-    Control(__UI_NewID).Interval = 1
-
-    __UI_NewID = __UI_NewControl(__UI_Type_TextBox, "PlayFXTB", 680, 23, 15, 400, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "PlayFX"
-    Control(__UI_NewID).HasBorder = True
-    Control(__UI_NewID).TabPage = 3
-    Control(__UI_NewID).CanHaveFocus = True
-    Control(__UI_NewID).BorderSize = 1
-
-    __UI_NewID = __UI_NewControl(__UI_Type_Button, "PlayFXPlayBT", 55, 23, 705, 400, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "Play"
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 3
-    Control(__UI_NewID).CanHaveFocus = True
-
     __UI_NewID = __UI_NewControl(__UI_Type_Label, "RefHeaderLB", 750, 20, 15, 36, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "QB64-PE Music Macro Language (MML) Quick Reference Guide:"
     Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 4
+    Control(__UI_NewID).TabPage = 3
 
     __UI_NewID = __UI_NewControl(__UI_Type_Label, "RefNotesTitleLB", 230, 22, 15, 60, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "[1] Notes, Octaves & Timing"
     Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 4
+    Control(__UI_NewID).TabPage = 3
 
     __UI_NewID = __UI_NewControl(__UI_Type_Label, "RefNotesLB", 230, 390, 15, 85, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "A to G   - Musical notes in octave\10;# or +   - Sharp (e.g. C#)\10;-        - Flat (e.g. B-)\10;Nn       - Note by number (0-84)\10;On       - Octave (0 to 6)\10;< or >   - Octave down or up\10;Ln       - Note length (1 to 64)\10;           (1=whole, 4=quarter,\10;            8=eighth, 16=sixteenth)\10;.        - Dotted note (1.5x)\10;..       - Double dot (1.75x)\10;Pn or Rn - Pause/Rest (1 to 64)\10;Tn       - Tempo in BPM (32-255)\10;MN       - Normal (7/8 duration)\10;ML       - Legato (full duration)\10;MS       - Staccato (3/4 duration)\10;,        - Stop note advance (chord)"
     Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 4
+    Control(__UI_NewID).TabPage = 3
 
     __UI_NewID = __UI_NewControl(__UI_Type_Label, "RefSynthTitleLB", 230, 22, 260, 60, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "[2] Waveforms & Stereo Pan"
     Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 4
+    Control(__UI_NewID).TabPage = 3
 
     __UI_NewID = __UI_NewControl(__UI_Type_Label, "RefSynthLB", 230, 390, 260, 85, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "@n or Wn - Select Waveform:\10;  1: Square (default)\10;  2: Sawtooth\10;  3: Triangle\10;  4: Sine\10;  5: White Noise\10;  6: Pink Noise\10;  7: Brownian Noise\10;  8: LFSR Noise\10;  9: Pulse (configurable duty)\10; 10: Custom _WAVE array\10;\10;Yn       - Waveform parameter:\10;           Pulse duty cycle (0-100)\10;           LFSR clock / Noise seed\10;\10;Sn       - Stereo Pan (0 to 100)\10;           0=Left, 50=Center,\10;           100=Right\10;S- / S+  - Pan left / right"
     Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 4
+    Control(__UI_NewID).TabPage = 3
 
     __UI_NewID = __UI_NewControl(__UI_Type_Label, "RefEnvelopeTitleLB", 240, 22, 505, 60, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "[3] Envelopes & Multi-Voice"
     Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 4
+    Control(__UI_NewID).TabPage = 3
 
     __UI_NewID = __UI_NewControl(__UI_Type_Label, "RefEnvelopeLB", 240, 390, 505, 85, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "/n       - Attack (% note duration)\10;       - Decay (% note duration)\10;^n       - Sustain (% voice volume)\10;_n       - Release (% note duration)\10;Qn       - Quick volume ramp\10;           (sets sustain=100,\10;            attack=n, release=n)\10;\10;Vn       - Voice Volume (0 to 100)\10;V- / V+  - Volume dec / inc\10;\10;MB       - Music Background (non-\10;           blocking, background play)\10;MF       - Music Foreground (blocks)\10;\10;Multi-Voice Syntax:\10;  PLAY v1$, v2$, v3$, v4$\10;\10;Remaining Time Query:\10;  rem# = PLAY(voice)   &"
     Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 4
+    Control(__UI_NewID).TabPage = 3
 
 END SUB
 
@@ -1383,29 +1203,6 @@ SUB __UI_AssignIDs
     ActiveVoiceMMLTB = __UI_GetID("ActiveVoiceMMLTB")
     PlayActiveVoiceBT = __UI_GetID("PlayActiveVoiceBT")
     ActiveVoiceStatusLB = __UI_GetID("ActiveVoiceStatusLB")
-    FXSlotsHeaderLB = __UI_GetID("FXSlotsHeaderLB")
-    Waveform1TB = __UI_GetID("Waveform1TB")
-    Waveform2TB = __UI_GetID("Waveform2TB")
-    Waveform3TB = __UI_GetID("Waveform3TB")
-    Waveform4TB = __UI_GetID("Waveform4TB")
-    Waveform5TB = __UI_GetID("Waveform5TB")
-    FXConfigHeaderLB = __UI_GetID("FXConfigHeaderLB")
-    WaveformLB = __UI_GetID("WaveformLB")
-    WaveformSlider = __UI_GetID("WaveformSlider")
-    WaveformNameLB = __UI_GetID("WaveformNameLB")
-    NoteLB = __UI_GetID("NoteLB")
-    NoteSlider = __UI_GetID("NoteSlider")
-    LengthLB = __UI_GetID("LengthLB")
-    LengthSlider = __UI_GetID("LengthSlider")
-    LengthEffectsDL = __UI_GetID("LengthEffectsDL")
-    TempoLB = __UI_GetID("TempoLB")
-    TempoSlider = __UI_GetID("TempoSlider")
-    VolumeLB = __UI_GetID("VolumeLB")
-    VolumeSlider = __UI_GetID("VolumeSlider")
-    VolRampLB = __UI_GetID("VolRampLB")
-    VolRampSlider = __UI_GetID("VolRampSlider")
-    PlayFXTB = __UI_GetID("PlayFXTB")
-    PlayFXPlayBT = __UI_GetID("PlayFXPlayBT")
     RefHeaderLB = __UI_GetID("RefHeaderLB")
     RefNotesTitleLB = __UI_GetID("RefNotesTitleLB")
     RefNotesLB = __UI_GetID("RefNotesLB")
