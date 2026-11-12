@@ -75,19 +75,13 @@ SUB __UI_LoadForm
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).VAlign = __UI_Middle
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Button, "PlayBT", 65, 25, 528, 15, __UI_GetID("MasterFrame"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Button, "PlayBT", 80, 25, 535, 15, __UI_GetID("MasterFrame"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "&Play"
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).CanHaveFocus = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Button, "PauseBT", 65, 25, 598, 15, __UI_GetID("MasterFrame"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "P&ause"
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).CanHaveFocus = True
-
-    __UI_NewID = __UI_NewControl(__UI_Type_Button, "CopyCodeBT", 95, 25, 668, 15, __UI_GetID("MasterFrame"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Button, "CopyCodeBT", 110, 25, 630, 15, __UI_GetID("MasterFrame"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "&Copy Code"
     Control(__UI_NewID).HasBorder = False
@@ -1077,7 +1071,6 @@ SUB __UI_AssignIDs
     MasterTempoSlider = __UI_GetID("MasterTempoSlider")
     MasterTempoValLB = __UI_GetID("MasterTempoValLB")
     PlayBT = __UI_GetID("PlayBT")
-    PauseBT = __UI_GetID("PauseBT")
     CopyCodeBT = __UI_GetID("CopyCodeBT")
     StatusLB = __UI_GetID("StatusLB")
     MainTabs = __UI_GetID("MainTabs")

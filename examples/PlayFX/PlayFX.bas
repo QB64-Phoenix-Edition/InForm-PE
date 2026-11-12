@@ -23,7 +23,6 @@ TYPE VoiceConfig
 END TYPE
 
 DIM SHARED Voice(1 TO 4) AS VoiceConfig
-DIM SHARED isPaused AS _BYTE
 DIM SHARED lastPlayingState AS _BYTE
 DIM SHARED activeCompVoice AS LONG: activeCompVoice = 1
 DIM SHARED updatingText AS _BYTE
@@ -37,7 +36,6 @@ DIM SHARED MasterTempoLB AS LONG
 DIM SHARED MasterTempoSlider AS LONG
 DIM SHARED MasterTempoValLB AS LONG
 DIM SHARED PlayBT AS LONG
-DIM SHARED PauseBT AS LONG
 DIM SHARED CopyCodeBT AS LONG
 DIM SHARED StatusLB AS LONG
 DIM SHARED MainTabs AS LONG
@@ -300,14 +298,6 @@ FUNCTION BuildFinalVoiceString$ (v AS LONG)
 END FUNCTION
 
 SUB PlayAllVoices
-    IF isPaused THEN
-        SOUND RESUME
-        isPaused = _FALSE
-        SetCaption PauseBT, "P&ause"
-        SetCaption StatusLB, "Resumed playback."
-        EXIT SUB
-    END IF
-
     DIM AS STRING v1, v2, v3, v4
     v1 = BuildFinalVoiceString(1)
     v2 = BuildFinalVoiceString(2)
@@ -321,23 +311,7 @@ SUB PlayAllVoices
 
     PLAY v1, v2, v3, v4
 
-    isPaused = _FALSE
-    SetCaption PauseBT, "P&ause"
     SetCaption StatusLB, "Playing 4-voice MML tune..."
-END SUB
-
-SUB PauseResumePlayback
-    IF isPaused THEN
-        SOUND RESUME
-        isPaused = _FALSE
-        SetCaption PauseBT, "P&ause"
-        SetCaption StatusLB, "Resumed playback."
-    ELSE
-        SOUND WAIT
-        isPaused = _TRUE
-        SetCaption PauseBT, "Res&ume"
-        SetCaption StatusLB, "Playback paused."
-    END IF
 END SUB
 
 SUB SoloVoice (v AS LONG)
@@ -643,9 +617,7 @@ SUB __UI_BeforeUpdateDisplay
         IF p2 > maxT THEN maxT = p2
         IF p3 > maxT THEN maxT = p3
 
-        IF NOT isPaused THEN
-            SetCaption StatusLB, "Playing 4-voice MML tune (" + LTRIM$(STR$(INT(maxT * 10) / 10)) + "s remaining)..."
-        END IF
+        SetCaption StatusLB, "Playing 4-voice MML tune (" + LTRIM$(STR$(INT(maxT * 10) / 10)) + "s remaining)..."
         lastPlayingState = _TRUE
     ELSEIF lastPlayingState THEN
         lastPlayingState = _FALSE
@@ -921,9 +893,6 @@ SUB __UI_Click (id AS LONG)
         CASE PlayBT
             PlayAllVoices
 
-        CASE PauseBT
-            PauseResumePlayback
-
         CASE CopyCodeBT
             CopyQB64CodeToClipboard
 
@@ -1046,8 +1015,6 @@ SUB __UI_FocusIn (id AS LONG)
         CASE MasterTempoSlider
 
         CASE PlayBT
-
-        CASE PauseBT
 
         CASE CopyCodeBT
 
