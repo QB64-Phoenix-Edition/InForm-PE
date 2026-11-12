@@ -312,7 +312,7 @@ END SUB
 
 SUB __TestPrint (message AS STRING)
     DECLARE LIBRARY
-        SUB __TestPrintF ALIAS "printf" (message AS STRING)
+        SUB __TestPrintF ALIAS "std::printf" (message AS STRING)
     END DECLARE
 
     __TestPrintF message + _CHR_NUL
@@ -320,7 +320,7 @@ END SUB
 
 SUB __TestPrintLn (message AS STRING)
     DECLARE LIBRARY
-        SUB __TestPutS ALIAS "puts" (message AS STRING)
+        SUB __TestPutS ALIAS "std::puts" (message AS STRING)
     END DECLARE
 
     __TestPutS message + _CHR_NUL
