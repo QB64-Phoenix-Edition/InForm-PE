@@ -26,6 +26,8 @@ DIM SHARED Voice(1 TO 4) AS VoiceConfig
 DIM SHARED lastPlayingState AS _BYTE
 DIM SHARED activeCompVoice AS LONG: activeCompVoice = 1
 DIM SHARED updatingText AS _BYTE
+DIM SHARED mmlHadError AS _BYTE
+DIM SHARED mmlErrorMessage AS STRING
 
 ': Controls' IDs: ------------------------------------------------------------------
 DIM SHARED PlayFXDesigner AS LONG
@@ -137,6 +139,11 @@ DIM SHARED RefEnvelopeTitleLB AS LONG, RefEnvelopeLB AS LONG
 '$INCLUDE:'../../InForm/InForm.bi'
 '$INCLUDE:'PlayFX.frm'
 '$INCLUDE:'../../InForm/InForm.ui'
+
+MMLErrorHandler:
+    mmlHadError = _TRUE
+    mmlErrorMessage = _ERRORMESSAGE$ + " (Code " + _TRIM$(STR$(ERR)) + ")"
+    RESUME NEXT
 
 ': Custom procedures: --------------------------------------------------------------
 
@@ -309,10 +316,296 @@ SUB PlayAllVoices
         EXIT SUB
     END IF
 
-    PLAY v1, v2, v3, v4
+    ' 1. Pre-validate each active voice stream for syntax and range errors
+    DIM AS LONG i
+    DIM AS STRING vStr, valErr, combinedErr
+    FOR i = 1 TO 4
+        SELECT CASE i
+            CASE 1: vStr = v1
+            CASE 2: vStr = v2
+            CASE 3: vStr = v3
+            CASE 4: vStr = v4
+        END SELECT
+        IF LEN(vStr) > 0 THEN
+            valErr = ValidateMML(vStr)
+            IF LEN(valErr) > 0 THEN
+                combinedErr = combinedErr + "* Voice " + LTRIM$(STR$(i)) + ": " + valErr + _CHR_LF
+            END IF
+        END IF
+    NEXT i
 
-    SetCaption StatusLB, "Playing 4-voice MML tune..."
+    IF LEN(combinedErr) > 0 THEN
+        SetCaption StatusLB, "MML syntax error detected! Check your voice MML."
+        MessageBox "The following MML syntax errors were found:" + _CHR_LF + _CHR_LF + combinedErr + _CHR_LF + "Please correct them and try again.", "PlayFX - MML Syntax Error", MsgBox_OkOnly OR MsgBox_Critical
+        EXIT SUB
+    END IF
+
+    ' 2. Execute PLAY with local runtime error trap
+    mmlHadError = _FALSE
+    mmlErrorMessage = ""
+    ON ERROR GOTO _NEWHANDLER MMLErrorHandler
+    PLAY v1, v2, v3, v4
+    ON ERROR GOTO _LASTHANDLER
+
+    IF mmlHadError THEN
+        SetCaption StatusLB, "MML runtime error: " + mmlErrorMessage
+        MessageBox "A runtime error occurred during MML playback:" + _CHR_LF + _CHR_LF + mmlErrorMessage + _CHR_LF + _CHR_LF + "Please verify all MML parameters.", "PlayFX - MML Playback Error", MsgBox_OkOnly OR MsgBox_Critical
+    ELSE
+        SetCaption StatusLB, "Playing 4-voice MML tune..."
+    END IF
 END SUB
+
+FUNCTION ValidateMML$ (mml AS STRING)
+    DIM AS LONG i, n, length
+    DIM AS STRING c, nextC
+    length = LEN(mml)
+    i = 1
+
+    WHILE i <= length
+        c = UCASE$(MID$(mml, i, 1))
+
+        IF c = " " _ORELSE c = CHR$(9) _ORELSE c = CHR$(10) _ORELSE c = CHR$(13) _ORELSE c = ";" THEN
+            i = i + 1
+        ELSEIF c >= "A" _ANDALSO c <= "G" THEN
+            i = i + 1
+            IF i <= length THEN
+                nextC = MID$(mml, i, 1)
+                IF nextC = "#" _ORELSE nextC = "+" _ORELSE nextC = "-" THEN
+                    i = i + 1
+                END IF
+            END IF
+            IF i <= length THEN
+                nextC = MID$(mml, i, 1)
+                IF nextC >= "0" _ANDALSO nextC <= "9" THEN
+                    n = MML_ReadNumber(mml, i)
+                    IF n < 1 _ORELSE n > 64 THEN
+                        ValidateMML = "Note length " + LTRIM$(STR$(n)) + " at position " + LTRIM$(STR$(i)) + " is out of range (1-64)."
+                        EXIT FUNCTION
+                    END IF
+                END IF
+            END IF
+            WHILE i <= length _ANDALSO MID$(mml, i, 1) = "."
+                i = i + 1
+            WEND
+        ELSEIF c = "N" THEN
+            i = i + 1
+            IF i > length _ORELSE (MID$(mml, i, 1) < "0" _ORELSE MID$(mml, i, 1) > "9") THEN
+                ValidateMML = "Missing note number after 'N' at position " + LTRIM$(STR$(i)) + "."
+                EXIT FUNCTION
+            END IF
+            n = MML_ReadNumber(mml, i)
+            IF n < 0 _ORELSE n > 84 THEN
+                ValidateMML = "Note number " + LTRIM$(STR$(n)) + " at position " + LTRIM$(STR$(i)) + " is out of range (0-84)."
+                EXIT FUNCTION
+            END IF
+        ELSEIF c = "O" THEN
+            i = i + 1
+            IF i > length _ORELSE (MID$(mml, i, 1) < "0" _ORELSE MID$(mml, i, 1) > "9") THEN
+                ValidateMML = "Missing octave number after 'O' at position " + LTRIM$(STR$(i)) + "."
+                EXIT FUNCTION
+            END IF
+            n = MML_ReadNumber(mml, i)
+            IF n < 0 _ORELSE n > 6 THEN
+                ValidateMML = "Octave " + LTRIM$(STR$(n)) + " at position " + LTRIM$(STR$(i)) + " is out of range (0-6)."
+                EXIT FUNCTION
+            END IF
+        ELSEIF c = "<" _ORELSE c = ">" THEN
+            i = i + 1
+        ELSEIF c = "L" THEN
+            i = i + 1
+            IF i > length _ORELSE (MID$(mml, i, 1) < "0" _ORELSE MID$(mml, i, 1) > "9") THEN
+                ValidateMML = "Missing length number after 'L' at position " + LTRIM$(STR$(i)) + "."
+                EXIT FUNCTION
+            END IF
+            n = MML_ReadNumber(mml, i)
+            IF n < 1 _ORELSE n > 64 THEN
+                ValidateMML = "Length " + LTRIM$(STR$(n)) + " at position " + LTRIM$(STR$(i)) + " is out of range (1-64)."
+                EXIT FUNCTION
+            END IF
+            WHILE i <= length _ANDALSO MID$(mml, i, 1) = "."
+                i = i + 1
+            WEND
+        ELSEIF c = "P" _ORELSE c = "R" THEN
+            i = i + 1
+            IF i <= length THEN
+                nextC = MID$(mml, i, 1)
+                IF nextC >= "0" _ANDALSO nextC <= "9" THEN
+                    n = MML_ReadNumber(mml, i)
+                    IF n < 1 _ORELSE n > 64 THEN
+                        ValidateMML = "Rest duration " + LTRIM$(STR$(n)) + " at position " + LTRIM$(STR$(i)) + " is out of range (1-64)."
+                        EXIT FUNCTION
+                    END IF
+                END IF
+            END IF
+            WHILE i <= length _ANDALSO MID$(mml, i, 1) = "."
+                i = i + 1
+            WEND
+        ELSEIF c = "T" THEN
+            i = i + 1
+            IF i > length _ORELSE (MID$(mml, i, 1) < "0" _ORELSE MID$(mml, i, 1) > "9") THEN
+                ValidateMML = "Missing tempo number after 'T' at position " + LTRIM$(STR$(i)) + "."
+                EXIT FUNCTION
+            END IF
+            n = MML_ReadNumber(mml, i)
+            IF n < 32 _ORELSE n > 255 THEN
+                ValidateMML = "Tempo " + LTRIM$(STR$(n)) + " at position " + LTRIM$(STR$(i)) + " is out of range (32-255 BPM)."
+                EXIT FUNCTION
+            END IF
+        ELSEIF c = "M" THEN
+            i = i + 1
+            IF i <= length THEN
+                nextC = UCASE$(MID$(mml, i, 1))
+                IF nextC = "N" _ORELSE nextC = "L" _ORELSE nextC = "S" _ORELSE nextC = "B" _ORELSE nextC = "F" THEN
+                    i = i + 1
+                ELSE
+                    ValidateMML = "Invalid music style 'M" + nextC + "' at position " + LTRIM$(STR$(i)) + ". Expected MN, ML, MS, MB, or MF."
+                    EXIT FUNCTION
+                END IF
+            ELSE
+                ValidateMML = "Incomplete 'M' command at position " + LTRIM$(STR$(i)) + "."
+                EXIT FUNCTION
+            END IF
+        ELSEIF c = "V" THEN
+            i = i + 1
+            IF i <= length THEN
+                nextC = MID$(mml, i, 1)
+                IF nextC = "+" _ORELSE nextC = "-" THEN
+                    i = i + 1
+                ELSEIF nextC >= "0" _ANDALSO nextC <= "9" THEN
+                    n = MML_ReadNumber(mml, i)
+                    IF n < 0 _ORELSE n > 100 THEN
+                        ValidateMML = "Volume " + LTRIM$(STR$(n)) + " at position " + LTRIM$(STR$(i)) + " is out of range (0-100)."
+                        EXIT FUNCTION
+                    END IF
+                ELSE
+                    ValidateMML = "Invalid volume parameter at position " + LTRIM$(STR$(i)) + ". Expected 0-100, +, or -."
+                    EXIT FUNCTION
+                END IF
+            ELSE
+                ValidateMML = "Incomplete 'V' command at position " + LTRIM$(STR$(i)) + "."
+                EXIT FUNCTION
+            END IF
+        ELSEIF c = "W" _ORELSE c = "@" THEN
+            i = i + 1
+            IF i > length _ORELSE (MID$(mml, i, 1) < "0" _ORELSE MID$(mml, i, 1) > "9") THEN
+                ValidateMML = "Missing waveform number after '" + c + "' at position " + LTRIM$(STR$(i)) + "."
+                EXIT FUNCTION
+            END IF
+            n = MML_ReadNumber(mml, i)
+            IF n < 1 _ORELSE n > 10 THEN
+                ValidateMML = "Waveform " + LTRIM$(STR$(n)) + " at position " + LTRIM$(STR$(i)) + " is out of range (1-10)."
+                EXIT FUNCTION
+            END IF
+        ELSEIF c = "Y" THEN
+            i = i + 1
+            IF i > length _ORELSE (MID$(mml, i, 1) < "0" _ORELSE MID$(mml, i, 1) > "9") THEN
+                ValidateMML = "Missing parameter number after 'Y' at position " + LTRIM$(STR$(i)) + "."
+                EXIT FUNCTION
+            END IF
+            n = MML_ReadNumber(mml, i)
+            IF n < 0 _ORELSE n > 100 THEN
+                ValidateMML = "Waveform parameter " + LTRIM$(STR$(n)) + " at position " + LTRIM$(STR$(i)) + " is out of range (0-100)."
+                EXIT FUNCTION
+            END IF
+        ELSEIF c = "S" THEN
+            i = i + 1
+            IF i <= length THEN
+                nextC = MID$(mml, i, 1)
+                IF nextC = "+" _ORELSE nextC = "-" THEN
+                    i = i + 1
+                ELSEIF nextC >= "0" _ANDALSO nextC <= "9" THEN
+                    n = MML_ReadNumber(mml, i)
+                    IF n < 0 _ORELSE n > 100 THEN
+                        ValidateMML = "Pan position " + LTRIM$(STR$(n)) + " at position " + LTRIM$(STR$(i)) + " is out of range (0-100)."
+                        EXIT FUNCTION
+                    END IF
+                ELSE
+                    ValidateMML = "Invalid pan parameter at position " + LTRIM$(STR$(i)) + ". Expected 0-100, +, or -."
+                    EXIT FUNCTION
+                END IF
+            ELSE
+                ValidateMML = "Incomplete 'S' command at position " + LTRIM$(STR$(i)) + "."
+                EXIT FUNCTION
+            END IF
+        ELSEIF c = "/" THEN
+            i = i + 1
+            IF i > length _ORELSE (MID$(mml, i, 1) < "0" _ORELSE MID$(mml, i, 1) > "9") THEN
+                ValidateMML = "Missing attack number after '/' at position " + LTRIM$(STR$(i)) + "."
+                EXIT FUNCTION
+            END IF
+            n = MML_ReadNumber(mml, i)
+            IF n < 0 _ORELSE n > 100 THEN
+                ValidateMML = "Attack " + LTRIM$(STR$(n)) + " at position " + LTRIM$(STR$(i)) + " is out of range (0-100)."
+                EXIT FUNCTION
+            END IF
+        ELSEIF c = "\" THEN
+            i = i + 1
+            IF i > length _ORELSE (MID$(mml, i, 1) < "0" _ORELSE MID$(mml, i, 1) > "9") THEN
+                ValidateMML = "Missing decay number after '\' at position " + LTRIM$(STR$(i)) + "."
+                EXIT FUNCTION
+            END IF
+            n = MML_ReadNumber(mml, i)
+            IF n < 0 _ORELSE n > 100 THEN
+                ValidateMML = "Decay " + LTRIM$(STR$(n)) + " at position " + LTRIM$(STR$(i)) + " is out of range (0-100)."
+                EXIT FUNCTION
+            END IF
+        ELSEIF c = "^" THEN
+            i = i + 1
+            IF i > length _ORELSE (MID$(mml, i, 1) < "0" _ORELSE MID$(mml, i, 1) > "9") THEN
+                ValidateMML = "Missing sustain number after '^' at position " + LTRIM$(STR$(i)) + "."
+                EXIT FUNCTION
+            END IF
+            n = MML_ReadNumber(mml, i)
+            IF n < 0 _ORELSE n > 100 THEN
+                ValidateMML = "Sustain " + LTRIM$(STR$(n)) + " at position " + LTRIM$(STR$(i)) + " is out of range (0-100)."
+                EXIT FUNCTION
+            END IF
+        ELSEIF c = "_" THEN
+            i = i + 1
+            IF i > length _ORELSE (MID$(mml, i, 1) < "0" _ORELSE MID$(mml, i, 1) > "9") THEN
+                ValidateMML = "Missing release number after '_' at position " + LTRIM$(STR$(i)) + "."
+                EXIT FUNCTION
+            END IF
+            n = MML_ReadNumber(mml, i)
+            IF n < 0 _ORELSE n > 100 THEN
+                ValidateMML = "Release " + LTRIM$(STR$(n)) + " at position " + LTRIM$(STR$(i)) + " is out of range (0-100)."
+                EXIT FUNCTION
+            END IF
+        ELSEIF c = "Q" THEN
+            i = i + 1
+            IF i > length _ORELSE (MID$(mml, i, 1) < "0" _ORELSE MID$(mml, i, 1) > "9") THEN
+                ValidateMML = "Missing quick ramp number after 'Q' at position " + LTRIM$(STR$(i)) + "."
+                EXIT FUNCTION
+            END IF
+            n = MML_ReadNumber(mml, i)
+            IF n < 0 _ORELSE n > 100 THEN
+                ValidateMML = "Quick ramp " + LTRIM$(STR$(n)) + " at position " + LTRIM$(STR$(i)) + " is out of range (0-100)."
+                EXIT FUNCTION
+            END IF
+        ELSEIF c = "," THEN
+            i = i + 1
+        ELSE
+            ValidateMML = "Unrecognized MML command '" + c + "' at position " + LTRIM$(STR$(i)) + "."
+            EXIT FUNCTION
+        END IF
+    WEND
+    ValidateMML = ""
+END FUNCTION
+
+FUNCTION MML_ReadNumber& (s AS STRING, i AS LONG)
+    DIM numStr AS STRING
+    DIM c AS STRING
+    WHILE i <= LEN(s)
+        c = MID$(s, i, 1)
+        IF c >= "0" _ANDALSO c <= "9" THEN
+            numStr = numStr + c
+            i = i + 1
+        ELSE
+            EXIT WHILE
+        END IF
+    WEND
+    MML_ReadNumber = VAL(numStr)
+END FUNCTION
 
 SUB SoloVoice (v AS LONG)
     DIM i AS LONG
@@ -384,7 +677,16 @@ SUB AuditionTone (noteName AS STRING, octaveShift AS LONG)
     previewMML = previewMML + "S" + LTRIM$(STR$(Control(SynthPanSlider).Value))
     previewMML = previewMML + " " + artCode + " O" + LTRIM$(STR$(oct)) + " L" + LTRIM$(STR$(lenCode)) + " " + noteName
 
+    mmlHadError = _FALSE
+    mmlErrorMessage = ""
+    ON ERROR GOTO _NEWHANDLER MMLErrorHandler
     PLAY previewMML
+    ON ERROR GOTO _LASTHANDLER
+
+    IF mmlHadError THEN
+        SetCaption StatusLB, "Audition error: " + mmlErrorMessage
+        EXIT SUB
+    END IF
 
     ' Append to voice stream
     DIM appendToken AS STRING: appendToken = "O" + LTRIM$(STR$(oct)) + " " + noteName + LTRIM$(STR$(lenCode))
@@ -993,8 +1295,26 @@ SUB __UI_Click (id AS LONG)
             DIM oneVoiceMML AS STRING
             oneVoiceMML = BuildFinalVoiceString(activeCompVoice)
             IF LEN(oneVoiceMML) > 0 THEN
+                DIM valOneErr AS STRING
+                valOneErr = ValidateMML(oneVoiceMML)
+                IF LEN(valOneErr) > 0 THEN
+                    SetCaption ActiveVoiceStatusLB, "MML Error: " + valOneErr
+                    MessageBox "MML syntax error in Voice " + LTRIM$(STR$(activeCompVoice)) + ":" + _CHR_LF + _CHR_LF + valOneErr + _CHR_LF + _CHR_LF + "Please correct it and try again.", "PlayFX - MML Syntax Error", MsgBox_OkOnly OR MsgBox_Critical
+                    EXIT SUB
+                END IF
+
+                mmlHadError = _FALSE
+                mmlErrorMessage = ""
+                ON ERROR GOTO _NEWHANDLER MMLErrorHandler
                 PLAY oneVoiceMML
-                SetCaption ActiveVoiceStatusLB, "Playing Voice " + LTRIM$(STR$(activeCompVoice)) + "..."
+                ON ERROR GOTO _LASTHANDLER
+
+                IF mmlHadError THEN
+                    SetCaption ActiveVoiceStatusLB, "MML runtime error: " + mmlErrorMessage
+                    MessageBox "A runtime error occurred during playback of Voice " + LTRIM$(STR$(activeCompVoice)) + ":" + _CHR_LF + _CHR_LF + mmlErrorMessage, "PlayFX - MML Playback Error", MsgBox_OkOnly OR MsgBox_Critical
+                ELSE
+                    SetCaption ActiveVoiceStatusLB, "Playing Voice " + LTRIM$(STR$(activeCompVoice)) + "..."
+                END IF
             ELSE
                 SetCaption ActiveVoiceStatusLB, "Voice " + LTRIM$(STR$(activeCompVoice)) + " is empty or muted."
             END IF
