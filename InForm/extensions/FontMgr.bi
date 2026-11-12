@@ -8,6 +8,7 @@ $INCLUDEONCE
 '$INCLUDE:'Memory.bi'
 '$INCLUDE:'Pathname.bi'
 '$INCLUDE:'Sort.bi'
+'$INCLUDE:'Stack.bi'
 
 CONST __FONTMGR_PROBE_SIZE_MIN~%% = 8~% ' minimum font height that can be reported
 CONST __FONTMGR_PROBE_SIZE_MAX~%% = 120~%% ' maximum font height that can be reported
@@ -83,24 +84,20 @@ END TYPE
 ''' @param fontList This is a dynamic string array. The function will re-dimension fontList starting from 1.
 ''' @return The count of fonts found.
 FUNCTION FontMgr_BuildList~& (fontList() AS STRING)
-    ' dirStack is a stack of directories that we'll need to traverse
-    REDIM dirStack(1 TO 8) AS STRING
-    DIM stackCount AS _UNSIGNED LONG
+    ' dirStack is a generic stack of directories that we'll need to traverse
+    REDIM dirStack(0 TO 0) AS Stack
+    Stack_Initialize dirStack()
 
     ' Add the system font directory
     DIM sysFontDir AS STRING: sysFontDir = _DIR$("FONT")
     IF _DIREXISTS(sysFontDir) THEN
-        stackCount = stackCount + 1
-        IF stackCount > UBOUND(dirStack) THEN REDIM _PRESERVE dirStack(1 TO stackCount * 2) AS STRING
-        dirStack(stackCount) = Pathname_AddDirectorySeparator(sysFontDir)
+        Stack_PushString dirStack(), Pathname_AddDirectorySeparator(sysFontDir)
     END IF
 
     ' Add the user font directory if it exists and is distinct from HOME and system font directory
     DIM userFontDir AS STRING: userFontDir = _DIR$("USERFONT")
     IF _DIREXISTS(userFontDir) _ANDALSO userFontDir <> _DIR$("HOME") _ANDALSO userFontDir <> sysFontDir THEN
-        stackCount = stackCount + 1
-        IF stackCount > UBOUND(dirStack) THEN REDIM _PRESERVE dirStack(1 TO stackCount * 2) AS STRING
-        dirStack(stackCount) = Pathname_AddDirectorySeparator(userFontDir)
+        Stack_PushString dirStack(), Pathname_AddDirectorySeparator(userFontDir)
     END IF
 
     ' This keeps the total count of fonts that we found and is returned to the caller
@@ -112,18 +109,15 @@ FUNCTION FontMgr_BuildList~& (fontList() AS STRING)
     fontList(1) = _STR_EMPTY
 
     ' Keep reading directories until the stack is exhausted
-    WHILE stackCount > 0
-        DIM directory AS STRING: directory = dirStack(stackCount)
-        stackCount = stackCount - 1
+    WHILE Stack_GetCount(dirStack()) > 0
+        DIM directory AS STRING: directory = Stack_PopString(dirStack())
 
         DIM entry AS STRING: entry = _FILES$(directory)
 
         DO WHILE LEN(entry) > 0
             IF entry <> PATHNAME_DIR_CURRENT _ANDALSO entry <> PATHNAME_DIR_PARENT _ANDALSO RIGHT$(entry, 1) = PATHNAME_DIR_SEPARATOR THEN
                 ' If the entry is a directory, push it onto the stack
-                stackCount = stackCount + 1
-                IF stackCount > UBOUND(dirStack) THEN REDIM _PRESERVE dirStack(1 TO stackCount * 2) AS STRING
-                dirStack(stackCount) = directory + entry
+                Stack_PushString dirStack(), directory + entry
             ELSE
                 SELECT CASE LCASE$(Pathname_GetFileExtension(entry))
                     ' Add the entry to the fontList() array if it is a legit font file name
@@ -140,6 +134,8 @@ FUNCTION FontMgr_BuildList~& (fontList() AS STRING)
             entry = _FILES$
         LOOP
     WEND
+
+    Stack_Free dirStack()
 
     ' Shrink fontList to exact size found
     REDIM _PRESERVE fontList(1 TO fontCount) AS STRING
