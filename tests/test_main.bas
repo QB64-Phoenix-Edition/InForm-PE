@@ -19,6 +19,7 @@ $LET TEST_CONSOLE_ONLY = TRUE
 '$INCLUDE:'../InForm/extensions/StringFile.bi'
 '$INCLUDE:'../InForm/extensions/Timer.bi'
 '$INCLUDE:'../InForm/extensions/FontMgr.bi'
+'$INCLUDE:'../InForm/extensions/GIFPlay.bi'
 
 '$INCLUDE:'../InForm/InForm.bi'
 
@@ -50,6 +51,7 @@ SUB __UI_BeforeInit
     Test_Theme
     Test_TabControl
     Test_FontMgr
+    Test_GIFPlay
     Test_Timer
     Test_PropertyGrid
     Test_DataGrid
@@ -2603,7 +2605,7 @@ SUB Test_FontMgr
 
     DIM AS _UNSIGNED _BYTE minS, maxS
     TEST_CHECK FontMgr_GetSizeRange("", 0, minS, maxS) = _TRUE, "VGA font size range succeeds"
-    TEST_CHECK minS = 8 AND maxS = 16, "VGA font size range is 8-16"
+    TEST_CHECK minS = 8 _ANDALSO maxS = 16, "VGA font size range is 8-16"
 
     ' Invalid file handling
     TEST_CHECK FontMgr_GetCount("non_existent_file.xyz") = 0, "Non-existent file count is 0"
@@ -2617,6 +2619,122 @@ SUB Test_FontMgr
         TEST_CHECK LEN(FontMgr_GetName(fl(2), 0, FONTMGR_NAME_FULL)) > 0, "Second font has non-empty full name"
         TEST_CHECK FontMgr_GetSizeRange(fl(2), 0, minS, maxS) = _TRUE, "Second font size range succeeds"
     END IF
+
+    TEST_CASE_END
+END SUB
+
+SUB Test_GIFPlay
+    TEST_CASE_BEGIN "GIFPlay"
+
+    ' Invalid / non-existent ID queries must safely return defaults without crashing
+    TEST_CHECK_FALSE GIF_IsLoaded(-1), "GIF_IsLoaded(-1) is false"
+    TEST_CHECK_FALSE GIF_IsLoaded(9999), "GIF_IsLoaded(9999) is false"
+    TEST_CHECK GIF_GetWidth(9999) = 0, "GIF_GetWidth on non-existent ID is 0"
+    TEST_CHECK GIF_GetHeight(9999) = 0, "GIF_GetHeight on non-existent ID is 0"
+    TEST_CHECK GIF_GetTotalFrames(9999) = 0, "GIF_GetTotalFrames on non-existent ID is 0"
+    TEST_CHECK GIF_GetFrameNumber(9999) = 0, "GIF_GetFrameNumber on non-existent ID is 0"
+    TEST_CHECK_FALSE GIF_IsPlaying(9999), "GIF_IsPlaying on non-existent ID is false"
+    TEST_CHECK GIF_GetBackgroundColor(9999) = 0, "GIF_GetBackgroundColor on non-existent ID is 0"
+    TEST_CHECK GIF_GetTotalDuration(9999) = 0, "GIF_GetTotalDuration on non-existent ID is 0"
+    TEST_CHECK GIF_GetFrameDuration(9999) = 0, "GIF_GetFrameDuration on non-existent ID is 0"
+    TEST_CHECK GIF_GetElapsedTime(9999) = 0, "GIF_GetElapsedTime on non-existent ID is 0"
+    TEST_CHECK GIF_GetFrame(9999) = 0, "GIF_GetFrame on non-existent ID is 0"
+
+    ' Safe no-ops on non-existent ID
+    GIF_Play 9999
+    GIF_Pause 9999
+    GIF_Stop 9999
+    GIF_SetLoop 9999, 1
+    GIF_EnableOverlay 9999, _FALSE
+    GIF_Free 9999
+    TEST_CHECK _TRUE, "Safe no-op functions do not crash on non-existent ID"
+
+    ' Create a PictureBox control for testing
+    DIM pb AS LONG: pb = __UI_NewControl(__UI_Type_PictureBox, "TestGIFPlayPB", 100, 100, 0, 0, 0)
+    TEST_REQUIRE pb > 0, "PictureBox created successfully"
+
+    ' Test loading invalid / truncated data
+    TEST_CHECK_FALSE GIF_LoadFromMemory(pb, ""), "Empty buffer fails gracefully"
+    TEST_CHECK_FALSE GIF_LoadFromMemory(pb, "NOTAGIF"), "Non-GIF signature fails gracefully"
+    TEST_CHECK_FALSE GIF_LoadFromMemory(pb, "GIF89a"), "Truncated header fails gracefully"
+    TEST_CHECK_FALSE GIF_IsLoaded(pb), "PictureBox is not loaded after bad data"
+
+    ' Non-existent file
+    TEST_CHECK_FALSE GIF_LoadFromFile(pb, "non_existent_file.gif"), "Non-existent file fails gracefully"
+    TEST_CHECK_FALSE GIF_IsLoaded(pb), "PictureBox is not loaded after non-existent file"
+
+    ' Locate sample GIFs
+    DIM staticGifPath AS STRING, animatedGifPath AS STRING
+    IF _FILEEXISTS("examples/GIFPlaySample/treescap.gif") THEN
+        staticGifPath = "examples/GIFPlaySample/treescap.gif"
+        animatedGifPath = "examples/GIFPlaySample/fire.gif"
+    ELSEIF _FILEEXISTS("../examples/GIFPlaySample/treescap.gif") THEN
+        staticGifPath = "../examples/GIFPlaySample/treescap.gif"
+        animatedGifPath = "../examples/GIFPlaySample/fire.gif"
+    END IF
+
+    IF LEN(staticGifPath) > 0 THEN
+        ' Load static GIF from file
+        TEST_CHECK GIF_LoadFromFile(pb, staticGifPath), "Static GIF loads successfully"
+        TEST_CHECK GIF_IsLoaded(pb), "GIF_IsLoaded reports true for static GIF"
+        TEST_CHECK GIF_GetWidth(pb) > 0, "Static GIF width > 0"
+        TEST_CHECK GIF_GetHeight(pb) > 0, "Static GIF height > 0"
+        TEST_CHECK GIF_GetTotalFrames(pb) = 1, "Static GIF has exactly 1 frame"
+        TEST_CHECK_FALSE GIF_IsPlaying(pb), "Static GIF is not playing after load"
+        TEST_CHECK GIF_GetFrameNumber(pb) = 0, "Initial frame number is 0"
+
+        ' Rendered frame handle
+        DIM frameHandle AS LONG: frameHandle = GIF_GetFrame(pb)
+        TEST_CHECK frameHandle < -1, "GIF_GetFrame returns valid image handle"
+
+        ' Free and verify
+        GIF_Free pb
+        TEST_CHECK_FALSE GIF_IsLoaded(pb), "GIF is not loaded after GIF_Free"
+        TEST_CHECK GIF_GetWidth(pb) = 0, "Width is 0 after GIF_Free"
+        TEST_CHECK GIF_GetHeight(pb) = 0, "Height is 0 after GIF_Free"
+
+        ' Test loading from memory
+        DIM gifData AS STRING
+        DIM f AS LONG: f = FREEFILE
+        OPEN staticGifPath FOR BINARY ACCESS READ AS #f
+        gifData = SPACE$(LOF(f))
+        GET #f, , gifData
+        CLOSE #f
+
+        TEST_CHECK GIF_LoadFromMemory(pb, gifData), "Static GIF loads successfully from memory"
+        TEST_CHECK GIF_IsLoaded(pb), "GIF_IsLoaded reports true after memory load"
+        TEST_CHECK GIF_GetTotalFrames(pb) = 1, "Static GIF frame count is 1 from memory"
+        GIF_Free pb
+        TEST_CHECK_FALSE GIF_IsLoaded(pb), "GIF_Free succeeds after memory load"
+    END IF
+
+    IF LEN(animatedGifPath) > 0 THEN
+        ' Load animated GIF from file
+        TEST_CHECK GIF_LoadFromFile(pb, animatedGifPath), "Animated GIF loads successfully"
+        TEST_CHECK GIF_IsLoaded(pb), "GIF_IsLoaded reports true for animated GIF"
+        TEST_CHECK GIF_GetWidth(pb) > 0, "Animated GIF width > 0"
+        TEST_CHECK GIF_GetHeight(pb) > 0, "Animated GIF height > 0"
+        TEST_CHECK GIF_GetTotalFrames(pb) > 1, "Animated GIF has multiple frames"
+        TEST_CHECK GIF_GetTotalDuration(pb) > 0, "Animated GIF total duration > 0"
+        TEST_CHECK_FALSE GIF_IsPlaying(pb), "Animated GIF is not playing after load"
+        TEST_CHECK GIF_GetFrameNumber(pb) = 0, "Initial frame number is 0"
+
+        ' Playback controls
+        GIF_Play pb
+        TEST_CHECK GIF_IsPlaying(pb), "Animation is playing after GIF_Play"
+        GIF_Pause pb
+        TEST_CHECK_FALSE GIF_IsPlaying(pb), "Animation is paused after GIF_Pause"
+        GIF_Play pb
+        GIF_Stop pb
+        TEST_CHECK_FALSE GIF_IsPlaying(pb), "Animation is stopped after GIF_Stop"
+        TEST_CHECK GIF_GetFrameNumber(pb) = 0, "Frame number is 0 after GIF_Stop"
+
+        ' Free and verify
+        GIF_Free pb
+        TEST_CHECK_FALSE GIF_IsLoaded(pb), "Animated GIF is not loaded after GIF_Free"
+    END IF
+
+    __UI_DestroyControl Control(pb)
 
     TEST_CASE_END
 END SUB

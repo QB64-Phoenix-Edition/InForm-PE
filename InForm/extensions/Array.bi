@@ -90,7 +90,7 @@ END SUB
 ''' @param index The 1-based index to get.
 ''' @return The value at the specified index.
 FUNCTION __Array_Get$ (array() AS Array, index AS _UNSIGNED _OFFSET)
-    IF index < 1 OR index > _CV(_UNSIGNED _OFFSET, array(0).V) THEN
+    IF index < 1 _ORELSE index > _CV(_UNSIGNED _OFFSET, array(0).V) THEN
         ERROR _ERR_SUBSCRIPT_OUT_OF_RANGE
         EXIT FUNCTION
     END IF

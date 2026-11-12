@@ -1,4 +1,4 @@
-# INFORM-PE
+# InForm Phoenix Edition
 
 ![InForm logo](InForm/resources/Application-icon-128.png)
 
