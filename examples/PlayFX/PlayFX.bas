@@ -30,87 +30,124 @@ DIM SHARED mmlHadError AS _BYTE
 DIM SHARED mmlErrorMessage AS STRING
 
 ': Controls' IDs: ------------------------------------------------------------------
-DIM SHARED PlayFXDesigner AS LONG
-DIM SHARED MasterFrame AS LONG
-DIM SHARED PresetLB AS LONG
-DIM SHARED PresetsDL AS LONG
-DIM SHARED PlayBT AS LONG
-DIM SHARED CopyCodeBT AS LONG
-DIM SHARED MainTabs AS LONG
-
-DIM SHARED Voice1HeaderLB AS LONG
-DIM SHARED Voice1EnableCB AS LONG
-DIM SHARED Voice1SoloBT AS LONG
-DIM SHARED Voice1ClearBT AS LONG
-DIM SHARED Voice1MeterLB AS LONG
-DIM SHARED V1MMLLB AS LONG
-DIM SHARED Voice1MMLTB AS LONG
-
-DIM SHARED Voice2HeaderLB AS LONG
-DIM SHARED Voice2EnableCB AS LONG
-DIM SHARED Voice2MeterLB AS LONG
-DIM SHARED Voice2SoloBT AS LONG
-DIM SHARED Voice2ClearBT AS LONG
-DIM SHARED V2MMLLB AS LONG
-DIM SHARED Voice2MMLTB AS LONG
-
-DIM SHARED Voice3HeaderLB AS LONG
-DIM SHARED Voice3EnableCB AS LONG
-DIM SHARED Voice3MeterLB AS LONG
-DIM SHARED Voice3SoloBT AS LONG
-DIM SHARED Voice3ClearBT AS LONG
-DIM SHARED V3MMLLB AS LONG
-DIM SHARED Voice3MMLTB AS LONG
-
-DIM SHARED Voice4HeaderLB AS LONG
-DIM SHARED Voice4EnableCB AS LONG
-DIM SHARED Voice4MeterLB AS LONG
-DIM SHARED Voice4SoloBT AS LONG
-DIM SHARED Voice4ClearBT AS LONG
-DIM SHARED V4MMLLB AS LONG
-DIM SHARED Voice4MMLTB AS LONG
-
-DIM SHARED MixerInfoLB AS LONG
-
-DIM SHARED CompTargetLB AS LONG
-DIM SHARED CompVoiceDL AS LONG
-DIM SHARED CompOctaveLB AS LONG
-DIM SHARED CompOctaveDL AS LONG
-DIM SHARED CompLengthLB AS LONG
-DIM SHARED CompLengthDL AS LONG
-DIM SHARED CompArtLB AS LONG
-DIM SHARED CompArtDL AS LONG
-DIM SHARED CompTempoLB AS LONG, CompTempoSlider AS LONG, CompTempoValLB AS LONG
-DIM SHARED PianoHeaderLB AS LONG
-
-DIM SHARED KeyC AS LONG, KeyD AS LONG, KeyE AS LONG, KeyF AS LONG, KeyG AS LONG, KeyA AS LONG, KeyB AS LONG
-DIM SHARED KeyC2 AS LONG, KeyD2 AS LONG, KeyE2 AS LONG, KeyF2 AS LONG, KeyG2 AS LONG, KeyA2 AS LONG, KeyB2 AS LONG
-DIM SHARED KeyCs AS LONG, KeyDs AS LONG, KeyFs AS LONG, KeyGs AS LONG, KeyAs AS LONG
-DIM SHARED KeyCs2 AS LONG, KeyDs2 AS LONG, KeyFs2 AS LONG, KeyGs2 AS LONG, KeyAs2 AS LONG
-DIM SHARED KeyRest AS LONG, KeyDot AS LONG, KeyOctDown AS LONG, KeyOctUp AS LONG, KeyTie AS LONG
-DIM SHARED KeyInsertHeader AS LONG, KeyBackspace AS LONG, KeyClearMML AS LONG
-
-DIM SHARED SynthHeaderLB AS LONG
-DIM SHARED SynthWaveLB AS LONG, SynthWaveDL AS LONG
-DIM SHARED SynthDutyLB AS LONG, SynthDutySlider AS LONG, SynthDutyValLB AS LONG
-DIM SHARED SynthVolLB AS LONG, SynthVolSlider AS LONG, SynthVolValLB AS LONG
-DIM SHARED SynthPanLB AS LONG, SynthPanSlider AS LONG
-DIM SHARED AttackLB AS LONG, AttackSlider AS LONG, AttackValLB AS LONG
-DIM SHARED DecayLB AS LONG, DecaySlider AS LONG, DecayValLB AS LONG
-DIM SHARED SustainLB AS LONG, SustainSlider AS LONG, SustainValLB AS LONG
-DIM SHARED ReleaseLB AS LONG, ReleaseSlider AS LONG, ReleaseValLB AS LONG
-DIM SHARED QuickRampLB AS LONG, QuickRampSlider AS LONG, QuickRampValLB AS LONG
-DIM SHARED ApplySynthBT AS LONG, AuditionVoiceBT AS LONG
-
 DIM SHARED ActiveVoiceHeaderLB AS LONG
 DIM SHARED ActiveVoiceMMLTB AS LONG
-DIM SHARED PlayActiveVoiceBT AS LONG
 DIM SHARED ActiveVoiceStatusLB AS LONG
-
+DIM SHARED ApplySynthBT AS LONG
+DIM SHARED AttackLB AS LONG
+DIM SHARED AttackSlider AS LONG
+DIM SHARED AttackValLB AS LONG
+DIM SHARED AuditionVoiceBT AS LONG
+DIM SHARED CompArtDL AS LONG
+DIM SHARED CompArtLB AS LONG
+DIM SHARED CompLengthDL AS LONG
+DIM SHARED CompLengthLB AS LONG
+DIM SHARED CompOctaveDL AS LONG
+DIM SHARED CompOctaveLB AS LONG
+DIM SHARED CompTargetLB AS LONG
+DIM SHARED CompTempoLB AS LONG
+DIM SHARED CompTempoSlider AS LONG
+DIM SHARED CompTempoValLB AS LONG
+DIM SHARED CompVoiceDL AS LONG
+DIM SHARED CopyCodeBT AS LONG
+DIM SHARED DecayLB AS LONG
+DIM SHARED DecaySlider AS LONG
+DIM SHARED DecayValLB AS LONG
+DIM SHARED KeyA AS LONG
+DIM SHARED KeyA2 AS LONG
+DIM SHARED KeyAs AS LONG
+DIM SHARED KeyAs2 AS LONG
+DIM SHARED KeyB AS LONG
+DIM SHARED KeyB2 AS LONG
+DIM SHARED KeyBackspace AS LONG
+DIM SHARED KeyC AS LONG
+DIM SHARED KeyC2 AS LONG
+DIM SHARED KeyClearMML AS LONG
+DIM SHARED KeyCs AS LONG
+DIM SHARED KeyCs2 AS LONG
+DIM SHARED KeyD AS LONG
+DIM SHARED KeyD2 AS LONG
+DIM SHARED KeyDot AS LONG
+DIM SHARED KeyDs AS LONG
+DIM SHARED KeyDs2 AS LONG
+DIM SHARED KeyE AS LONG
+DIM SHARED KeyE2 AS LONG
+DIM SHARED KeyF AS LONG
+DIM SHARED KeyF2 AS LONG
+DIM SHARED KeyFs AS LONG
+DIM SHARED KeyFs2 AS LONG
+DIM SHARED KeyG AS LONG
+DIM SHARED KeyG2 AS LONG
+DIM SHARED KeyGs AS LONG
+DIM SHARED KeyGs2 AS LONG
+DIM SHARED KeyInsertHeader AS LONG
+DIM SHARED KeyOctDown AS LONG
+DIM SHARED KeyOctUp AS LONG
+DIM SHARED KeyRest AS LONG
+DIM SHARED KeyTie AS LONG
+DIM SHARED MainTabs AS LONG
+DIM SHARED MasterFrame AS LONG
+DIM SHARED PianoHeaderLB AS LONG
+DIM SHARED PlayActiveVoiceBT AS LONG
+DIM SHARED PlayBT AS LONG
+DIM SHARED PlayFXDesigner AS LONG
+DIM SHARED PresetLB AS LONG
+DIM SHARED PresetsDL AS LONG
+DIM SHARED QuickRampLB AS LONG
+DIM SHARED QuickRampSlider AS LONG
+DIM SHARED QuickRampValLB AS LONG
+DIM SHARED RefEnvelopeLB AS LONG
+DIM SHARED RefEnvelopeTitleLB AS LONG
 DIM SHARED RefHeaderLB AS LONG
-DIM SHARED RefNotesTitleLB AS LONG, RefNotesLB AS LONG
-DIM SHARED RefSynthTitleLB AS LONG, RefSynthLB AS LONG
-DIM SHARED RefEnvelopeTitleLB AS LONG, RefEnvelopeLB AS LONG
+DIM SHARED RefNotesLB AS LONG
+DIM SHARED RefNotesTitleLB AS LONG
+DIM SHARED RefSynthLB AS LONG
+DIM SHARED RefSynthTitleLB AS LONG
+DIM SHARED ReleaseLB AS LONG
+DIM SHARED ReleaseSlider AS LONG
+DIM SHARED ReleaseValLB AS LONG
+DIM SHARED SustainLB AS LONG
+DIM SHARED SustainSlider AS LONG
+DIM SHARED SustainValLB AS LONG
+DIM SHARED SynthDutyLB AS LONG
+DIM SHARED SynthDutySlider AS LONG
+DIM SHARED SynthDutyValLB AS LONG
+DIM SHARED SynthHeaderLB AS LONG
+DIM SHARED SynthPanLB AS LONG
+DIM SHARED SynthPanSlider AS LONG
+DIM SHARED SynthVolLB AS LONG
+DIM SHARED SynthVolSlider AS LONG
+DIM SHARED SynthVolValLB AS LONG
+DIM SHARED SynthWaveDL AS LONG
+DIM SHARED SynthWaveLB AS LONG
+DIM SHARED V1MMLLB AS LONG
+DIM SHARED V2MMLLB AS LONG
+DIM SHARED V3MMLLB AS LONG
+DIM SHARED V4MMLLB AS LONG
+DIM SHARED Voice1ClearBT AS LONG
+DIM SHARED Voice1EnableCB AS LONG
+DIM SHARED Voice1HeaderLB AS LONG
+DIM SHARED Voice1MeterLB AS LONG
+DIM SHARED Voice1MMLTB AS LONG
+DIM SHARED Voice1SoloBT AS LONG
+DIM SHARED Voice2ClearBT AS LONG
+DIM SHARED Voice2EnableCB AS LONG
+DIM SHARED Voice2HeaderLB AS LONG
+DIM SHARED Voice2MeterLB AS LONG
+DIM SHARED Voice2MMLTB AS LONG
+DIM SHARED Voice2SoloBT AS LONG
+DIM SHARED Voice3ClearBT AS LONG
+DIM SHARED Voice3EnableCB AS LONG
+DIM SHARED Voice3HeaderLB AS LONG
+DIM SHARED Voice3MeterLB AS LONG
+DIM SHARED Voice3MMLTB AS LONG
+DIM SHARED Voice3SoloBT AS LONG
+DIM SHARED Voice4ClearBT AS LONG
+DIM SHARED Voice4EnableCB AS LONG
+DIM SHARED Voice4HeaderLB AS LONG
+DIM SHARED Voice4MeterLB AS LONG
+DIM SHARED Voice4MMLTB AS LONG
+DIM SHARED Voice4SoloBT AS LONG
 
 ': External modules: ---------------------------------------------------------------
 '$INCLUDE:'../../InForm/InForm.bi'
@@ -958,13 +995,223 @@ END SUB
 
 SUB __UI_Click (id AS LONG)
     SELECT CASE id
+        CASE PlayFXDesigner
+
+        CASE MasterFrame
+
+        CASE MainTabs
+
+        CASE PresetLB
+
+        CASE PresetsDL
+
+        CASE Voice1HeaderLB
+
+        CASE Voice1EnableCB
+
+        CASE Voice1SoloBT
+
+        CASE Voice1ClearBT
+
+        CASE Voice1MeterLB
+
+        CASE V1MMLLB
+
+        CASE Voice1MMLTB
+
+        CASE Voice2HeaderLB
+
+        CASE Voice2EnableCB
+
+        CASE Voice2SoloBT
+
+        CASE Voice2ClearBT
+
+        CASE Voice2MeterLB
+
+        CASE V2MMLLB
+
+        CASE Voice2MMLTB
+
+        CASE Voice3HeaderLB
+
+        CASE Voice3EnableCB
+
+        CASE Voice3SoloBT
+
+        CASE Voice3ClearBT
+
+        CASE Voice3MeterLB
+
+        CASE V3MMLLB
+
+        CASE Voice3MMLTB
+
+        CASE Voice4HeaderLB
+
+        CASE Voice4EnableCB
+
+        CASE Voice4SoloBT
+
+        CASE Voice4ClearBT
+
+        CASE Voice4MeterLB
+
+        CASE V4MMLLB
+
+        CASE Voice4MMLTB
+
+        CASE CompTargetLB
+
+        CASE CompVoiceDL
+
+        CASE CompOctaveLB
+
+        CASE CompOctaveDL
+
+        CASE CompLengthLB
+
+        CASE CompLengthDL
+
+        CASE CompArtLB
+
+        CASE CompArtDL
+
+        CASE CompTempoLB
+
+        CASE CompTempoSlider
+
+        CASE CompTempoValLB
+
+        CASE PianoHeaderLB
+
+        CASE KeyC
+
+        CASE KeyD
+
+        CASE KeyE
+
+        CASE KeyF
+
+        CASE KeyG
+
+        CASE KeyA
+
+        CASE KeyB
+
+        CASE KeyC2
+
+        CASE KeyD2
+
+        CASE KeyE2
+
+        CASE KeyF2
+
+        CASE KeyG2
+
+        CASE KeyA2
+
+        CASE KeyB2
+
+        CASE KeyCs
+
+        CASE KeyDs
+
+        CASE KeyFs
+
+        CASE KeyGs
+
+        CASE KeyAs
+
+        CASE KeyCs2
+
+        CASE KeyDs2
+
+        CASE KeyFs2
+
+        CASE KeyGs2
+
+        CASE KeyAs2
+
+        CASE SynthHeaderLB
+
+        CASE SynthWaveLB
+
+        CASE SynthWaveDL
+
+        CASE SynthDutyLB
+
+        CASE SynthDutySlider
+
+        CASE SynthDutyValLB
+
+        CASE SynthVolLB
+
+        CASE SynthVolSlider
+
+        CASE SynthVolValLB
+
+        CASE SynthPanLB
+
+        CASE SynthPanSlider
+
+        CASE AttackLB
+
+        CASE AttackSlider
+
+        CASE AttackValLB
+
+        CASE DecayLB
+
+        CASE DecaySlider
+
+        CASE DecayValLB
+
+        CASE SustainLB
+
+        CASE SustainSlider
+
+        CASE SustainValLB
+
+        CASE ReleaseLB
+
+        CASE ReleaseSlider
+
+        CASE ReleaseValLB
+
+        CASE QuickRampLB
+
+        CASE QuickRampSlider
+
+        CASE QuickRampValLB
+
+        CASE ActiveVoiceHeaderLB
+
+        CASE ActiveVoiceMMLTB
+
+        CASE ActiveVoiceStatusLB
+
+        CASE RefHeaderLB
+
+        CASE RefNotesTitleLB
+
+        CASE RefNotesLB
+
+        CASE RefSynthTitleLB
+
+        CASE RefSynthLB
+
+        CASE RefEnvelopeTitleLB
+
+        CASE RefEnvelopeLB
+
         CASE PlayBT
             PlayAllVoices
 
         CASE CopyCodeBT
             CopyQB64CodeToClipboard
 
-        ' Channel 1-4 Mixer Controls
+            ' Channel 1-4 Mixer Controls
         CASE Voice1EnableCB: Voice(1).enabled = Control(Voice1EnableCB).Value
         CASE Voice1SoloBT: SoloVoice 1
         CASE Voice1ClearBT: ClearVoiceMML 1
@@ -981,7 +1228,7 @@ SUB __UI_Click (id AS LONG)
         CASE Voice4SoloBT: SoloVoice 4
         CASE Voice4ClearBT: ClearVoiceMML 4
 
-        ' Interactive Piano Keyboard Keys
+            ' Interactive Piano Keyboard Keys
         CASE KeyC: AuditionTone "C", 0
         CASE KeyCs: AuditionTone "C#", 0
         CASE KeyD: AuditionTone "D", 0
@@ -1054,7 +1301,7 @@ SUB __UI_Click (id AS LONG)
         CASE KeyClearMML
             ClearVoiceMML activeCompVoice
 
-        ' Composer Synth Buttons
+            ' Composer Synth Buttons
         CASE ApplySynthBT
             ApplyComposerToActiveVoice
 
@@ -1281,19 +1528,39 @@ END SUB
 
 SUB __UI_ValueChanged (id AS LONG)
     SELECT CASE id
+        CASE MainTabs
+
+        CASE Voice1EnableCB
+
+        CASE Voice2EnableCB
+
+        CASE Voice3EnableCB
+
+        CASE Voice4EnableCB
+
+        CASE CompOctaveDL
+
+        CASE CompLengthDL
+
+        CASE CompArtDL
+
+        CASE SynthWaveDL
+
+        CASE SynthPanSlider
+
         CASE PresetsDL
             LoadPreset Control(PresetsDL).Value
 
         CASE CompTempoSlider
             SetCaption CompTempoValLB, LTRIM$(STR$(Control(CompTempoSlider).Value))
 
-        ' Channel 1-4 Enable Toggles
+            ' Channel 1-4 Enable Toggles
         CASE Voice1EnableCB: Voice(1).enabled = Control(Voice1EnableCB).Value
         CASE Voice2EnableCB: Voice(2).enabled = Control(Voice2EnableCB).Value
         CASE Voice3EnableCB: Voice(3).enabled = Control(Voice3EnableCB).Value
         CASE Voice4EnableCB: Voice(4).enabled = Control(Voice4EnableCB).Value
 
-        ' Composer Tab 2 controls
+            ' Composer Tab 2 controls
         CASE CompVoiceDL
             activeCompVoice = Control(CompVoiceDL).Value
             SyncComposerFromActiveVoice

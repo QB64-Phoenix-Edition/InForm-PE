@@ -9,16 +9,16 @@ SUB __UI_LoadForm
 
     __UI_NewID = __UI_NewControl(__UI_Type_Form, "PlayFXDesigner", 800, 600, 0, 0, 0)
     __UI_RegisterResult = 0
+    SetTheme "light"
     SetCaption __UI_NewID, "PlayFX - 4-Voice MML Studio"
     Control(__UI_NewID).Font = SetFont("segoeui.ttf?arial.ttf?Arial.ttf?InForm/resources/NotoMono-Regular.ttf", 10)
     Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).CenteredWindow = False
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Frame, "MasterFrame", 780, 52, 10, 6, 0)
+    __UI_NewID = __UI_NewControl(__UI_Type_Frame, "MasterFrame", 780, 52, 10, 7, 0)
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Master Controls"
     Control(__UI_NewID).HasBorder = True
-    Control(__UI_NewID).Value = 9
+    Control(__UI_NewID).Value = 4
     Control(__UI_NewID).BorderSize = 1
 
     __UI_NewID = __UI_NewControl(__UI_Type_TabControl, "MainTabs", 780, 525, 10, 64, 0)
@@ -55,25 +55,27 @@ SUB __UI_LoadForm
     Control(__UI_NewID).CanHaveFocus = True
     Control(__UI_NewID).BorderSize = 1
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Button, "PlayBT", 90, 25, 450, 14, __UI_GetID("MasterFrame"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Button, "PlayBT", 159, 28, 427, 10, __UI_GetID("MasterFrame"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "&Play"
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).CanHaveFocus = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Button, "CopyCodeBT", 120, 25, 555, 14, __UI_GetID("MasterFrame"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Button, "CopyCodeBT", 173, 28, 597, 10, __UI_GetID("MasterFrame"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "&Copy Code"
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).CanHaveFocus = True
 
-        __UI_NewID = __UI_NewControl(__UI_Type_Label, "Voice1HeaderLB", 100, 20, 15, 36, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "Voice1HeaderLB", 44, 19, 10, 38, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Channel 1"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 1
+    Control(__UI_NewID).AutoSize = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_CheckBox, "Voice1EnableCB", 65, 20, 125, 36, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_CheckBox, "Voice1EnableCB", 65, 21, 113, 38, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Active"
     Control(__UI_NewID).HasBorder = False
@@ -81,46 +83,52 @@ SUB __UI_LoadForm
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).CanHaveFocus = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Button, "Voice1SoloBT", 50, 24, 195, 34, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Button, "Voice1SoloBT", 50, 24, 191, 38, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Solo"
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).CanHaveFocus = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Button, "Voice1ClearBT", 55, 24, 250, 34, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Button, "Voice1ClearBT", 55, 24, 250, 38, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Clear"
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).CanHaveFocus = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "Voice1MeterLB", 120, 20, 645, 36, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "Voice1MeterLB", 200, 24, 546, 38, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Idle (0.00s)"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 1
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "V1MMLLB", 35, 20, 15, 62, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "V1MMLLB", 25, 19, 20, 67, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "MML:"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 1
+    Control(__UI_NewID).AutoSize = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_TextBox, "Voice1MMLTB", 710, 44, 55, 60, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_TextBox, "Voice1MMLTB", 710, 80, 51, 67, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     Control(__UI_NewID).HasBorder = True
+    Control(__UI_NewID).Multiline = True
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).CanHaveFocus = True
     Control(__UI_NewID).BorderSize = 1
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "Voice2HeaderLB", 100, 20, 15, 114, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "Voice2HeaderLB", 44, 19, 10, 165, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Channel 2"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 1
+    Control(__UI_NewID).AutoSize = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_CheckBox, "Voice2EnableCB", 65, 20, 125, 114, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_CheckBox, "Voice2EnableCB", 65, 25, 113, 159, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Active"
     Control(__UI_NewID).HasBorder = False
@@ -128,46 +136,52 @@ SUB __UI_LoadForm
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).CanHaveFocus = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Button, "Voice2SoloBT", 50, 24, 195, 112, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Button, "Voice2SoloBT", 50, 24, 191, 160, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Solo"
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).CanHaveFocus = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Button, "Voice2ClearBT", 55, 24, 250, 112, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Button, "Voice2ClearBT", 55, 24, 250, 160, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Clear"
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).CanHaveFocus = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "Voice2MeterLB", 120, 20, 645, 114, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "Voice2MeterLB", 200, 20, 546, 162, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Idle (0.00s)"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 1
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "V2MMLLB", 35, 20, 15, 140, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "V2MMLLB", 25, 19, 20, 189, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "MML:"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 1
+    Control(__UI_NewID).AutoSize = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_TextBox, "Voice2MMLTB", 710, 44, 55, 138, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_TextBox, "Voice2MMLTB", 710, 80, 51, 189, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     Control(__UI_NewID).HasBorder = True
+    Control(__UI_NewID).Multiline = True
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).CanHaveFocus = True
     Control(__UI_NewID).BorderSize = 1
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "Voice3HeaderLB", 100, 20, 15, 192, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "Voice3HeaderLB", 44, 19, 10, 287, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Channel 3"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 1
+    Control(__UI_NewID).AutoSize = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_CheckBox, "Voice3EnableCB", 65, 20, 125, 192, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_CheckBox, "Voice3EnableCB", 65, 28, 113, 278, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Active"
     Control(__UI_NewID).HasBorder = False
@@ -175,46 +189,52 @@ SUB __UI_LoadForm
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).CanHaveFocus = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Button, "Voice3SoloBT", 50, 24, 195, 190, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Button, "Voice3SoloBT", 50, 24, 191, 282, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Solo"
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).CanHaveFocus = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Button, "Voice3ClearBT", 55, 24, 250, 190, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Button, "Voice3ClearBT", 57, 24, 250, 282, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Clear"
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).CanHaveFocus = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "Voice3MeterLB", 120, 20, 645, 192, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "Voice3MeterLB", 200, 20, 546, 282, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Idle (0.00s)"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 1
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "V3MMLLB", 35, 20, 15, 218, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "V3MMLLB", 25, 19, 20, 311, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "MML:"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 1
+    Control(__UI_NewID).AutoSize = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_TextBox, "Voice3MMLTB", 710, 44, 55, 216, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_TextBox, "Voice3MMLTB", 710, 80, 51, 311, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     Control(__UI_NewID).HasBorder = True
+    Control(__UI_NewID).Multiline = True
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).CanHaveFocus = True
     Control(__UI_NewID).BorderSize = 1
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "Voice4HeaderLB", 100, 20, 15, 270, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "Voice4HeaderLB", 45, 19, 10, 408, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Channel 4"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 1
+    Control(__UI_NewID).AutoSize = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_CheckBox, "Voice4EnableCB", 65, 20, 125, 270, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_CheckBox, "Voice4EnableCB", 65, 24, 113, 405, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Active"
     Control(__UI_NewID).HasBorder = False
@@ -222,54 +242,51 @@ SUB __UI_LoadForm
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).CanHaveFocus = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Button, "Voice4SoloBT", 50, 24, 195, 268, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Button, "Voice4SoloBT", 50, 24, 191, 404, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Solo"
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).CanHaveFocus = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Button, "Voice4ClearBT", 55, 24, 250, 268, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Button, "Voice4ClearBT", 55, 24, 250, 404, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Clear"
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).CanHaveFocus = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "Voice4MeterLB", 120, 20, 645, 270, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "Voice4MeterLB", 200, 24, 546, 402, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Idle (0.00s)"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 1
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "V4MMLLB", 35, 20, 15, 296, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "V4MMLLB", 25, 19, 20, 432, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "MML:"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 1
+    Control(__UI_NewID).AutoSize = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_TextBox, "Voice4MMLTB", 710, 44, 55, 294, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_TextBox, "Voice4MMLTB", 710, 80, 51, 433, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     Control(__UI_NewID).HasBorder = True
+    Control(__UI_NewID).Multiline = True
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).CanHaveFocus = True
     Control(__UI_NewID).BorderSize = 1
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "MixerInfoLB", 750, 95, 15, 348, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "4-Voice Player Guide:\10;* Active: Check/uncheck to include or mute a channel during playback.\10;* Solo: Isolate a single channel for listening (mutes all other channels).\10;* Clear: Erase MML text for that channel.\10;* MML controls waveform (@), volume (V), stereo pan (S), tempo (T), and envelope (/A\\D^S_R) anywhere in stream.\10;* Switch to 'Composer' tab for interactive note entry and sound design."
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 1
-    Control(__UI_NewID).WordWrap = True
-
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "CompTargetLB", 85, 20, 15, 36, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "CompTargetLB", 40, 22, 15, 36, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Target:"
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
-    __UI_NewID = __UI_NewControl(__UI_Type_DropdownList, "CompVoiceDL", 100, 23, 105, 34, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_DropdownList, "CompVoiceDL", 100, 22, 48, 36, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     AddItem __UI_NewID, "Channel 1"
     AddItem __UI_NewID, "Channel 2"
@@ -281,14 +298,14 @@ SUB __UI_LoadForm
     Control(__UI_NewID).CanHaveFocus = True
     Control(__UI_NewID).BorderSize = 1
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "CompOctaveLB", 45, 20, 215, 36, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "CompOctaveLB", 42, 22, 170, 36, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Octave:"
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
-    __UI_NewID = __UI_NewControl(__UI_Type_DropdownList, "CompOctaveDL", 55, 23, 265, 34, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_DropdownList, "CompOctaveDL", 55, 20, 206, 36, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     AddItem __UI_NewID, "O0"
     AddItem __UI_NewID, "O1"
@@ -303,14 +320,14 @@ SUB __UI_LoadForm
     Control(__UI_NewID).CanHaveFocus = True
     Control(__UI_NewID).BorderSize = 1
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "CompLengthLB", 45, 20, 330, 36, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "CompLengthLB", 45, 22, 282, 36, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Length:"
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
-    __UI_NewID = __UI_NewControl(__UI_Type_DropdownList, "CompLengthDL", 85, 23, 380, 34, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_DropdownList, "CompLengthDL", 85, 22, 323, 36, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     AddItem __UI_NewID, "L1 (Whole)"
     AddItem __UI_NewID, "L2 (Half)"
@@ -325,14 +342,14 @@ SUB __UI_LoadForm
     Control(__UI_NewID).CanHaveFocus = True
     Control(__UI_NewID).BorderSize = 1
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "CompArtLB", 35, 20, 475, 36, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "CompArtLB", 35, 22, 430, 36, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Style:"
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
-    __UI_NewID = __UI_NewControl(__UI_Type_DropdownList, "CompArtDL", 95, 23, 515, 34, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_DropdownList, "CompArtDL", 95, 22, 464, 36, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     AddItem __UI_NewID, "Normal (MN)"
     AddItem __UI_NewID, "Legato (ML)"
@@ -343,20 +360,20 @@ SUB __UI_LoadForm
     Control(__UI_NewID).CanHaveFocus = True
     Control(__UI_NewID).BorderSize = 1
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "CompTempoLB", 45, 20, 620, 36, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "CompTempoLB", 45, 22, 591, 36, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Tempo:"
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
-    __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "CompTempoSlider", 60, 22, 670, 34, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "CompTempoSlider", 97, 22, 638, 36, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).Value = 140
+    Control(__UI_NewID).TabPage = 2
     Control(__UI_NewID).Min = 32
     Control(__UI_NewID).Max = 255
-    Control(__UI_NewID).TabPage = 2
     Control(__UI_NewID).CanHaveFocus = True
     Control(__UI_NewID).Interval = 1
 
@@ -371,6 +388,7 @@ SUB __UI_LoadForm
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Interactive Piano Keyboard (Audition sound and insert note):"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
     __UI_NewID = __UI_NewControl(__UI_Type_Button, "KeyC", 48, 88, 15, 88, __UI_GetID("MainTabs"))
@@ -601,12 +619,14 @@ SUB __UI_LoadForm
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Synthesizer, ADSR Envelope, Waveform & Stereo Pan Parameters:"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
     __UI_NewID = __UI_NewControl(__UI_Type_Label, "SynthWaveLB", 70, 20, 15, 240, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Waveform:"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
     __UI_NewID = __UI_NewControl(__UI_Type_DropdownList, "SynthWaveDL", 125, 23, 85, 238, __UI_GetID("MainTabs"))
@@ -630,6 +650,7 @@ SUB __UI_LoadForm
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Param (Y):"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
     __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "SynthDutySlider", 90, 22, 290, 238, __UI_GetID("MainTabs"))
@@ -645,12 +666,14 @@ SUB __UI_LoadForm
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "50%"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
     __UI_NewID = __UI_NewControl(__UI_Type_Label, "SynthVolLB", 50, 20, 430, 240, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Vol (V):"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
     __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "SynthVolSlider", 90, 22, 485, 238, __UI_GetID("MainTabs"))
@@ -666,12 +689,14 @@ SUB __UI_LoadForm
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "38"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
     __UI_NewID = __UI_NewControl(__UI_Type_Label, "SynthPanLB", 50, 20, 620, 240, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Pan (S):"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
     __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "SynthPanSlider", 85, 22, 670, 238, __UI_GetID("MainTabs"))
@@ -687,6 +712,7 @@ SUB __UI_LoadForm
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Attack (/):"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
     __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "AttackSlider", 75, 22, 80, 268, __UI_GetID("MainTabs"))
@@ -702,12 +728,14 @@ SUB __UI_LoadForm
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "5%"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
     __UI_NewID = __UI_NewControl(__UI_Type_Label, "DecayLB", 65, 20, 200, 270, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Decay (\92;\92;):"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
     __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "DecaySlider", 75, 22, 270, 268, __UI_GetID("MainTabs"))
@@ -723,12 +751,14 @@ SUB __UI_LoadForm
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "15%"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
     __UI_NewID = __UI_NewControl(__UI_Type_Label, "SustainLB", 70, 20, 390, 270, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Sustain (^):"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
     __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "SustainSlider", 75, 22, 465, 268, __UI_GetID("MainTabs"))
@@ -744,12 +774,14 @@ SUB __UI_LoadForm
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "70%"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
     __UI_NewID = __UI_NewControl(__UI_Type_Label, "ReleaseLB", 70, 20, 585, 270, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Release (_):"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
     __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "ReleaseSlider", 75, 22, 660, 268, __UI_GetID("MainTabs"))
@@ -765,12 +797,14 @@ SUB __UI_LoadForm
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "10%"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
     __UI_NewID = __UI_NewControl(__UI_Type_Label, "QuickRampLB", 85, 20, 15, 300, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Quick Ramp (Q):"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
     __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "QuickRampSlider", 100, 22, 100, 298, __UI_GetID("MainTabs"))
@@ -786,6 +820,7 @@ SUB __UI_LoadForm
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "10%"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
     __UI_NewID = __UI_NewControl(__UI_Type_Button, "ApplySynthBT", 170, 25, 250, 296, __UI_GetID("MainTabs"))
@@ -806,80 +841,41 @@ SUB __UI_LoadForm
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Channel 1 MML Stream:"
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
 
-    __UI_NewID = __UI_NewControl(__UI_Type_TextBox, "ActiveVoiceMMLTB", 750, 60, 15, 355, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_TextBox, "ActiveVoiceMMLTB", 750, 120, 15, 355, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     Control(__UI_NewID).HasBorder = True
+    Control(__UI_NewID).Multiline = True
     Control(__UI_NewID).TabPage = 2
     Control(__UI_NewID).CanHaveFocus = True
     Control(__UI_NewID).BorderSize = 1
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Button, "PlayActiveVoiceBT", 130, 25, 15, 422, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Button, "PlayActiveVoiceBT", 130, 25, 15, 491, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Play Channel"
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).TabPage = 2
     Control(__UI_NewID).CanHaveFocus = True
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "ActiveVoiceStatusLB", 580, 20, 155, 425, __UI_GetID("MainTabs"))
+    __UI_NewID = __UI_NewControl(__UI_Type_Label, "ActiveVoiceStatusLB", 580, 20, 185, 491, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "Channel 1 ready."
     Control(__UI_NewID).HasBorder = False
+    Control(__UI_NewID).VAlign = __UI_Middle
     Control(__UI_NewID).TabPage = 2
-
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "RefHeaderLB", 750, 20, 15, 36, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "QB64-PE Music Macro Language (MML) Quick Reference Guide:"
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 3
-
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "RefNotesTitleLB", 230, 22, 15, 60, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "[1] Notes, Octaves & Timing"
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 3
-
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "RefNotesLB", 230, 390, 15, 85, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "A to G   - Musical notes in octave\10;# or +   - Sharp (e.g. C#)\10;-        - Flat (e.g. B-)\10;Nn       - Note by number (0-84)\10;On       - Octave (0 to 6)\10;< or >   - Octave down or up\10;Ln       - Note length (1 to 64)\10;           (1=whole, 4=quarter,\10;            8=eighth, 16=sixteenth)\10;.        - Dotted note (1.5x)\10;..       - Double dot (1.75x)\10;Pn or Rn - Pause/Rest (1 to 64)\10;Tn       - Tempo in BPM (32-255)\10;MN       - Normal (7/8 duration)\10;ML       - Legato (full duration)\10;MS       - Staccato (3/4 duration)\10;,        - Stop note advance (chord)"
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 3
-
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "RefSynthTitleLB", 230, 22, 260, 60, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "[2] Waveforms & Stereo Pan"
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 3
-
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "RefSynthLB", 230, 390, 260, 85, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "@n or Wn - Select Waveform:\10;  1: Square (default)\10;  2: Sawtooth\10;  3: Triangle\10;  4: Sine\10;  5: White Noise\10;  6: Pink Noise\10;  7: Brownian Noise\10;  8: LFSR Noise\10;  9: Pulse (configurable duty)\10; 10: Custom _WAVE array\10;\10;Yn       - Waveform parameter:\10;           Pulse duty cycle (0-100)\10;           LFSR clock / Noise seed\10;\10;Sn       - Stereo Pan (0 to 100)\10;           0=Left, 50=Center,\10;           100=Right\10;S- / S+  - Pan left / right"
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 3
-
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "RefEnvelopeTitleLB", 240, 22, 505, 60, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "[3] Envelopes & Multi-Voice"
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 3
-
-    __UI_NewID = __UI_NewControl(__UI_Type_Label, "RefEnvelopeLB", 240, 390, 505, 85, __UI_GetID("MainTabs"))
-    __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "/n       - Attack (% note duration)\10;       - Decay (% note duration)\10;^n       - Sustain (% voice volume)\10;_n       - Release (% note duration)\10;Qn       - Quick volume ramp\10;           (sets sustain=100,\10;            attack=n, release=n)\10;\10;Vn       - Voice Volume (0 to 100)\10;V- / V+  - Volume dec / inc\10;\10;MB       - Music Background (non-\10;           blocking, background play)\10;MF       - Music Foreground (blocks)\10;\10;Multi-Voice Syntax:\10;  PLAY v1$, v2$, v3$, v4$\10;\10;Remaining Time Query:\10;  rem# = PLAY(voice)   &"
-    Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).TabPage = 3
 
 END SUB
 
 SUB __UI_AssignIDs
     PlayFXDesigner = __UI_GetID("PlayFXDesigner")
     MasterFrame = __UI_GetID("MasterFrame")
+    MainTabs = __UI_GetID("MainTabs")
     PresetLB = __UI_GetID("PresetLB")
     PresetsDL = __UI_GetID("PresetsDL")
     PlayBT = __UI_GetID("PlayBT")
     CopyCodeBT = __UI_GetID("CopyCodeBT")
-    MainTabs = __UI_GetID("MainTabs")
     Voice1HeaderLB = __UI_GetID("Voice1HeaderLB")
     Voice1EnableCB = __UI_GetID("Voice1EnableCB")
     Voice1SoloBT = __UI_GetID("Voice1SoloBT")
@@ -908,7 +904,6 @@ SUB __UI_AssignIDs
     Voice4MeterLB = __UI_GetID("Voice4MeterLB")
     V4MMLLB = __UI_GetID("V4MMLLB")
     Voice4MMLTB = __UI_GetID("Voice4MMLTB")
-    MixerInfoLB = __UI_GetID("MixerInfoLB")
     CompTargetLB = __UI_GetID("CompTargetLB")
     CompVoiceDL = __UI_GetID("CompVoiceDL")
     CompOctaveLB = __UI_GetID("CompOctaveLB")
@@ -985,11 +980,4 @@ SUB __UI_AssignIDs
     ActiveVoiceMMLTB = __UI_GetID("ActiveVoiceMMLTB")
     PlayActiveVoiceBT = __UI_GetID("PlayActiveVoiceBT")
     ActiveVoiceStatusLB = __UI_GetID("ActiveVoiceStatusLB")
-    RefHeaderLB = __UI_GetID("RefHeaderLB")
-    RefNotesTitleLB = __UI_GetID("RefNotesTitleLB")
-    RefNotesLB = __UI_GetID("RefNotesLB")
-    RefSynthTitleLB = __UI_GetID("RefSynthTitleLB")
-    RefSynthLB = __UI_GetID("RefSynthLB")
-    RefEnvelopeTitleLB = __UI_GetID("RefEnvelopeTitleLB")
-    RefEnvelopeLB = __UI_GetID("RefEnvelopeLB")
 END SUB
