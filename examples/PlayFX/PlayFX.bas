@@ -33,66 +33,17 @@ TYPE WaveformType
     volRamp AS LONG
 END TYPE
 
+DIM SHARED Voice(1 TO 4) AS VoiceConfig
+DIM SHARED isPaused AS _BYTE
+DIM SHARED lastPlayingState AS _BYTE
+DIM SHARED activeCompVoice AS LONG: activeCompVoice = 1
+DIM SHARED updatingText AS _BYTE
+
+DIM SHARED FXWaveform(1 TO 5) AS WaveformType
+DIM SHARED currentFXWaveform AS LONG: currentFXWaveform = 1
+DIM SHARED currentFXControl AS LONG
+
 ': Controls' IDs: ------------------------------------------------------------------
-DIM SHARED KeyD AS LONG
-DIM SHARED KeyE AS LONG
-DIM SHARED KeyF AS LONG
-DIM SHARED KeyG AS LONG
-DIM SHARED KeyA AS LONG
-DIM SHARED KeyB AS LONG
-DIM SHARED KeyD2 AS LONG
-DIM SHARED KeyE2 AS LONG
-DIM SHARED KeyF2 AS LONG
-DIM SHARED KeyG2 AS LONG
-DIM SHARED KeyA2 AS LONG
-DIM SHARED KeyB2 AS LONG
-DIM SHARED KeyDs AS LONG
-DIM SHARED KeyFs AS LONG
-DIM SHARED KeyGs AS LONG
-DIM SHARED KeyAs AS LONG
-DIM SHARED KeyDs2 AS LONG
-DIM SHARED KeyFs2 AS LONG
-DIM SHARED KeyGs2 AS LONG
-DIM SHARED KeyAs2 AS LONG
-DIM SHARED KeyDot AS LONG
-DIM SHARED KeyOctDown AS LONG
-DIM SHARED KeyOctUp AS LONG
-DIM SHARED KeyTie AS LONG
-DIM SHARED KeyBackspace AS LONG
-DIM SHARED KeyClearMML AS LONG
-DIM SHARED SynthWaveDL AS LONG
-DIM SHARED SynthDutySlider AS LONG
-DIM SHARED SynthDutyValLB AS LONG
-DIM SHARED SynthVolSlider AS LONG
-DIM SHARED SynthVolValLB AS LONG
-DIM SHARED SynthPanSlider AS LONG
-DIM SHARED AttackSlider AS LONG
-DIM SHARED AttackValLB AS LONG
-DIM SHARED DecaySlider AS LONG
-DIM SHARED DecayValLB AS LONG
-DIM SHARED SustainSlider AS LONG
-DIM SHARED SustainValLB AS LONG
-DIM SHARED ReleaseSlider AS LONG
-DIM SHARED ReleaseValLB AS LONG
-DIM SHARED QuickRampSlider AS LONG
-DIM SHARED QuickRampValLB AS LONG
-DIM SHARED AuditionVoiceBT AS LONG
-DIM SHARED Waveform2TB AS LONG
-DIM SHARED Waveform3TB AS LONG
-DIM SHARED Waveform4TB AS LONG
-DIM SHARED Waveform5TB AS LONG
-DIM SHARED WaveformSlider AS LONG
-DIM SHARED WaveformNameLB AS LONG
-DIM SHARED NoteSlider AS LONG
-DIM SHARED LengthSlider AS LONG
-DIM SHARED LengthEffectsDL AS LONG
-DIM SHARED TempoSlider AS LONG
-DIM SHARED VolumeSlider AS LONG
-DIM SHARED VolRampSlider AS LONG
-DIM SHARED PlayFXPlayBT AS LONG
-DIM SHARED RefNotesLB AS LONG
-DIM SHARED RefSynthLB AS LONG
-DIM SHARED RefEnvelopeLB AS LONG
 DIM SHARED PlayFXDesigner AS LONG
 DIM SHARED MasterFrame AS LONG
 DIM SHARED PresetLB AS LONG
@@ -105,6 +56,7 @@ DIM SHARED PauseBT AS LONG
 DIM SHARED CopyCodeBT AS LONG
 DIM SHARED StatusLB AS LONG
 DIM SHARED MainTabs AS LONG
+
 DIM SHARED Voice1HeaderLB AS LONG
 DIM SHARED Voice1EnableCB AS LONG
 DIM SHARED Voice1WaveformDL AS LONG
@@ -112,11 +64,12 @@ DIM SHARED V1VolLB AS LONG
 DIM SHARED Voice1VolSlider AS LONG
 DIM SHARED V1PanLB AS LONG
 DIM SHARED Voice1PanSlider AS LONG
-DIM SHARED Voice1MeterLB AS LONG
 DIM SHARED Voice1SoloBT AS LONG
 DIM SHARED Voice1ClearBT AS LONG
+DIM SHARED Voice1MeterLB AS LONG
 DIM SHARED V1MMLLB AS LONG
 DIM SHARED Voice1MMLTB AS LONG
+
 DIM SHARED Voice2HeaderLB AS LONG
 DIM SHARED Voice2EnableCB AS LONG
 DIM SHARED Voice2WaveformDL AS LONG
@@ -129,6 +82,7 @@ DIM SHARED Voice2SoloBT AS LONG
 DIM SHARED Voice2ClearBT AS LONG
 DIM SHARED V2MMLLB AS LONG
 DIM SHARED Voice2MMLTB AS LONG
+
 DIM SHARED Voice3HeaderLB AS LONG
 DIM SHARED Voice3EnableCB AS LONG
 DIM SHARED Voice3WaveformDL AS LONG
@@ -141,6 +95,7 @@ DIM SHARED Voice3SoloBT AS LONG
 DIM SHARED Voice3ClearBT AS LONG
 DIM SHARED V3MMLLB AS LONG
 DIM SHARED Voice3MMLTB AS LONG
+
 DIM SHARED Voice4HeaderLB AS LONG
 DIM SHARED Voice4EnableCB AS LONG
 DIM SHARED Voice4WaveformDL AS LONG
@@ -153,7 +108,9 @@ DIM SHARED Voice4SoloBT AS LONG
 DIM SHARED Voice4ClearBT AS LONG
 DIM SHARED V4MMLLB AS LONG
 DIM SHARED Voice4MMLTB AS LONG
+
 DIM SHARED MixerInfoLB AS LONG
+
 DIM SHARED CompTargetLB AS LONG
 DIM SHARED CompVoiceDL AS LONG
 DIM SHARED CompOctaveLB AS LONG
@@ -163,50 +120,46 @@ DIM SHARED CompLengthDL AS LONG
 DIM SHARED CompArtLB AS LONG
 DIM SHARED CompArtDL AS LONG
 DIM SHARED PianoHeaderLB AS LONG
-DIM SHARED KeyC AS LONG
-DIM SHARED KeyC2 AS LONG
-DIM SHARED KeyCs AS LONG
-DIM SHARED KeyCs2 AS LONG
-DIM SHARED KeyRest AS LONG
-DIM SHARED KeyInsertHeader AS LONG
+
+DIM SHARED KeyC AS LONG, KeyD AS LONG, KeyE AS LONG, KeyF AS LONG, KeyG AS LONG, KeyA AS LONG, KeyB AS LONG
+DIM SHARED KeyC2 AS LONG, KeyD2 AS LONG, KeyE2 AS LONG, KeyF2 AS LONG, KeyG2 AS LONG, KeyA2 AS LONG, KeyB2 AS LONG
+DIM SHARED KeyCs AS LONG, KeyDs AS LONG, KeyFs AS LONG, KeyGs AS LONG, KeyAs AS LONG
+DIM SHARED KeyCs2 AS LONG, KeyDs2 AS LONG, KeyFs2 AS LONG, KeyGs2 AS LONG, KeyAs2 AS LONG
+DIM SHARED KeyRest AS LONG, KeyDot AS LONG, KeyOctDown AS LONG, KeyOctUp AS LONG, KeyTie AS LONG
+DIM SHARED KeyInsertHeader AS LONG, KeyBackspace AS LONG, KeyClearMML AS LONG
+
 DIM SHARED SynthHeaderLB AS LONG
-DIM SHARED SynthWaveLB AS LONG
-DIM SHARED SynthDutyLB AS LONG
-DIM SHARED SynthVolLB AS LONG
-DIM SHARED SynthPanLB AS LONG
-DIM SHARED AttackLB AS LONG
-DIM SHARED DecayLB AS LONG
-DIM SHARED SustainLB AS LONG
-DIM SHARED ReleaseLB AS LONG
-DIM SHARED QuickRampLB AS LONG
-DIM SHARED ApplySynthBT AS LONG
+DIM SHARED SynthWaveLB AS LONG, SynthWaveDL AS LONG
+DIM SHARED SynthDutyLB AS LONG, SynthDutySlider AS LONG, SynthDutyValLB AS LONG
+DIM SHARED SynthVolLB AS LONG, SynthVolSlider AS LONG, SynthVolValLB AS LONG
+DIM SHARED SynthPanLB AS LONG, SynthPanSlider AS LONG
+DIM SHARED AttackLB AS LONG, AttackSlider AS LONG, AttackValLB AS LONG
+DIM SHARED DecayLB AS LONG, DecaySlider AS LONG, DecayValLB AS LONG
+DIM SHARED SustainLB AS LONG, SustainSlider AS LONG, SustainValLB AS LONG
+DIM SHARED ReleaseLB AS LONG, ReleaseSlider AS LONG, ReleaseValLB AS LONG
+DIM SHARED QuickRampLB AS LONG, QuickRampSlider AS LONG, QuickRampValLB AS LONG
+DIM SHARED ApplySynthBT AS LONG, AuditionVoiceBT AS LONG
+
 DIM SHARED ActiveVoiceHeaderLB AS LONG
 DIM SHARED ActiveVoiceMMLTB AS LONG
 DIM SHARED PlayActiveVoiceBT AS LONG
 DIM SHARED ActiveVoiceStatusLB AS LONG
-DIM SHARED FXSlotsHeaderLB AS LONG
-DIM SHARED Waveform1TB AS LONG
-DIM SHARED FXConfigHeaderLB AS LONG
-DIM SHARED WaveformLB AS LONG
-DIM SHARED NoteLB AS LONG
-DIM SHARED LengthLB AS LONG
-DIM SHARED TempoLB AS LONG
-DIM SHARED VolumeLB AS LONG
-DIM SHARED VolRampLB AS LONG
-DIM SHARED PlayFXTB AS LONG
-DIM SHARED RefHeaderLB AS LONG
-DIM SHARED RefNotesTitleLB AS LONG
-DIM SHARED RefSynthTitleLB AS LONG
-DIM SHARED RefEnvelopeTitleLB AS LONG
 
-DIM SHARED Voice(1 TO 4) AS VoiceConfig
-DIM SHARED isPaused AS _BYTE
-DIM SHARED lastPlayingState AS _BYTE
-DIM SHARED activeCompVoice AS LONG: activeCompVoice = 1
-DIM SHARED updatingText AS _BYTE
-DIM SHARED FXWaveform(1 TO 5) AS WaveformType
-DIM SHARED currentFXWaveform AS LONG: currentFXWaveform = 1
-DIM SHARED currentFXControl AS LONG
+DIM SHARED FXSlotsHeaderLB AS LONG
+DIM SHARED Waveform1TB AS LONG, Waveform2TB AS LONG, Waveform3TB AS LONG, Waveform4TB AS LONG, Waveform5TB AS LONG
+DIM SHARED FXConfigHeaderLB AS LONG
+DIM SHARED WaveformLB AS LONG, WaveformSlider AS LONG, WaveformNameLB AS LONG
+DIM SHARED NoteLB AS LONG, NoteSlider AS LONG
+DIM SHARED LengthLB AS LONG, LengthSlider AS LONG, LengthEffectsDL AS LONG
+DIM SHARED TempoLB AS LONG, TempoSlider AS LONG
+DIM SHARED VolumeLB AS LONG, VolumeSlider AS LONG
+DIM SHARED VolRampLB AS LONG, VolRampSlider AS LONG
+DIM SHARED PlayFXTB AS LONG, PlayFXPlayBT AS LONG
+
+DIM SHARED RefHeaderLB AS LONG
+DIM SHARED RefNotesTitleLB AS LONG, RefNotesLB AS LONG
+DIM SHARED RefSynthTitleLB AS LONG, RefSynthLB AS LONG
+DIM SHARED RefEnvelopeTitleLB AS LONG, RefEnvelopeLB AS LONG
 
 ': External modules: ---------------------------------------------------------------
 '$INCLUDE:'../../InForm/InForm.bi'
@@ -221,7 +174,7 @@ SUB InitDefaultVoiceSettings
         Voice(i).enabled = _TRUE
         Voice(i).waveform = _IIF(i = 1, 9, _IIF(i = 2, 1, _IIF(i = 3, 3, 5)))
         Voice(i).waveParam = 50
-        Voice(i).volume = _IIF(i = 4, 60, 80)
+        Voice(i).volume = _IIF(i = 1, 38, _IIF(i = 2, 32, _IIF(i = 3, 40, 28)))
         Voice(i).pan = _IIF(i = 1, 35, _IIF(i = 2, 65, 50))
         Voice(i).attack = 5
         Voice(i).decay = 15
@@ -229,7 +182,7 @@ SUB InitDefaultVoiceSettings
         Voice(i).release = 10
         Voice(i).quickRamp = 10
         Voice(i).tempo = 140
-        Voice(i).octave = _IIF(i = 1, 4, _IIF(i = 2, 4, _IIF(i = 3, 2, 1)))
+        Voice(i).octave = _IIF(i = 1, 2, _IIF(i = 2, 2, _IIF(i = 3, 0, 0)))
         Voice(i).length = 4
         Voice(i).articulation = 1 ' Normal MN
     NEXT i
@@ -518,102 +471,167 @@ SUB CopyQB64CodeToClipboard
 END SUB
 
 SUB LoadPreset (idx AS LONG)
+    DIM j AS LONG
+    FOR j = 1 TO 4
+        Voice(j).enabled = _TRUE
+    NEXT j
+
     updatingText = _TRUE
     SELECT CASE idx
-        CASE 1 ' Korobeiniki (Tetris) - 4-voice chiptune
+        CASE 1 ' Korobeiniki (Tetris) - 4-voice chiptune [Lower Octaves]
             Control(MasterTempoSlider).Value = 144
             SetCaption MasterTempoValLB, "144"
 
             Voice(1).waveform = 9 ' Pulse lead
             Voice(1).waveParam = 50
-            Voice(1).volume = 90
+            Voice(1).volume = 38
             Voice(1).pan = 35
+            Voice(1).octave = 2
 
             Voice(2).waveform = 1 ' Square harmony
-            Voice(2).volume = 75
+            Voice(2).volume = 30
             Voice(2).pan = 65
+            Voice(2).octave = 1
 
             Voice(3).waveform = 3 ' Triangle bass
-            Voice(3).volume = 95
+            Voice(3).volume = 42
             Voice(3).pan = 50
+            Voice(3).octave = 0
 
             Voice(4).waveform = 5 ' Noise drums
-            Voice(4).volume = 60
+            Voice(4).volume = 26
             Voice(4).pan = 50
+            Voice(4).octave = 0
 
-            Text(Voice1MMLTB) = "@9 Y50 V90 S35 O4 L8 E B4 C8 D4 C8 B4 A4 A8 C8 E4 D8 C4 B4. C8 D4 E4 C4 A4 A2 P8 D4. F8 O5 A4 G8 F4 E4. C8 E4 D8 C4 B4 B8 C8 D4 E4 C4 A4 A2 P8"
-            Text(Voice2MMLTB) = "@1 V75 S65 O3 L8 G#4 A4. B8 G#4 E4. A8 O4 C4 O3 B8 A4 G#4. A8 B4 O4 C4 O3 A4 E4 E2 P8 F4. A8 O4 D4 C8 O3 B4 G4. E8 G4 F8 E4 D4 D8 E8 F4 G4 E4 C4 C2 P8"
-            Text(Voice3MMLTB) = "@3 V95 S50 O2 L4 E E A A G# G# A A F F C C E E A A D D F F C C E E E E E E A A A2 P8"
-            Text(Voice4MMLTB) = "@5 Q6 V60 S50 O1 L8 N20 N8 N20 N8 N20 N8 N20 N8 N20 N8 N20 N8 N20 N8 N20 N8 N20 N8 N20 N8 N20 N8 N20 N8 N20 N8 N20 N8 N20 N8 N20 N8"
+            Text(Voice1MMLTB) = "@9 Y50 V38 S35 O2 L8 E B4 C8 D4 C8 B4 A4 A8 C8 E4 D8 C4 B4. C8 D4 E4 C4 A4 A2 P8 D4. F8 O3 A4 G8 F4 E4. C8 E4 D8 C4 B4 B8 C8 D4 E4 C4 A4 A2 P8"
+            Text(Voice2MMLTB) = "@1 V30 S65 O1 L8 G#4 A4. B8 G#4 E4. A8 O2 C4 O1 B8 A4 G#4. A8 B4 O2 C4 O1 A4 E4 E2 P8 F4. A8 O2 D4 C8 O1 B4 G4. E8 G4 F8 E4 D4 D8 E8 F4 G4 E4 C4 C2 P8"
+            Text(Voice3MMLTB) = "@3 V42 S50 O0 L4 E E A A G# G# A A F F C C E E A A D D F F C C E E E E E E A A A2 P8"
+            Text(Voice4MMLTB) = "@5 Q6 V26 S50 O0 L8 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6"
 
-        CASE 2 ' Pachelbel - Canon in D
+        CASE 2 ' Wilbert Brants - Chamber Allegro (3 Voices) [from play_demo.bas Demo 2]
+            Control(MasterTempoSlider).Value = 103
+            SetCaption MasterTempoValLB, "103"
+
+            Voice(1).waveform = 1: Voice(1).volume = 35: Voice(1).pan = 40: Voice(1).octave = 3
+            Voice(2).waveform = 1: Voice(2).volume = 33: Voice(2).pan = 60: Voice(2).octave = 1
+            Voice(3).waveform = 2: Voice(3).volume = 38: Voice(3).pan = 50: Voice(3).octave = 0
+            Voice(4).enabled = _FALSE
+
+            Text(Voice1MMLTB) = "t103 w1 o3 q1 v35 L4 GG2G8F8 E-E-2E-8D8 CCCD E-2D2 B-B-2B-8A8 GG2G8F8 CCCD E-2D2 B-B-2B-8A8 GG2G8F8 ACFA G2D2"
+            Text(Voice2MMLTB) = "t103 w1 o1 q2 v33 L8 GB->D4<GB->D4< GB->E-<B-GB->E-<B- A>CF4<A>CF4< FA>C<AGB->D4< GB->D4<GB->D4< GB->E-<B-GB->E-<B- A>CF4<A>CF4< FA>C<AGB->D4<"
+            Text(Voice3MMLTB) = "t103 w2 o0 q8 v38 L8 G4B-B-G4B-B- G4>E-E-<G4>E-E-< A>CF4<A>CF4< F4AAGB->D4< G4B-B-G4B-B- G4>E-E-<G4>E-E-< A>CF4<A>CF4< F4AAGB->D4<"
+            Text(Voice4MMLTB) = ""
+
+        CASE 3 ' Wilbert Brants - Polyphony in C (3 Voices) [from play_demo.bas Demo 3]
+            Control(MasterTempoSlider).Value = 144
+            SetCaption MasterTempoValLB, "144"
+
+            Voice(1).waveform = 3: Voice(1).volume = 25: Voice(1).pan = 40: Voice(1).octave = 3
+            Voice(2).waveform = 1: Voice(2).volume = 22: Voice(2).pan = 60: Voice(2).octave = 1
+            Voice(3).waveform = 2: Voice(3).volume = 26: Voice(3).pan = 50: Voice(3).octave = 0
+            Voice(4).enabled = _FALSE
+
+            Text(Voice1MMLTB) = "t144 w3 o3 q2 v25 l8 cegceg l4 caf l8 cegceg l4 caf l8 gbdgbd l4 cgg cegceg l4 caf l8 cegceg l4 caf l8 gbdgbd l4 cgg"
+            Text(Voice2MMLTB) = "t144 w1 o1 q2 v22 l4 gec f2a8c8 gec f2a8c8 gbd ec2 gec f2a8c8 gec f2a8c8 gbd ec2"
+            Text(Voice3MMLTB) = "t144 w2 o0 q16 v26 l8 v+cv-ceeg4 v+ f v- faa>cc< v+ c v- ceeg4 v+ f v- faa>cc< ggbb>d4< q8 g4c2 v+cv-ceeg4 v+ f v- faa>cc< v+ c v- ceeg4 v+ f v- faa>cc< ggbb>d4< q8 g4c2"
+            Text(Voice4MMLTB) = ""
+
+        CASE 4 ' J. Baker - Multi-Wave Groove (4 Voices) [from play_demo.bas Demo 1]
+            Control(MasterTempoSlider).Value = 144
+            SetCaption MasterTempoValLB, "144"
+
+            Voice(1).waveform = 2: Voice(1).volume = 33: Voice(1).pan = 35: Voice(1).octave = 3
+            Voice(2).waveform = 1: Voice(2).volume = 31: Voice(2).pan = 65: Voice(2).octave = 2
+            Voice(3).waveform = 1: Voice(3).volume = 32: Voice(3).pan = 50: Voice(3).octave = 0
+            Voice(4).waveform = 9: Voice(4).waveParam = 15: Voice(4).volume = 28: Voice(4).pan = 50: Voice(4).octave = 3
+
+            Text(Voice1MMLTB) = "t144 l4 w2 o3 q20 v33 r1r1 cd>d<e cd>d<e cd>d<e cd>d2<"
+            Text(Voice2MMLTB) = "t144 q0 w1 o2 /1^100_99 v31 l1 gba /1\20^25_79 l4 gab2 /1^100_99 l1 gba /1\20^25_79 l4 gab2"
+            Text(Voice3MMLTB) = "t144 l4 q0 w1 o0 ^75_100 v32 w1 ^75_100 o0 dd2 w8 ^100_80 o4 c w1 ^75_100 o0 dd2 w8 ^100_80 o4 c w4 ^75_100 o0 d2 w8 ^100_80 o4 cd"
+            Text(Voice4MMLTB) = "t144 q0 w9 y15 o3 _100 v28 l8 d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d"
+
+        CASE 5 ' Wilbert Brants - Baroque Canon (3 Voices) [from play_demo.bas Demo 5]
+            Control(MasterTempoSlider).Value = 103
+            SetCaption MasterTempoValLB, "103"
+
+            Voice(1).waveform = 4: Voice(1).volume = 38: Voice(1).pan = 40: Voice(1).octave = 3
+            Voice(2).waveform = 1: Voice(2).volume = 25: Voice(2).pan = 60: Voice(2).octave = 2
+            Voice(3).waveform = 2: Voice(3).volume = 28: Voice(3).pan = 50: Voice(3).octave = 0
+            Voice(4).enabled = _FALSE
+
+            Text(Voice1MMLTB) = "T103 q1 O3 v38 W4 L4 CEC<G> CEC2 CEC<G> CE16R16E16R16C2 CEC<G> CEC2 CEC<G> C<G16>R16E16R16C2"
+            Text(Voice2MMLTB) = "T103 q8 O2 V25 W1 L8 CEG>C< <FA>CF <GB>DG CEG>C< CEG>C< <FA>CF <GB>DG CEG>C<"
+            Text(Voice3MMLTB) = "T103 q16 O0 V28 W2 L4 V+CV-E8E8 <FA> <V+GV-B8B8> CE V+CV-E8E8 <FA> <V+GV-B8B8> CE"
+            Text(Voice4MMLTB) = ""
+
+        CASE 6 ' Pachelbel - Canon in D (4 Voices) [Lower Octaves]
             Control(MasterTempoSlider).Value = 96
             SetCaption MasterTempoValLB, "96"
 
-            Voice(1).waveform = 4: Voice(1).volume = 85: Voice(1).pan = 30 ' Flute/Sine
-            Voice(2).waveform = 1: Voice(2).volume = 75: Voice(2).pan = 70 ' Warm Square
-            Voice(3).waveform = 2: Voice(3).volume = 70: Voice(3).pan = 40 ' Soft Saw
-            Voice(4).waveform = 3: Voice(4).volume = 95: Voice(4).pan = 60 ' Triangle Cello
+            Voice(1).waveform = 4: Voice(1).volume = 38: Voice(1).pan = 30: Voice(1).octave = 3
+            Voice(2).waveform = 1: Voice(2).volume = 30: Voice(2).pan = 70: Voice(2).octave = 2
+            Voice(3).waveform = 2: Voice(3).volume = 28: Voice(3).pan = 40: Voice(3).octave = 2
+            Voice(4).waveform = 3: Voice(4).volume = 42: Voice(4).pan = 60: Voice(4).octave = 1
 
-            Text(Voice1MMLTB) = "@4 V85 S30 O5 L4 F# E D C# O4 B A B C# O5 D C# O4 B A G F# G E O5 F# E D C# O4 B A B C# D2"
-            Text(Voice2MMLTB) = "@1 V75 S70 P1 O4 L4 D C# O3 B A G F# G A O4 D C# O3 B A G F# G E O4 F# E D C# O3 B A B C# D2"
-            Text(Voice3MMLTB) = "@2 V70 S40 P1 P1 O4 L4 F# E D C# O3 B A B C# O4 D C# O3 B A G F# G E O4 D C# O3 B A G F# G A B2"
-            Text(Voice4MMLTB) = "@3 V95 S60 O3 L4 D O2 A B F# G D G A O3 D O2 A B F# G D G A O3 D O2 A B F# G D G A D2"
+            Text(Voice1MMLTB) = "@4 V38 S30 O3 L4 F# E D C# O2 B A B C# O3 D C# O2 B A G F# G E O3 F# E D C# O2 B A B C# D2"
+            Text(Voice2MMLTB) = "@1 V30 S70 P1 O2 L4 D C# O1 B A G F# G A O2 D C# O1 B A G F# G E O2 F# E D C# O1 B A B C# D2"
+            Text(Voice3MMLTB) = "@2 V28 S40 P1 P1 O2 L4 F# E D C# O1 B A B C# O2 D C# O1 B A G F# G E O2 D C# O1 B A G F# G A B2"
+            Text(Voice4MMLTB) = "@3 V42 S60 O1 L4 D O0 A B F# G D G A O1 D O0 A B F# G D G A O1 D O0 A B F# G D G A D2"
 
-        CASE 3 ' J.S. Bach - Minuet in G
+        CASE 7 ' J.S. Bach - Minuet in G (4 Voices) [Lower Octaves]
             Control(MasterTempoSlider).Value = 120
             SetCaption MasterTempoValLB, "120"
 
-            Voice(1).waveform = 1: Voice(1).volume = 85: Voice(1).pan = 40
-            Voice(2).waveform = 4: Voice(2).volume = 70: Voice(2).pan = 60
-            Voice(3).waveform = 2: Voice(3).volume = 65: Voice(3).pan = 30
-            Voice(4).waveform = 3: Voice(4).volume = 90: Voice(4).pan = 50
+            Voice(1).waveform = 1: Voice(1).volume = 36: Voice(1).pan = 40: Voice(1).octave = 2
+            Voice(2).waveform = 4: Voice(2).volume = 30: Voice(2).pan = 60: Voice(2).octave = 1
+            Voice(3).waveform = 2: Voice(3).volume = 26: Voice(3).pan = 30: Voice(3).octave = 1
+            Voice(4).waveform = 3: Voice(4).volume = 38: Voice(4).pan = 50: Voice(4).octave = 0
 
-            Text(Voice1MMLTB) = "@1 V85 S40 O4 L4 D8 G8 A8 B8 O5 C8 D4 G4 G4 E8 C8 D8 E8 F#8 G4 G4 G4 C8 D8 C8 O4 B8 A8 B8 O5 C8 O4 B8 A8 G8 F#8 G8 A8 B8 G8 B4 A2"
-            Text(Voice2MMLTB) = "@4 V70 S60 O3 L4 G2. F#2. E2. D2. E2. D2. C2. D4 D2"
-            Text(Voice3MMLTB) = "@2 V65 S30 O3 L4 B4 O4 D4 G4 A4 O4 D4 F#4 G4 O4 C4 E4 F#4 O3 A4 O4 D4 E4 G4 O4 C4 D4 G4 O4 B4 C4 E4 A4 D4 F#2"
-            Text(Voice4MMLTB) = "@3 V90 S50 O2 L4 G2. D2. E2. B2. C2. G2. A2. D4 D2"
+            Text(Voice1MMLTB) = "@1 V36 S40 O2 L4 D8 G8 A8 B8 O3 C8 D4 G4 G4 E8 C8 D8 E8 F#8 G4 G4 G4 C8 D8 C8 O2 B8 A8 B8 O3 C8 O2 B8 A8 G8 F#8 G8 A8 B8 G8 B4 A2"
+            Text(Voice2MMLTB) = "@4 V30 S60 O1 L4 G2. F#2. E2. D2. E2. D2. C2. D4 D2"
+            Text(Voice3MMLTB) = "@2 V26 S30 O1 L4 B4 O2 D4 G4 A4 O2 D4 F#4 G4 O2 C4 E4 F#4 O1 A4 O2 D4 E4 G4 O2 C4 D4 G4 O2 B4 C4 E4 A4 D4 F#2"
+            Text(Voice4MMLTB) = "@3 V38 S50 O0 L4 G2. D2. E2. B2. C2. G2. A2. D4 D2"
 
-        CASE 4 ' Greensleeves
+        CASE 8 ' Greensleeves (4 Voices Traditional) [Lower Octaves]
             Control(MasterTempoSlider).Value = 110
             SetCaption MasterTempoValLB, "110"
 
-            Voice(1).waveform = 4: Voice(1).volume = 90: Voice(1).pan = 45
-            Voice(2).waveform = 1: Voice(2).volume = 75: Voice(2).pan = 65
-            Voice(3).waveform = 2: Voice(3).volume = 70: Voice(3).pan = 30
-            Voice(4).waveform = 3: Voice(4).volume = 95: Voice(4).pan = 50
+            Voice(1).waveform = 4: Voice(1).volume = 38: Voice(1).pan = 45: Voice(1).octave = 2
+            Voice(2).waveform = 1: Voice(2).volume = 32: Voice(2).pan = 65: Voice(2).octave = 2
+            Voice(3).waveform = 2: Voice(3).volume = 28: Voice(3).pan = 30: Voice(3).octave = 1
+            Voice(4).waveform = 3: Voice(4).volume = 40: Voice(4).pan = 50: Voice(4).octave = 0
 
-            Text(Voice1MMLTB) = "@4 V90 S45 O4 L4 A8 O5 C4 D8 E4. F8 E8 D4 O4 B8 G4. A8 B8 O5 C4 O4 A8 A4. G#8 A8 B4 G#8 E4. A8 O5 C4 D8 E4. F8 E8 D4 O4 B8 G4. A8 B8 O5 C4. O4 B4 A8 G#4. F#8 G#8 A2."
-            Text(Voice2MMLTB) = "@1 V75 S65 O4 L4 E8 A4 B8 O5 C4. D8 C8 O4 B4 G8 E4. F8 G8 A4 F8 F4. E8 F8 G4 E8 O3 B4. O4 E8 A4 B8 O5 C4. D8 C8 O4 B4 G8 E4. F8 G8 A4. G4 F8 E4. D8 E8 E2."
-            Text(Voice3MMLTB) = "@2 V70 S30 O3 L8 A O4 C E C A C G O4 D G D O3 G B F O4 C F C O3 F A E O4 C E C O3 E G# A O4 C E C A C G O4 D G D O3 G B F O4 C F C O3 F A E O3 B O4 E O3 B A2."
-            Text(Voice4MMLTB) = "@3 V95 S50 O2 L2. A G F E A G F E A."
+            Text(Voice1MMLTB) = "@4 V38 S45 O2 L4 A8 O3 C4 D8 E4. F8 E8 D4 O2 B8 G4. A8 B8 O3 C4 O2 A8 A4. G#8 A8 B4 G#8 E4. A8 O3 C4 D8 E4. F8 E8 D4 O2 B8 G4. A8 B8 O3 C4. O2 B4 A8 G#4. F#8 G#8 A2."
+            Text(Voice2MMLTB) = "@1 V32 S65 O2 L4 E8 A4 B8 O3 C4. D8 C8 O2 B4 G8 E4. F8 G8 A4 F8 F4. E8 F8 G4 E8 O1 B4. O2 E8 A4 B8 O3 C4. D8 C8 O2 B4 G8 E4. F8 G8 A4. G4 F8 E4. D8 E8 E2."
+            Text(Voice3MMLTB) = "@2 V28 S30 O1 L8 A O2 C E C A C G O2 D G D O1 G B F O2 C F C O1 F A E O2 C E C O1 E G# A O2 C E C A C G O2 D G D O1 G B F O2 C F C O1 F A E O1 B O2 E O1 B A2."
+            Text(Voice4MMLTB) = "@3 V40 S50 O0 L2. A G F E A G F E A."
 
-        CASE 5 ' Retro Arcade SFX
+        CASE 9 ' Retro Arcade SFX (4 Voices)
             Control(MasterTempoSlider).Value = 180
             SetCaption MasterTempoValLB, "180"
 
-            Voice(1).waveform = 2: Voice(1).volume = 85: Voice(1).pan = 25
-            Voice(2).waveform = 9: Voice(2).waveParam = 25: Voice(2).volume = 80: Voice(2).pan = 75
-            Voice(3).waveform = 1: Voice(3).volume = 75: Voice(3).pan = 50
-            Voice(4).waveform = 7: Voice(4).volume = 85: Voice(4).pan = 50
+            Voice(1).waveform = 2: Voice(1).volume = 38: Voice(1).pan = 25: Voice(1).octave = 4
+            Voice(2).waveform = 9: Voice(2).waveParam = 25: Voice(2).volume = 34: Voice(2).pan = 75: Voice(2).octave = 1
+            Voice(3).waveform = 1: Voice(3).volume = 32: Voice(3).pan = 50: Voice(3).octave = 3
+            Voice(4).waveform = 7: Voice(4).volume = 36: Voice(4).pan = 50: Voice(4).octave = 0
 
-            Text(Voice1MMLTB) = "T255 @2 Q1 L64 O6 B A G F E D C O5 B A G F E D C O4 B A G F E D C"
-            Text(Voice2MMLTB) = "T200 @9 Y25 L32 O3 C E G O4 C E G O3 G E C P16 O3 C E G O4 C E G"
-            Text(Voice3MMLTB) = "T180 @1 L16 O5 C G C G C G C G"
-            Text(Voice4MMLTB) = "T160 @7 Q15 L16 O1 N10 N8 N6 N4 N3 N2 N1"
+            Text(Voice1MMLTB) = "T255 @2 Q1 L64 O4 B A G F E D C O3 B A G F E D C O2 B A G F E D C"
+            Text(Voice2MMLTB) = "T200 @9 Y25 L32 O1 C E G O2 C E G O1 G E C P16 O1 C E G O2 C E G"
+            Text(Voice3MMLTB) = "T180 @1 L16 O3 C G C G C G C G"
+            Text(Voice4MMLTB) = "T160 @7 Q15 L16 O0 N10 N8 N6 N4 N3 N2 N1"
 
-        CASE 6 ' Original PlayFX Chords
+        CASE 10 ' Original PlayFX Chords (5 Slots)
             Control(MasterTempoSlider).Value = 120
             SetCaption MasterTempoValLB, "120"
-            Voice(1).waveform = 3: Voice(1).volume = 100: Voice(1).pan = 50
-            Voice(2).waveform = 3: Voice(2).volume = 80: Voice(2).pan = 35
-            Voice(3).waveform = 3: Voice(3).volume = 80: Voice(3).pan = 65
-            Voice(4).waveform = 5: Voice(4).volume = 50: Voice(4).pan = 50
+            Voice(1).waveform = 3: Voice(1).volume = 45: Voice(1).pan = 50: Voice(1).octave = 2
+            Voice(2).waveform = 3: Voice(2).volume = 38: Voice(2).pan = 35: Voice(2).octave = 2
+            Voice(3).waveform = 3: Voice(3).volume = 38: Voice(3).pan = 65: Voice(3).octave = 2
+            Voice(4).waveform = 5: Voice(4).volume = 25: Voice(4).pan = 50: Voice(4).octave = 1
 
-            Text(Voice1MMLTB) = "T120 L4 MN V100 Q10 @3 N42"
-            Text(Voice2MMLTB) = "T120 L4 MN V80 Q10 @3 N46"
-            Text(Voice3MMLTB) = "T120 L4 MN V80 Q10 @3 N49"
-            Text(Voice4MMLTB) = "T120 L4 MN V50 Q10 @5 N15"
+            Text(Voice1MMLTB) = "T120 L4 MN V45 Q10 @3 N30"
+            Text(Voice2MMLTB) = "T120 L4 MN V38 Q10 @3 N34"
+            Text(Voice3MMLTB) = "T120 L4 MN V38 Q10 @3 N37"
+            Text(Voice4MMLTB) = "T120 L4 MN V25 Q10 @5 N15"
 
         CASE ELSE ' Custom / Empty
             DIM i AS LONG
@@ -623,9 +641,7 @@ SUB LoadPreset (idx AS LONG)
     END SELECT
     updatingText = _FALSE
 
-    DIM j AS LONG
     FOR j = 1 TO 4
-        Voice(j).enabled = _TRUE
         SyncMixerControlsFromVoice j
     NEXT j
 

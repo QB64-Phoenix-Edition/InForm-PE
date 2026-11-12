@@ -7,7 +7,7 @@ SUB __UI_LoadForm
 
     DIM __UI_NewID AS LONG, __UI_RegisterResult AS LONG
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Form, "PlayFXDesigner", 800, 620, 0, 0, 0)
+    __UI_NewID = __UI_NewControl(__UI_Type_Form, "PlayFXDesigner", 800, 600, 0, 0, 0)
     __UI_RegisterResult = 0
     SetCaption __UI_NewID, "PlayFX - 4-Voice MML Studio"
     Control(__UI_NewID).Font = SetFont("segoeui.ttf?arial.ttf?Arial.ttf?InForm/resources/NotoMono-Regular.ttf", 10)
@@ -41,12 +41,16 @@ SUB __UI_LoadForm
     __UI_NewID = __UI_NewControl(__UI_Type_DropdownList, "PresetsDL", 260, 23, 62, 16, __UI_GetID("MasterFrame"))
     __UI_RegisterResult = 0
     AddItem __UI_NewID, "1. Korobeiniki (Tetris Chiptune - 4 Voices)"
-    AddItem __UI_NewID, "2. Pachelbel - Canon in D (4 Voices)"
-    AddItem __UI_NewID, "3. J.S. Bach - Minuet in G (4 Voices)"
-    AddItem __UI_NewID, "4. Greensleeves (4 Voices Traditional)"
-    AddItem __UI_NewID, "5. Retro Arcade SFX (4 Voices)"
-    AddItem __UI_NewID, "6. Original PlayFX Chords (5 Slots)"
-    AddItem __UI_NewID, "7. Custom / Empty Project"
+    AddItem __UI_NewID, "2. Wilbert Brants - Chamber Allegro (3 Voices)"
+    AddItem __UI_NewID, "3. Wilbert Brants - Polyphony in C (3 Voices)"
+    AddItem __UI_NewID, "4. J. Baker - Multi-Wave Groove (4 Voices)"
+    AddItem __UI_NewID, "5. Wilbert Brants - Baroque Canon (3 Voices)"
+    AddItem __UI_NewID, "6. Pachelbel - Canon in D (4 Voices)"
+    AddItem __UI_NewID, "7. J.S. Bach - Minuet in G (4 Voices)"
+    AddItem __UI_NewID, "8. Greensleeves (4 Voices Traditional)"
+    AddItem __UI_NewID, "9. Retro Arcade SFX (4 Voices)"
+    AddItem __UI_NewID, "10. Original PlayFX Chords (5 Slots)"
+    AddItem __UI_NewID, "11. Custom / Empty Project"
     Control(__UI_NewID).HasBorder = True
     Control(__UI_NewID).Value = 1
     Control(__UI_NewID).CanHaveFocus = True
@@ -137,7 +141,7 @@ SUB __UI_LoadForm
     __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "Voice1VolSlider", 70, 22, 375, 36, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).Value = 90
+    Control(__UI_NewID).Value = 38
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).Max = 100
     Control(__UI_NewID).CanHaveFocus = True
@@ -231,7 +235,7 @@ SUB __UI_LoadForm
     __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "Voice2VolSlider", 70, 22, 375, 116, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).Value = 75
+    Control(__UI_NewID).Value = 32
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).Max = 100
     Control(__UI_NewID).CanHaveFocus = True
@@ -325,7 +329,7 @@ SUB __UI_LoadForm
     __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "Voice3VolSlider", 70, 22, 375, 196, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).Value = 95
+    Control(__UI_NewID).Value = 40
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).Max = 100
     Control(__UI_NewID).CanHaveFocus = True
@@ -419,7 +423,7 @@ SUB __UI_LoadForm
     __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "Voice4VolSlider", 70, 22, 375, 276, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).Value = 60
+    Control(__UI_NewID).Value = 28
     Control(__UI_NewID).TabPage = 1
     Control(__UI_NewID).Max = 100
     Control(__UI_NewID).CanHaveFocus = True
@@ -516,7 +520,7 @@ SUB __UI_LoadForm
     AddItem __UI_NewID, "O5"
     AddItem __UI_NewID, "O6"
     Control(__UI_NewID).HasBorder = True
-    Control(__UI_NewID).Value = 5
+    Control(__UI_NewID).Value = 3
     Control(__UI_NewID).TabPage = 2
     Control(__UI_NewID).CanHaveFocus = True
     Control(__UI_NewID).BorderSize = 1
@@ -850,7 +854,7 @@ SUB __UI_LoadForm
     __UI_NewID = __UI_NewControl(__UI_Type_TrackBar, "SynthVolSlider", 90, 22, 485, 238, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
     Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).Value = 80
+    Control(__UI_NewID).Value = 38
     Control(__UI_NewID).TabPage = 2
     Control(__UI_NewID).Max = 100
     Control(__UI_NewID).CanHaveFocus = True
@@ -858,7 +862,7 @@ SUB __UI_LoadForm
 
     __UI_NewID = __UI_NewControl(__UI_Type_Label, "SynthVolValLB", 35, 20, 580, 240, __UI_GetID("MainTabs"))
     __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "80"
+    SetCaption __UI_NewID, "38"
     Control(__UI_NewID).HasBorder = False
     Control(__UI_NewID).TabPage = 2
 
