@@ -46,7 +46,7 @@ SUB __UI_LoadForm
     AddItem __UI_NewID, "5. Wilbert Brants - Baroque Canon (3 Voices)"
     AddItem __UI_NewID, "6. Pachelbel - Canon in D (4 Voices)"
     AddItem __UI_NewID, "7. J.S. Bach - Minuet in G (4 Voices)"
-    AddItem __UI_NewID, "8. Greensleeves (4 Voices Traditional)"
+    AddItem __UI_NewID, "8. J. Baker - Dual-Voice Counterpoint (2 Voices)"
     AddItem __UI_NewID, "9. Retro Arcade SFX (4 Voices)"
     AddItem __UI_NewID, "10. Custom / Empty Project"
     Control(__UI_NewID).HasBorder = True

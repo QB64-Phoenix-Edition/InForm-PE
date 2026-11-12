@@ -426,7 +426,7 @@ SUB LoadPreset (idx AS LONG)
 
     updatingText = _TRUE
     SELECT CASE idx
-        CASE 1 ' Korobeiniki (Tetris) - 4-voice chiptune [Lower Octaves]
+        CASE 1 ' Korobeiniki (Tetris Chiptune - 4 Voices)
             Control(MasterTempoSlider).Value = 144
             SetCaption MasterTempoValLB, "144"
 
@@ -434,27 +434,28 @@ SUB LoadPreset (idx AS LONG)
             Voice(1).waveParam = 50
             Voice(1).volume = 38
             Voice(1).pan = 35
-            Voice(1).octave = 2
+            Voice(1).octave = 3
 
             Voice(2).waveform = 1 ' Square harmony
             Voice(2).volume = 30
             Voice(2).pan = 65
-            Voice(2).octave = 1
+            Voice(2).octave = 2
 
             Voice(3).waveform = 3 ' Triangle bass
             Voice(3).volume = 42
             Voice(3).pan = 50
-            Voice(3).octave = 0
+            Voice(3).octave = 1
 
-            Voice(4).waveform = 5 ' Noise drums
-            Voice(4).volume = 26
+            Voice(4).waveform = 5 ' White noise drums
+            Voice(4).quickRamp = 6
+            Voice(4).volume = 24
             Voice(4).pan = 50
             Voice(4).octave = 0
 
-            Text(Voice1MMLTB) = "@9 Y50 V38 S35 O2 L8 E B4 C8 D4 C8 B4 A4 A8 C8 E4 D8 C4 B4. C8 D4 E4 C4 A4 A2 P8 D4. F8 O3 A4 G8 F4 E4. C8 E4 D8 C4 B4 B8 C8 D4 E4 C4 A4 A2 P8"
-            Text(Voice2MMLTB) = "@1 V30 S65 O1 L8 G#4 A4. B8 G#4 E4. A8 O2 C4 O1 B8 A4 G#4. A8 B4 O2 C4 O1 A4 E4 E2 P8 F4. A8 O2 D4 C8 O1 B4 G4. E8 G4 F8 E4 D4 D8 E8 F4 G4 E4 C4 C2 P8"
-            Text(Voice3MMLTB) = "@3 V42 S50 O0 L4 E E A A G# G# A A F F C C E E A A D D F F C C E E E E E E A A A2 P8"
-            Text(Voice4MMLTB) = "@5 Q6 V26 S50 O0 L8 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6"
+            Text(Voice1MMLTB) = "T144 @9 Y50 V38 S35 O3 E4 < B8 > C8 D4 C8 < B8 A4 A8 > C8 E4 D8 C8 < B4. > C8 D4 E4 C4 < A4 A4 > P4 D4. F8 A4 G8 F8 E4. C8 E4 D8 C8 < B4 B8 > C8 D4 E4 C4 < A4 A4 > P4"
+            Text(Voice2MMLTB) = "T144 @1 V30 S65 O2 G#4 B4 G#4 B4 A4 > C4 < A4 > C4 G#4 B4 > E4 < B4 A4 > C4 < A4 P4 F4 A4 F4 A4 E4 A4 E4 A4 E4 G#4 B4 G#4 A4 > C4 < A4 P4"
+            Text(Voice3MMLTB) = "T144 @3 V42 S50 O1 E4 < B4 > E4 < B4 > A4 E4 A4 E4 E4 < B4 > E4 < B4 > A4 E4 A4 P4 D4 < A4 > D4 < A4 > A4 E4 A4 E4 E4 < B4 > E4 < B4 > A4 E4 A4 P4"
+            Text(Voice4MMLTB) = "T144 @5 Q6 V24 S50 O0 L8 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 N15 N6 P4"
 
         CASE 2 ' Wilbert Brants - Chamber Allegro (3 Voices) [from play_demo.bas Demo 2]
             Control(MasterTempoSlider).Value = 103
@@ -465,9 +466,9 @@ SUB LoadPreset (idx AS LONG)
             Voice(3).waveform = 2: Voice(3).volume = 38: Voice(3).pan = 50: Voice(3).octave = 0
             Voice(4).enabled = _FALSE
 
-            Text(Voice1MMLTB) = "t103 w1 o3 q1 v35 L4 GG2G8F8 E-E-2E-8D8 CCCD E-2D2 B-B-2B-8A8 GG2G8F8 CCCD E-2D2 B-B-2B-8A8 GG2G8F8 ACFA G2D2"
-            Text(Voice2MMLTB) = "t103 w1 o1 q2 v33 L8 GB->D4<GB->D4< GB->E-<B-GB->E-<B- A>CF4<A>CF4< FA>C<AGB->D4< GB->D4<GB->D4< GB->E-<B-GB->E-<B- A>CF4<A>CF4< FA>C<AGB->D4<"
-            Text(Voice3MMLTB) = "t103 w2 o0 q8 v38 L8 G4B-B-G4B-B- G4>E-E-<G4>E-E-< A>CF4<A>CF4< F4AAGB->D4< G4B-B-G4B-B- G4>E-E-<G4>E-E-< A>CF4<A>CF4< F4AAGB->D4<"
+            Text(Voice1MMLTB) = "t103 w1 o3 q1 v35 L4 GG2G8F8 E-E-2E-8D8 CCCD E-2D2 B-B-2B-8A8 GG2G8F8 CCCD E-2D2 GG2G8F8 E-E-2E-8D8 CCCD E-2D2 B-B-2B-8A8 GG2G8F8 ACFA G2D2"
+            Text(Voice2MMLTB) = "t103 w1 o1 q2 v33 L8 GB->D4<GB->D4< GB->E-<B-GB->E-<B- A>CF4<A>CF4< FA>C<AGB->D4< GB->D4<GB->D4< GB->E-<B-GB->E-<B- A>CF4<A>CF4< FA>C<AGB->D4< GB->D4<GB->D4< GB->E-<B-GB->E-<B- A>CF4<A>CF4< FA>C<AGB->D4< GB->D4<GB->D4< GB->E-<B-GB->E-<B- A>CF4<A>CF4< FA>C<AGB->D4<"
+            Text(Voice3MMLTB) = "t103 w2 o0 q8 v38 L8 G4B-B-G4B-B- G4>E-E-<G4>E-E-< A>CF4<A>CF4< F4AAGB->D4< G4B-B-G4B-B- G4>E-E-<G4>E-E-< A>CF4<A>CF4< F4AAGB->D4< G4B-B-G4B-B- G4>E-E-<G4>E-E-< A>CF4<A>CF4< F4AAGB->D4< G4B-B-G4B-B- G4>E-E-<G4>E-E-< A>CF4<A>CF4< F4AAGB->D4<"
             Text(Voice4MMLTB) = ""
 
         CASE 3 ' Wilbert Brants - Polyphony in C (3 Voices) [from play_demo.bas Demo 3]
@@ -479,9 +480,9 @@ SUB LoadPreset (idx AS LONG)
             Voice(3).waveform = 2: Voice(3).volume = 26: Voice(3).pan = 50: Voice(3).octave = 0
             Voice(4).enabled = _FALSE
 
-            Text(Voice1MMLTB) = "t144 w3 o3 q2 v25 l8 cegceg l4 caf l8 cegceg l4 caf l8 gbdgbd l4 cgg cegceg l4 caf l8 cegceg l4 caf l8 gbdgbd l4 cgg"
-            Text(Voice2MMLTB) = "t144 w1 o1 q2 v22 l4 gec f2a8c8 gec f2a8c8 gbd ec2 gec f2a8c8 gec f2a8c8 gbd ec2"
-            Text(Voice3MMLTB) = "t144 w2 o0 q16 v26 l8 v+cv-ceeg4 v+ f v- faa>cc< v+ c v- ceeg4 v+ f v- faa>cc< ggbb>d4< q8 g4c2 v+cv-ceeg4 v+ f v- faa>cc< v+ c v- ceeg4 v+ f v- faa>cc< ggbb>d4< q8 g4c2"
+            Text(Voice1MMLTB) = "t144 w3 o3 q2 v25 l8 cegceg l4 caf l8 cegceg l4 caf l8 gbdgbd l4 cgg cegceg l4 caf l8 cegceg l4 caf l8 gbdgbd l4 cgg cegceg l4 caf l8 cegceg l4 caf l8 gbdgbd l4 cgg"
+            Text(Voice2MMLTB) = "t144 w1 o1 q2 v22 l4 gec f2a8c8 gec f2a8c8 gbd ec2 gec f2a8c8 gec f2a8c8 gbd ec2 gec f2a8c8 gec f2a8c8 gbd ec2"
+            Text(Voice3MMLTB) = "t144 w2 o0 q16 v26 l8 v+cv-ceeg4 v+ f v- faa>cc< v+ c v- ceeg4 v+ f v- faa>cc< ggbb>d4< q8 g4c2 v+cv-ceeg4 v+ f v- faa>cc< v+ c v- ceeg4 v+ f v- faa>cc< ggbb>d4< q8 g4c2 v+cv-ceeg4 v+ f v- faa>cc< v+ c v- ceeg4 v+ f v- faa>cc< ggbb>d4< q8 g4c2"
             Text(Voice4MMLTB) = ""
 
         CASE 4 ' J. Baker - Multi-Wave Groove (4 Voices) [from play_demo.bas Demo 1]
@@ -491,12 +492,12 @@ SUB LoadPreset (idx AS LONG)
             Voice(1).waveform = 2: Voice(1).volume = 33: Voice(1).pan = 35: Voice(1).octave = 3
             Voice(2).waveform = 1: Voice(2).volume = 31: Voice(2).pan = 65: Voice(2).octave = 2
             Voice(3).waveform = 1: Voice(3).volume = 32: Voice(3).pan = 50: Voice(3).octave = 0
-            Voice(4).waveform = 9: Voice(4).waveParam = 15: Voice(4).volume = 28: Voice(4).pan = 50: Voice(4).octave = 3
+            Voice(4).waveform = 9: Voice(4).waveParam = 15: Voice(4).volume = 29: Voice(4).pan = 50: Voice(4).octave = 3
 
-            Text(Voice1MMLTB) = "t144 l4 w2 o3 q20 v33 r1r1 cd>d<e cd>d<e cd>d<e cd>d2<"
-            Text(Voice2MMLTB) = "t144 q0 w1 o2 /1^100_99 v31 l1 gba /1\20^25_79 l4 gab2 /1^100_99 l1 gba /1\20^25_79 l4 gab2"
-            Text(Voice3MMLTB) = "t144 l4 q0 w1 o0 ^75_100 v32 w1 ^75_100 o0 dd2 w8 ^100_80 o4 c w1 ^75_100 o0 dd2 w8 ^100_80 o4 c w4 ^75_100 o0 d2 w8 ^100_80 o4 cd"
-            Text(Voice4MMLTB) = "t144 q0 w9 y15 o3 _100 v28 l8 d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d"
+            Text(Voice1MMLTB) = "t144 l4 w2 o3 q20 v33 r1r1 r1r1 r1r1 r1r1 cd>d<e cd>d<e cd>d<e cd>d2<"
+            Text(Voice2MMLTB) = "t144 q0 w1 o2 /1^100_99 v31 l1 gba /1\20^25_79 l4 gab2 /1^100_99 l1 gba /1\20^25_79 l4 gab2 v40 /9^100\1 l1 gba \2 l4 gab2"
+            Text(Voice3MMLTB) = "t144 l4 q0 w1 o0 ^75_100 v32 w1 ^75_100 o0 dd2 w8 ^100_80 o4 c w1 ^75_100 o0 dd2 w8 ^100_80 o4 c w1 ^75_100 o0 dd2 w8 ^100_80 o4 c w1 ^75_100 o0 dd2 w8 ^100_80 o4 c w1 ^75_100 o0 dd2 w8 ^100_80 o4 c w1 ^75_100 o0 dd2 w8 ^100_80 o4 c w1 ^75_100 o0 dd2 w8 ^100_80 o4 c w1 ^75_100 o0 dd2 w8 ^100_80 o4 c w4 ^75_100 o0 d2 w8 ^100_80 o4 cd w4 ^75_100 o0 d2 w8 ^100_80 o4 cd w4 ^75_100 o0 d2 w8 ^100_80 o4 cd w4 ^75_100 o0 d2 w8 ^100_80 o4 cd"
+            Text(Voice4MMLTB) = "t144 q0 w9 y15 o3 _100 v29 l8 d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d"
 
         CASE 5 ' Wilbert Brants - Baroque Canon (3 Voices) [from play_demo.bas Demo 5]
             Control(MasterTempoSlider).Value = 103
@@ -508,65 +509,65 @@ SUB LoadPreset (idx AS LONG)
             Voice(4).enabled = _FALSE
 
             Text(Voice1MMLTB) = "T103 q1 O3 v38 W4 L4 CEC<G> CEC2 CEC<G> CE16R16E16R16C2 CEC<G> CEC2 CEC<G> C<G16>R16E16R16C2"
-            Text(Voice2MMLTB) = "T103 q8 O2 V25 W1 L8 CEG>C< <FA>CF <GB>DG CEG>C< CEG>C< <FA>CF <GB>DG CEG>C<"
-            Text(Voice3MMLTB) = "T103 q16 O0 V28 W2 L4 V+CV-E8E8 <FA> <V+GV-B8B8> CE V+CV-E8E8 <FA> <V+GV-B8B8> CE"
+            Text(Voice2MMLTB) = "T103 q8 O2 V25 W1 L8 CEG>C< <FA>CF <GB>DG CEG>C< CEG>C< <FA>CF <GB>DG CEG>C< CEG>C< <FA>CF <GB>DG CEG>C< CEG>C< <FA>CF <GB>DG CEG>C<"
+            Text(Voice3MMLTB) = "T103 q16 O0 V28 W2 L4 V+CV-E8E8 <FA> <V+GV-B8B8> CE V+CV-E8E8 <FA> <V+GV-B8B8> CE V+CV-E8E8 <FA> <V+GV-B8B8> CE V+CV-E8E8 <FA> <V+GV-B8B8> CE"
             Text(Voice4MMLTB) = ""
 
-        CASE 6 ' Pachelbel - Canon in D (4 Voices) [Lower Octaves]
+        CASE 6 ' Pachelbel - Canon in D (4 Voices)
             Control(MasterTempoSlider).Value = 96
             SetCaption MasterTempoValLB, "96"
 
             Voice(1).waveform = 4: Voice(1).volume = 38: Voice(1).pan = 30: Voice(1).octave = 3
             Voice(2).waveform = 1: Voice(2).volume = 30: Voice(2).pan = 70: Voice(2).octave = 2
             Voice(3).waveform = 2: Voice(3).volume = 28: Voice(3).pan = 40: Voice(3).octave = 2
-            Voice(4).waveform = 3: Voice(4).volume = 42: Voice(4).pan = 60: Voice(4).octave = 1
+            Voice(4).waveform = 3: Voice(4).volume = 42: Voice(4).pan = 50: Voice(4).octave = 1
 
-            Text(Voice1MMLTB) = "@4 V38 S30 O3 L4 F# E D C# O2 B A B C# O3 D C# O2 B A G F# G E O3 F# E D C# O2 B A B C# D2"
-            Text(Voice2MMLTB) = "@1 V30 S70 P1 O2 L4 D C# O1 B A G F# G A O2 D C# O1 B A G F# G E O2 F# E D C# O1 B A B C# D2"
-            Text(Voice3MMLTB) = "@2 V28 S40 P1 P1 O2 L4 F# E D C# O1 B A B C# O2 D C# O1 B A G F# G E O2 D C# O1 B A G F# G A B2"
-            Text(Voice4MMLTB) = "@3 V42 S60 O1 L4 D O0 A B F# G D G A O1 D O0 A B F# G D G A O1 D O0 A B F# G D G A D2"
+            Text(Voice1MMLTB) = "T96 @4 V38 S30 O3 L4 F# E D C# < B A B > C# D C# < B A G F# G E > F# E D C# < B A B > C# D C# < B A G F# G E >"
+            Text(Voice2MMLTB) = "T96 @1 V30 S70 O2 L4 A G F# E D C# D E F# A G F# E D C# D A G F# E D C# D E F# A G F# E D C# D"
+            Text(Voice3MMLTB) = "T96 @2 V28 S40 O2 L4 F# E D C# < B A B > C# D F# E D C# < B A B > F# E D C# < B A B > C# D F# E D C# < B A B >"
+            Text(Voice4MMLTB) = "T96 @3 V42 S50 O1 L2 D < A B F# G D G A > D < A B F# G D G A >"
 
-        CASE 7 ' J.S. Bach - Minuet in G (4 Voices) [Lower Octaves]
+        CASE 7 ' J.S. Bach - Minuet in G (4 Voices)
             Control(MasterTempoSlider).Value = 120
             SetCaption MasterTempoValLB, "120"
 
-            Voice(1).waveform = 1: Voice(1).volume = 36: Voice(1).pan = 40: Voice(1).octave = 2
-            Voice(2).waveform = 4: Voice(2).volume = 30: Voice(2).pan = 60: Voice(2).octave = 1
-            Voice(3).waveform = 2: Voice(3).volume = 26: Voice(3).pan = 30: Voice(3).octave = 1
-            Voice(4).waveform = 3: Voice(4).volume = 38: Voice(4).pan = 50: Voice(4).octave = 0
+            Voice(1).waveform = 1: Voice(1).volume = 38: Voice(1).pan = 35: Voice(1).octave = 3
+            Voice(2).waveform = 4: Voice(2).volume = 30: Voice(2).pan = 65: Voice(2).octave = 2
+            Voice(3).waveform = 2: Voice(3).volume = 28: Voice(3).pan = 40: Voice(3).octave = 2
+            Voice(4).waveform = 3: Voice(4).volume = 40: Voice(4).pan = 50: Voice(4).octave = 1
 
-            Text(Voice1MMLTB) = "@1 V36 S40 O2 L4 D8 G8 A8 B8 O3 C8 D4 G4 G4 E8 C8 D8 E8 F#8 G4 G4 G4 C8 D8 C8 O2 B8 A8 B8 O3 C8 O2 B8 A8 G8 F#8 G8 A8 B8 G8 B4 A2"
-            Text(Voice2MMLTB) = "@4 V30 S60 O1 L4 G2. F#2. E2. D2. E2. D2. C2. D4 D2"
-            Text(Voice3MMLTB) = "@2 V26 S30 O1 L4 B4 O2 D4 G4 A4 O2 D4 F#4 G4 O2 C4 E4 F#4 O1 A4 O2 D4 E4 G4 O2 C4 D4 G4 O2 B4 C4 E4 A4 D4 F#2"
-            Text(Voice4MMLTB) = "@3 V38 S50 O0 L4 G2. D2. E2. B2. C2. G2. A2. D4 D2"
+            Text(Voice1MMLTB) = "T120 @1 V38 S35 O3 D4 G8 A8 B8 > C8 < D4 G4 G4 E4 > C8 D8 E8 F#8 G4 < G4 G4 > C4 D8 C8 < B8 A8 B4 > C8 < B8 A8 G8 F#4 G8 A8 B8 > C8 < B4 A4 G4"
+            Text(Voice2MMLTB) = "T120 @4 V30 S65 O2 B2 > C4 < B2 > C4 < A2 > C4 < B2 > C4 < E2 F#4 G2 F#4 D2 > C4 < B2."
+            Text(Voice3MMLTB) = "T120 @2 V28 S40 O2 D2 E4 D2 E4 C2 E4 D2 E4 C2 D4 D2 B4 A2 F#4 G2."
+            Text(Voice4MMLTB) = "T120 @3 V40 S50 O1 G2 > C4 < G2 > C4 E2 C4 G2 > C4 < C2 D4 G2 D4 D2 D4 G2."
 
-        CASE 8 ' Greensleeves (4 Voices Traditional) [Lower Octaves]
-            Control(MasterTempoSlider).Value = 110
-            SetCaption MasterTempoValLB, "110"
+        CASE 8 ' J. Baker - Dual-Voice Counterpoint (2 Voices) [from play_demo.bas Demo 4]
+            Control(MasterTempoSlider).Value = 120
+            SetCaption MasterTempoValLB, "120"
 
-            Voice(1).waveform = 4: Voice(1).volume = 38: Voice(1).pan = 45: Voice(1).octave = 2
-            Voice(2).waveform = 1: Voice(2).volume = 32: Voice(2).pan = 65: Voice(2).octave = 2
-            Voice(3).waveform = 2: Voice(3).volume = 28: Voice(3).pan = 30: Voice(3).octave = 1
-            Voice(4).waveform = 3: Voice(4).volume = 40: Voice(4).pan = 50: Voice(4).octave = 0
+            Voice(1).waveform = 1: Voice(1).volume = 21: Voice(1).pan = 40: Voice(1).octave = 1
+            Voice(2).waveform = 1: Voice(2).volume = 20: Voice(2).pan = 60: Voice(2).octave = 0
+            Voice(3).enabled = _FALSE
+            Voice(4).enabled = _FALSE
 
-            Text(Voice1MMLTB) = "@4 V38 S45 O2 L4 A8 O3 C4 D8 E4. F8 E8 D4 O2 B8 G4. A8 B8 O3 C4 O2 A8 A4. G#8 A8 B4 G#8 E4. A8 O3 C4 D8 E4. F8 E8 D4 O2 B8 G4. A8 B8 O3 C4. O2 B4 A8 G#4. F#8 G#8 A2."
-            Text(Voice2MMLTB) = "@1 V32 S65 O2 L4 E8 A4 B8 O3 C4. D8 C8 O2 B4 G8 E4. F8 G8 A4 F8 F4. E8 F8 G4 E8 O1 B4. O2 E8 A4 B8 O3 C4. D8 C8 O2 B4 G8 E4. F8 G8 A4. G4 F8 E4. D8 E8 E2."
-            Text(Voice3MMLTB) = "@2 V28 S30 O1 L8 A O2 C E C A C G O2 D G D O1 G B F O2 C F C O1 F A E O2 C E C O1 E G# A O2 C E C A C G O2 D G D O1 G B F O2 C F C O1 F A E O1 B O2 E O1 B A2."
-            Text(Voice4MMLTB) = "@3 V40 S50 O0 L2. A G F E A G F E A."
+            Text(Voice1MMLTB) = "t120 w1 o1 q1 v21 l8 >dcde< dcde#4 l4 >d1< l8 de l4 >f1 l8 ddfe1< dedfe dd r4"
+            Text(Voice2MMLTB) = "t120 w1 o0 q2 v20 l8 <dced> dcge4 l4 q1 <d1> r8 l8 q2 dg l4 q1 <d1> l8 q2 dge q1 <d1> q2 dcdrr v+ <<dd>> v- r"
+            Text(Voice3MMLTB) = ""
+            Text(Voice4MMLTB) = ""
 
         CASE 9 ' Retro Arcade SFX (4 Voices)
             Control(MasterTempoSlider).Value = 180
             SetCaption MasterTempoValLB, "180"
 
             Voice(1).waveform = 2: Voice(1).volume = 38: Voice(1).pan = 25: Voice(1).octave = 4
-            Voice(2).waveform = 9: Voice(2).waveParam = 25: Voice(2).volume = 34: Voice(2).pan = 75: Voice(2).octave = 1
+            Voice(2).waveform = 9: Voice(2).waveParam = 25: Voice(2).volume = 34: Voice(2).pan = 75: Voice(2).octave = 2
             Voice(3).waveform = 1: Voice(3).volume = 32: Voice(3).pan = 50: Voice(3).octave = 3
             Voice(4).waveform = 7: Voice(4).volume = 36: Voice(4).pan = 50: Voice(4).octave = 0
 
-            Text(Voice1MMLTB) = "T255 @2 Q1 L64 O4 B A G F E D C O3 B A G F E D C O2 B A G F E D C"
-            Text(Voice2MMLTB) = "T200 @9 Y25 L32 O1 C E G O2 C E G O1 G E C P16 O1 C E G O2 C E G"
-            Text(Voice3MMLTB) = "T180 @1 L16 O3 C G C G C G C G"
-            Text(Voice4MMLTB) = "T160 @7 Q15 L16 O0 N10 N8 N6 N4 N3 N2 N1"
+            Text(Voice1MMLTB) = "T180 @2 Q1 L16 O4 B A G F E D C < B A G F E D C < B P16"
+            Text(Voice2MMLTB) = "T180 @9 Y25 L16 O2 C E G > C E G < G E C P16 C E G > C E < P16"
+            Text(Voice3MMLTB) = "T180 @1 L16 O3 C G C G C G C G C G C G C G C P16"
+            Text(Voice4MMLTB) = "T180 @7 Q15 L16 O0 N15 N13 N11 N9 N7 N5 N3 N1 N15 N13 N11 N9 N7 N5 N3 P16"
 
         CASE ELSE ' Custom / Empty
             DIM i AS LONG
