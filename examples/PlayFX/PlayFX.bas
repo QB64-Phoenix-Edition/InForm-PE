@@ -475,14 +475,14 @@ SUB LoadPreset (idx AS LONG)
             Control(MasterTempoSlider).Value = 144
             SetCaption MasterTempoValLB, "144"
 
-            Voice(1).waveform = 3: Voice(1).volume = 25: Voice(1).pan = 40: Voice(1).octave = 3
-            Voice(2).waveform = 1: Voice(2).volume = 22: Voice(2).pan = 60: Voice(2).octave = 1
-            Voice(3).waveform = 2: Voice(3).volume = 26: Voice(3).pan = 50: Voice(3).octave = 0
+            Voice(1).waveform = 3: Voice(1).volume = 22: Voice(1).pan = 40: Voice(1).octave = 3
+            Voice(2).waveform = 1: Voice(2).volume = 20: Voice(2).pan = 60: Voice(2).octave = 1
+            Voice(3).waveform = 2: Voice(3).volume = 22: Voice(3).pan = 50: Voice(3).octave = 0
             Voice(4).enabled = _FALSE
 
-            Text(Voice1MMLTB) = "t144 w3 o3 q2 v25 l8 cegceg l4 caf l8 cegceg l4 caf l8 gbdgbd l4 cgg cegceg l4 caf l8 cegceg l4 caf l8 gbdgbd l4 cgg cegceg l4 caf l8 cegceg l4 caf l8 gbdgbd l4 cgg"
-            Text(Voice2MMLTB) = "t144 w1 o1 q2 v22 l4 gec f2a8c8 gec f2a8c8 gbd ec2 gec f2a8c8 gec f2a8c8 gbd ec2 gec f2a8c8 gec f2a8c8 gbd ec2"
-            Text(Voice3MMLTB) = "t144 w2 o0 q16 v26 l8 v+cv-ceeg4 v+ f v- faa>cc< v+ c v- ceeg4 v+ f v- faa>cc< ggbb>d4< q8 g4c2 v+cv-ceeg4 v+ f v- faa>cc< v+ c v- ceeg4 v+ f v- faa>cc< ggbb>d4< q8 g4c2 v+cv-ceeg4 v+ f v- faa>cc< v+ c v- ceeg4 v+ f v- faa>cc< ggbb>d4< q8 g4c2"
+            Text(Voice1MMLTB) = "t144 w3 o3 q2 v22 l8 cegceg l4 caf l8 cegceg l4 caf l8 gbdgbd l4 cgg l8 cegceg l4 caf l8 cegceg l4 caf l8 gbdgbd l4 cgg l8 cegceg l4 caf l8 cegceg l4 caf l8 gbdgbd l4 cgg"
+            Text(Voice2MMLTB) = "t144 w1 o1 q2 v20 l4 gec f2a8c8 gec f2a8c8 gbd ec2 l4 gec f2a8c8 gec f2a8c8 gbd ec2 l4 gec f2a8c8 gec f2a8c8 gbd ec2"
+            Text(Voice3MMLTB) = "t144 w2 o0 q16 v22 l8 v+cv-ceeg4 v+ f v- faa>cc< v+ c v- ceeg4 v+ f v- faa>cc< ggbb>d4< q8 g4c2 q16 l8 v+cv-ceeg4 v+ f v- faa>cc< v+ c v- ceeg4 v+ f v- faa>cc< ggbb>d4< q8 g4c2 q16 l8 v+cv-ceeg4 v+ f v- faa>cc< v+ c v- ceeg4 v+ f v- faa>cc< ggbb>d4< q8 g4c2"
             Text(Voice4MMLTB) = ""
 
         CASE 4 ' J. Baker - Multi-Wave Groove (4 Voices) [from play_demo.bas Demo 1]
