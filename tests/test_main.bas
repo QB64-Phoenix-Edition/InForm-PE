@@ -1550,6 +1550,8 @@ SUB Test_String
     TEST_CHECK String_FormatInteger64("i64=%lld", -123456789012345~&&) = "i64=-123456789012345", "String_FormatInteger64"
     TEST_CHECK String_FormatSingle("f=%.2f", 3.14159) = "f=3.14", "String_FormatSingle"
     TEST_CHECK String_FormatDouble("d=%.5f", 2.718281828) = "d=2.71828", "String_FormatDouble"
+    TEST_CHECK String_FormatString("%80s", "test") = SPACE$(76) + "test", "String_FormatString width expansion"
+    TEST_CHECK String_FormatLong("%80d", 42) = SPACE$(78) + "42", "String_FormatLong width expansion"
 
     TEST_CASE_END
 END SUB
@@ -1566,6 +1568,8 @@ SUB Test_Pathname
 
     TEST_CHECK_FALSE Pathname_IsAbsolute("Windows"), "Pathname_IsAbsolute('Windows')"
     TEST_CHECK_FALSE Pathname_IsAbsolute(""), "Pathname_IsAbsolute('')"
+    TEST_CHECK_FALSE Pathname_IsAbsolute("../Windows"), "Pathname_IsAbsolute('../Windows')"
+    TEST_CHECK_FALSE Pathname_IsAbsolute("ab/cd"), "Pathname_IsAbsolute('ab/cd')"
 
     $IF WINDOWS THEN
         TEST_CHECK Pathname_AddDirectorySeparator("Windows") = "Windows\", "Pathname_AddDirectorySeparator('Windows')"
@@ -1613,6 +1617,7 @@ SUB Test_Pathname
 
     TEST_CHECK Pathname_GetDriveOrScheme("https://www.github.com/") = "https:", "Pathname_GetDriveOrScheme('https://www.github.com/')"
     TEST_CHECK Pathname_GetDriveOrScheme("C:\\Windows\\") = "C:", "Pathname_GetDriveOrScheme('C:\\Windows\\')"
+    TEST_CHECK Pathname_GetDriveOrScheme("folder/file:name.txt") = "", "Pathname_GetDriveOrScheme('folder/file:name.txt')"
     TEST_CHECK Pathname_GetDriveOrScheme("") = "", "Pathname_GetDriveOrScheme('')"
 
     TEST_CHECK Pathname_Sanitize("<abracadabra.txt/>") = "_abracadabra.txt__", "Pathname_Sanitize('<abracadabra.txt/>')"
@@ -1694,6 +1699,20 @@ SUB Test_StringFile
     StringFile_Seek sf, 0
     TEST_CHECK StringFile_ReadInteger64(sf) = 9999999999999999&&, "StringFile_ReadInteger64(sf) = 9999999999999999&&"
     TEST_CHECK LEN(sf.buffer) = 49, "LEN(sf.buffer) = 49"
+    DIM testOff AS _UNSIGNED _OFFSET: testOff = 12345678
+    StringFile_Seek sf, 0
+    StringFile_WriteOffset sf, testOff
+    StringFile_Seek sf, 0
+    TEST_CHECK StringFile_ReadOffset(sf) = testOff, "StringFile_ReadOffset(sf) = testOff"
+    StringFile_Resize sf, 10
+    TEST_CHECK StringFile_GetSize(sf) = 10, "StringFile_GetSize after truncate"
+    TEST_CHECK StringFile_GetPosition(sf) = _SIZE_OF_OFFSET, "Cursor preserved when within size"
+    StringFile_Resize sf, 5
+    TEST_CHECK StringFile_GetPosition(sf) = 5, "Cursor clamped on truncate past cursor"
+    StringFile_Resize sf, 20
+    TEST_CHECK StringFile_GetSize(sf) = 20, "StringFile_GetSize after expand"
+    TEST_CHECK_FALSE StringFile_Load(sf, "non_existent_file_xyz.tmp"), "StringFile_Load non-existent returns _FALSE"
+    TEST_CHECK StringFile_GetSize(sf) = 0, "StringFile_GetSize reset to 0 on failed load"
 
     TEST_CASE_END
 END SUB

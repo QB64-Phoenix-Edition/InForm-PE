@@ -28,6 +28,9 @@ FUNCTION StringFile_Load%% (stringFile AS StringFile, fileName AS STRING)
         stringFile.cursor = 0
 
         StringFile_Load = _TRUE
+    ELSE
+        stringFile.buffer = _STR_EMPTY
+        stringFile.cursor = 0
     END IF
 END FUNCTION
 
@@ -37,7 +40,7 @@ END FUNCTION
 ''' @param overwrite If _FALSE and the file already exists, the file will not be overwritten.
 ''' @return _TRUE if the file was saved successfully, _FALSE otherwise.
 FUNCTION StringFile_Save%% (stringFile AS StringFile, fileName AS STRING, overwrite AS _BYTE)
-    IF _FILEEXISTS(fileName) _ANDALSO NOT overwrite THEN EXIT FUNCTION
+    IF _FILEEXISTS(fileName) _ANDALSO overwrite = _FALSE THEN EXIT FUNCTION
 
     _WRITEFILE fileName, stringFile.buffer
 

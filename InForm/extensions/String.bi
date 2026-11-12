@@ -187,11 +187,17 @@ END FUNCTION
 ''' @return The formatted string.
 FUNCTION String_FormatString$ (fmtStr AS STRING, s AS STRING)
     DECLARE LIBRARY
-        SUB __String_FormatString ALIAS "std::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, s AS STRING)
+        FUNCTION __String_FormatString& ALIAS "std::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, s AS STRING)
     END DECLARE
 
-    STATIC buffer AS STRING: buffer = STRING$(LEN(fmtStr) + LEN(s) + 16, _ASC_NUL)
-    __String_FormatString buffer, LEN(buffer), String_ToCStr(fmtStr), String_ToCStr(s)
+    DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)
+    DIM cS AS STRING: cS = String_ToCStr(s)
+    DIM buffer AS STRING: buffer = STRING$(LEN(fmtStr) + LEN(s) + 16, _ASC_NUL)
+    DIM req AS LONG: req = __String_FormatString(buffer, LEN(buffer), cFmt, cS)
+    IF req >= LEN(buffer) THEN
+        buffer = STRING$(req + 1, _ASC_NUL)
+        req = __String_FormatString(buffer, LEN(buffer), cFmt, cS)
+    END IF
 
     String_FormatString = String_ToBStr(buffer)
 END FUNCTION
@@ -202,11 +208,16 @@ END FUNCTION
 ''' @return The formatted string.
 FUNCTION String_FormatLong$ (fmtStr AS STRING, n AS LONG)
     DECLARE LIBRARY
-        SUB __String_FormatLong ALIAS "std::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL n AS LONG)
+        FUNCTION __String_FormatLong& ALIAS "std::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL n AS LONG)
     END DECLARE
 
-    STATIC buffer AS STRING: buffer = STRING$(LEN(fmtStr) + 64, _ASC_NUL)
-    __String_FormatLong buffer, LEN(buffer), String_ToCStr(fmtStr), n
+    DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)
+    DIM buffer AS STRING: buffer = STRING$(LEN(fmtStr) + 64, _ASC_NUL)
+    DIM req AS LONG: req = __String_FormatLong(buffer, LEN(buffer), cFmt, n)
+    IF req >= LEN(buffer) THEN
+        buffer = STRING$(req + 1, _ASC_NUL)
+        req = __String_FormatLong(buffer, LEN(buffer), cFmt, n)
+    END IF
 
     String_FormatLong = String_ToBStr(buffer)
 END FUNCTION
@@ -217,11 +228,16 @@ END FUNCTION
 ''' @return The formatted string.
 FUNCTION String_FormatInteger64$ (fmtStr AS STRING, n AS _INTEGER64)
     DECLARE LIBRARY
-        SUB __String_FormatInteger64 ALIAS "std::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL n AS _INTEGER64)
+        FUNCTION __String_FormatInteger64& ALIAS "std::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL n AS _INTEGER64)
     END DECLARE
 
-    STATIC buffer AS STRING: buffer = STRING$(LEN(fmtStr) + 128, _ASC_NUL)
-    __String_FormatInteger64 buffer, LEN(buffer), String_ToCStr(fmtStr), n
+    DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)
+    DIM buffer AS STRING: buffer = STRING$(LEN(fmtStr) + 128, _ASC_NUL)
+    DIM req AS LONG: req = __String_FormatInteger64(buffer, LEN(buffer), cFmt, n)
+    IF req >= LEN(buffer) THEN
+        buffer = STRING$(req + 1, _ASC_NUL)
+        req = __String_FormatInteger64(buffer, LEN(buffer), cFmt, n)
+    END IF
 
     String_FormatInteger64 = String_ToBStr(buffer)
 END FUNCTION
@@ -232,11 +248,16 @@ END FUNCTION
 ''' @return The formatted string.
 FUNCTION String_FormatSingle$ (fmtStr AS STRING, f AS SINGLE)
     DECLARE LIBRARY
-        SUB __String_FormatSingle ALIAS "std::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL f AS SINGLE)
+        FUNCTION __String_FormatSingle& ALIAS "std::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL f AS SINGLE)
     END DECLARE
 
-    STATIC buffer AS STRING: buffer = STRING$(LEN(fmtStr) + 256, _ASC_NUL)
-    __String_FormatSingle buffer, LEN(buffer), String_ToCStr(fmtStr), f
+    DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)
+    DIM buffer AS STRING: buffer = STRING$(LEN(fmtStr) + 256, _ASC_NUL)
+    DIM req AS LONG: req = __String_FormatSingle(buffer, LEN(buffer), cFmt, f)
+    IF req >= LEN(buffer) THEN
+        buffer = STRING$(req + 1, _ASC_NUL)
+        req = __String_FormatSingle(buffer, LEN(buffer), cFmt, f)
+    END IF
 
     String_FormatSingle = String_ToBStr(buffer)
 END FUNCTION
@@ -247,11 +268,16 @@ END FUNCTION
 ''' @return The formatted string.
 FUNCTION String_FormatDouble$ (fmtStr AS STRING, d AS DOUBLE)
     DECLARE LIBRARY
-        SUB __String_FormatDouble ALIAS "std::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL d AS DOUBLE)
+        FUNCTION __String_FormatDouble& ALIAS "std::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL d AS DOUBLE)
     END DECLARE
 
-    STATIC buffer AS STRING: buffer = STRING$(LEN(fmtStr) + 512, _ASC_NUL)
-    __String_FormatDouble buffer, LEN(buffer), String_ToCStr(fmtStr), d
+    DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)
+    DIM buffer AS STRING: buffer = STRING$(LEN(fmtStr) + 512, _ASC_NUL)
+    DIM req AS LONG: req = __String_FormatDouble(buffer, LEN(buffer), cFmt, d)
+    IF req >= LEN(buffer) THEN
+        buffer = STRING$(req + 1, _ASC_NUL)
+        req = __String_FormatDouble(buffer, LEN(buffer), cFmt, d)
+    END IF
 
     String_FormatDouble = String_ToBStr(buffer)
 END FUNCTION

@@ -5,6 +5,8 @@
 
 $INCLUDEONCE
 
+'$INCLUDE:'String.bi'
+
 CONST PATHNAME_DIR_SEPARATOR_CODE_WIN~%% = _ASC_BACKSLASH
 CONST PATHNAME_DIR_SEPARATOR_CODE_NIX~%% = _ASC_FORWARDSLASH
 CONST PATHNAME_DIR_SEPARATOR_WIN = _CHR_BACKSLASH
@@ -27,16 +29,24 @@ CONST PATHNAME_EXT_SEPARATOR = _CHR_FULLSTOP
 CONST PATHNAME_SCHEME_TERMINATOR_CODE~%% = _ASC_COLON
 CONST PATHNAME_SCHEME_TERMINATOR = _CHR_COLON
 
+
 ''' @brief Checks if a path is absolute.
 ''' @param pathName The path to check.
-''' @return True if the path is absolute, False otherwise.
+''' @return _TRUE if the path is absolute, _FALSE otherwise.
 FUNCTION Pathname_IsAbsolute%% (pathName AS STRING)
     $IF WINDOWS THEN
-        ' Either \ or / or x:\ or x:/
-        IF LEN(pathName) > 2 THEN
-            Pathname_IsAbsolute = (ASC(pathName, 1) = PATHNAME_DIR_SEPARATOR_CODE_WIN _ORELSE ASC(pathName, 1) = PATHNAME_DIR_SEPARATOR_CODE_NIX _ORELSE ASC(pathName, 3) = PATHNAME_DIR_SEPARATOR_CODE_WIN _ORELSE ASC(pathName, 3) = PATHNAME_DIR_SEPARATOR_CODE_NIX)
-        ELSEIF LEN(pathName) > 0 THEN
-            Pathname_IsAbsolute = (ASC(pathName, 1) = PATHNAME_DIR_SEPARATOR_CODE_WIN _ORELSE ASC(pathName, 1) = PATHNAME_DIR_SEPARATOR_CODE_NIX)
+        DIM n AS _UNSIGNED LONG: n = LEN(pathName)
+        IF n > 0 THEN
+            DIM c1 AS _UNSIGNED _BYTE: c1 = ASC(pathName, 1)
+            IF c1 = PATHNAME_DIR_SEPARATOR_CODE_WIN _ORELSE c1 = PATHNAME_DIR_SEPARATOR_CODE_NIX THEN
+                Pathname_IsAbsolute = _TRUE
+            ELSEIF n > 2 _ANDALSO ASC(pathName, 2) = PATHNAME_SCHEME_TERMINATOR_CODE THEN
+                DIM c3 AS _UNSIGNED _BYTE: c3 = ASC(pathName, 3)
+                IF (c3 = PATHNAME_DIR_SEPARATOR_CODE_WIN _ORELSE c3 = PATHNAME_DIR_SEPARATOR_CODE_NIX) _ANDALSO _
+                   ((c1 >= __ASC_UPPER_A _ANDALSO c1 <= __ASC_UPPER_Z) _ORELSE (c1 >= __ASC_LOWER_A _ANDALSO c1 <= __ASC_LOWER_Z)) THEN
+                    Pathname_IsAbsolute = _TRUE
+                END IF
+            END IF
         END IF
     $ELSE
         ' /
@@ -50,21 +60,21 @@ END FUNCTION
 ''' @param pathName The path to fix.
 ''' @return The fixed path.
 FUNCTION Pathname_AddDirectorySeparator$ (pathName AS STRING)
-    $IF WINDOWS THEN
-        IF LEN(pathName) > 0 THEN
-            IF ASC(pathName, LEN(pathName)) <> PATHNAME_DIR_SEPARATOR_CODE_WIN _ANDALSO ASC(pathName, LEN(pathName)) <> PATHNAME_DIR_SEPARATOR_CODE_NIX THEN
+    DIM n AS _UNSIGNED LONG: n = LEN(pathName)
+    IF n > 0 THEN
+        DIM lastChar AS _UNSIGNED _BYTE: lastChar = ASC(pathName, n)
+        $IF WINDOWS THEN
+            IF lastChar <> PATHNAME_DIR_SEPARATOR_CODE_WIN _ANDALSO lastChar <> PATHNAME_DIR_SEPARATOR_CODE_NIX THEN
                 Pathname_AddDirectorySeparator = pathName + PATHNAME_DIR_SEPARATOR
                 EXIT FUNCTION
             END IF
-        END IF
-    $ELSE
-        IF LEN(pathName) > 0 THEN
-            IF ASC(pathName, LEN(pathName)) <> PATHNAME_DIR_SEPARATOR_CODE THEN
+        $ELSE
+            IF lastChar <> PATHNAME_DIR_SEPARATOR_CODE THEN
                 Pathname_AddDirectorySeparator = pathName + PATHNAME_DIR_SEPARATOR
                 EXIT FUNCTION
             END IF
-        END IF
-    $END IF
+        $END IF
+    END IF
 
     Pathname_AddDirectorySeparator = pathName
 END FUNCTION
@@ -92,12 +102,12 @@ END FUNCTION
 
 ''' @brief Returns the filename portion from a file path or URL.
 ''' @param pathOrURL The path or URL to get the filename from.
-''' @return The filename portion of the path or URL
+''' @return The filename portion of the path or URL.
 FUNCTION Pathname_GetFileName$ (pathOrURL AS STRING)
     DIM AS _UNSIGNED LONG i, j: j = LEN(pathOrURL)
 
     $IF WINDOWS THEN
-        ' Retrieve the position of the first / or \ in the parameter from the
+        ' Retrieve the position of the last / or \ in the parameter (from the right)
         i = j
         WHILE i > 0
             SELECT CASE ASC(pathOrURL, i)
@@ -142,7 +152,7 @@ END FUNCTION
 
 ''' @brief Checks if a path or URL has a file extension.
 ''' @param pathOrURL The path or URL to check.
-''' @return True if the path or URL has a file extension, False otherwise
+''' @return _TRUE if the path or URL has a file extension, _FALSE otherwise.
 FUNCTION Pathname_HasFileExtension%% (pathOrURL AS STRING)
     DIM i AS _UNSIGNED LONG: i = LEN(pathOrURL)
     WHILE i > 0
@@ -235,7 +245,14 @@ END FUNCTION
 FUNCTION Pathname_GetDriveOrScheme$ (pathOrURL AS STRING)
     DIM i AS _UNSIGNED LONG: i = INSTR(pathOrURL, PATHNAME_SCHEME_TERMINATOR)
 
-    IF i <> 0 THEN Pathname_GetDriveOrScheme = LEFT$(pathOrURL, i)
+    IF i > 0 THEN
+        DIM slashPos AS _UNSIGNED LONG: slashPos = INSTR(pathOrURL, PATHNAME_DIR_SEPARATOR_NIX)
+        DIM backslashPos AS _UNSIGNED LONG: backslashPos = INSTR(pathOrURL, PATHNAME_DIR_SEPARATOR_WIN)
+
+        IF (slashPos = 0 _ORELSE slashPos > i) _ANDALSO (backslashPos = 0 _ORELSE backslashPos > i) THEN
+            Pathname_GetDriveOrScheme = LEFT$(pathOrURL, i)
+        END IF
+    END IF
 END FUNCTION
 
 ''' @brief Makes a pathname legal by replacing illegal characters with an underscore.
@@ -244,16 +261,14 @@ END FUNCTION
 FUNCTION Pathname_Sanitize$ (fileName AS STRING)
     DIM n AS _UNSIGNED LONG: n = LEN(fileName)
     IF n THEN
-        DIM s AS STRING: s = SPACE$(n)
+        DIM s AS STRING: s = fileName
         DIM i AS _UNSIGNED LONG, c AS _UNSIGNED _BYTE
 
         FOR i = 1 TO n
-            c = ASC(fileName, i)
+            c = ASC(s, i)
             SELECT CASE c
                 CASE IS < _ASC_SPACE, PATHNAME_DIR_SEPARATOR_CODE_WIN, PATHNAME_DIR_SEPARATOR_CODE_NIX, PATHNAME_SCHEME_TERMINATOR_CODE, _ASC_QUOTE, _ASC_ASTERISK, _ASC_LESSTHAN, _ASC_GREATERTHAN, _ASC_QUESTION, _ASC_VERTICALBAR
                     ASC(s, i) = _ASC_UNDERSCORE
-                CASE ELSE
-                    ASC(s, i) = c
             END SELECT
         NEXT
 
