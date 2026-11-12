@@ -12,7 +12,7 @@ SUB __UI_LoadForm
     SetCaption __UI_NewID, "PlayFX - 4-Voice MML Studio"
     Control(__UI_NewID).Font = SetFont("segoeui.ttf?arial.ttf?Arial.ttf?InForm/resources/NotoMono-Regular.ttf", 10)
     Control(__UI_NewID).HasBorder = False
-    Control(__UI_NewID).CenteredWindow = True
+    Control(__UI_NewID).CenteredWindow = False
 
     __UI_NewID = __UI_NewControl(__UI_Type_Frame, "MasterFrame", 780, 72, 10, 6, 0)
     __UI_RegisterResult = 0
@@ -48,7 +48,8 @@ SUB __UI_LoadForm
     AddItem __UI_NewID, "7. J.S. Bach - Minuet in G (4 Voices)"
     AddItem __UI_NewID, "8. J. Baker - Dual-Voice Counterpoint (2 Voices)"
     AddItem __UI_NewID, "9. Retro Arcade SFX (4 Voices)"
-    AddItem __UI_NewID, "10. Custom / Empty Project"
+    AddItem __UI_NewID, "10. J.S. Bach - Jesu, Joy of Man's Desiring (4 Voices)"
+    AddItem __UI_NewID, "11. Custom / Empty Project"
     Control(__UI_NewID).HasBorder = True
     Control(__UI_NewID).Value = 1
     Control(__UI_NewID).CanHaveFocus = True

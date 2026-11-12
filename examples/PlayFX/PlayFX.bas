@@ -141,9 +141,9 @@ DIM SHARED RefEnvelopeTitleLB AS LONG, RefEnvelopeLB AS LONG
 '$INCLUDE:'../../InForm/InForm.ui'
 
 MMLErrorHandler:
-    mmlHadError = _TRUE
-    mmlErrorMessage = _ERRORMESSAGE$ + " (Code " + _TRIM$(STR$(ERR)) + ")"
-    RESUME NEXT
+mmlHadError = _TRUE
+mmlErrorMessage = _ERRORMESSAGE$ + " (Code " + _TRIM$(STR$(ERR)) + ")"
+RESUME NEXT
 
 ': Custom procedures: --------------------------------------------------------------
 
@@ -870,6 +870,67 @@ SUB LoadPreset (idx AS LONG)
             Text(Voice2MMLTB) = "T180 @9 Y25 L16 O2 C E G > C E G < G E C P16 C E G > C E < P16"
             Text(Voice3MMLTB) = "T180 @1 L16 O3 C G C G C G C G C G C G C G C P16"
             Text(Voice4MMLTB) = "T180 @7 Q15 L16 O0 N15 N13 N11 N9 N7 N5 N3 N1 N15 N13 N11 N9 N7 N5 N3 P16"
+
+        CASE 10 ' J.S. Bach - Jesu, Joy of Man's Desiring (4 Voices)
+            Control(MasterTempoSlider).Value = 120
+            SetCaption MasterTempoValLB, "120"
+
+            Voice(1).waveform = 4: Voice(1).volume = 34: Voice(1).pan = 25: Voice(1).octave = 4
+            Voice(2).waveform = 4: Voice(2).volume = 36: Voice(2).pan = 75: Voice(2).octave = 4
+            Voice(3).waveform = 4: Voice(3).volume = 28: Voice(3).pan = 75: Voice(3).octave = 4
+            Voice(4).waveform = 4: Voice(4).volume = 40: Voice(4).pan = 25: Voice(4).octave = 2
+
+            Text(Voice1MMLTB) = "T120 @4 V34 S25 P6 O4 G6 A6 B6 O5 D6 C6 C6 E6 D6 D6 G6 F#6 G6 D6 O4 B6 G6 A6 B6 O5 C6 D6 E6 D6 C6 O4 B6 A6 B6 " + _
+                               "G6 F#6 G6 A6 D6 F#6 A6 O5 C6 O4 B6 A6 B6 G6 A6 B6 O5 D6 C6 C6 E6 D6 D6 G6 F#6 G6 D6 O4 B6 G6 A6 B6 E6 O5 D6 C6 " + _
+                               "O4 B6 A6 G6 D6 G6 F#6 G6 B6 O5 D6 G6 D6 O4 B6 G6 B6 O5 D6 O4 B1 O5 C2 D1 D2 C1 O4 B2 A6 D6 E6 F#6 A6 G6 A6 O5 " + _
+                               "C6 O4 B6 O5 C6 O4 A6 F#6 D6 F#6 A6 O5 C6 O4 B6 A6 B6 G6 A6 B6 O5 D6 C6 C6 E6 D6 D6 G6 F#6 G6 D6 O4 B6 G6 A6 B6 " + _
+                               "E6 O5 D6 C6 O4 B6 A6 G6 D6 G6 F#6 G6 B6 A6 B6 O5 D6 C6 C6 E6 D6 D6 G6 F#6 G6 D6 O4 B6 G6 A6 B6 O5 C6 D6 E6 D6 " + _
+                               "C6 O4 B6 A6 B6 G6 F#6 G6 A6 D6 F#6 A6 O5 C6 O4 B6 A6 B6 G6 A6 B6 O5 D6 C6 C6 E6 D6 D6 G6 F#6 G6 D6 O4 B6 G6 A6 " + _
+                               "B6 E6 O5 D6 C6 O4 B6 A6 G6 D6 G6 F#6 G1 G2 A1 B2 B2 A2 G2 D6 D6 E6 F#6 A6 G6 A6 O5 C6 O4 B6 O5 C6 O4 A6 F#6 D6 " + _
+                               "F#6 A6 O5 C6 O4 B6 A6 B6 G6 A6 B6 O5 D6 C6 C6 E6 D6 D6 G6 F#6 G6 D6 O4 B6 G6 A6 B6 E6 O5 D6 C6 O4 B6 A6 G6 D6 " + _
+                               "G6 F#6 G6 B6 A6 B6 O5 D6 C6 C6 E6 D6 D6 G6 F#6 G6 D6 O4 B6 G6 A6 B6 O5 C6 D6 E6 D6 C6 O4 B6 A6 B6 G6 F#6 G6 A6 " + _
+                               "D6 F#6 A6 O5 C6 O4 B6 A6 B6 G6 A6 B6 O5 D6 C6 C6 E6 D6 D6 G6 F#6 G6 D6 O4 B6 G6 A6 B6 E6 O5 D6 C6 O4 B6 A6 G6 " + _
+                               "D6 G6 F#6 G6 B6 O5 D6 G6 D6 O4 B6 D6 B6 O5 C#6 D6 O4 D6 E6 F#6 A6 G#6 G#6 B6 A6 A6 O5 C6 O4 B6 O5 C6 O4 A6 E6 " + _
+                               "C6 D6 E6 F6 O5 D6 C6 D6 O4 B6 G#6 E6 F#6 G#6 A6 O5 C6 O4 B6 O5 C6 E6 D6 D6 F6 E6 E6 A6 G#6 A6 E6 C6 O4 A6 B6 " + _
+                               "O5 C6 F6 E6 D6 C6 O4 B6 A6 E6 A6 G#6 A6 O5 C6 E6 A6 P3 D2 E6 C6 D6 E6 G6 F6 G6 A#6 A6 A6 O6 C6 O5 B6 O6 C6 O5 " + _
+                               "A6 F6 D6 E6 F6 E6 G6 F6 G6 E6 C6 O4 G6 A6 A#6 A6 O5 C6 O4 B6 O5 C6 O4 A6 F6 D6 E6 F6 E6 C6 D6 E6 G6 F#6 G6 B6 " + _
+                               "A6 B6 G6 A6 B6 O5 D6 C6 C6 E6 D6 D6 G6 F#6 G6 D6 O4 B6 G6 A6 B6 O5 C6 D6 E6 D6 C6 O4 B6 A6 B6 G6 F#6 D6 E6 F#6 " + _
+                               "A6 G6 A6 O5 C6 O4 B6 O5 C6 O4 A6 F#6 D6 F#6 A6 O5 C6 O4 B6 A6 B6 G6 A6 B6 O5 D6 C6 C6 E6 D6 D6 G6 F#6 G6 D6 O4 " + _
+                               "B6 G6 A6 B6 E6 O5 D6 C6 O4 B6 A6 G6 D6 G6 F#6 G6 B6 O5 D6 G6 D6 O4 B6 G6 B6 O5 A6 F6 D6 O4 B6 G6 B6 O5 D6 E6 " + _
+                               "D6 O4 A6 F#6 A6 O5 C6 D6 O4 B6 G6 E6 G6 B6 O5 C6 O4 A6 F#6 D6 F#6 A6 O5 C6 O4 B6 A6 B6 G6 A6 B6 O5 D6 C6 C6 E6 " + _
+                               "D6 D6 G6 F#6 G6 D6 O4 B6 G6 A6 B6 O5 C6 D6 E6 D6 C6 O4 B6 A6 B6 G6 F#6 G6 A6 D6 F#6 A6 O5 C6 O4 B6 A6 B6 G6 A6 " + _
+                               "B6 O5 D6 C6 C6 E6 D6 D6 G6 F#6 G6 D6 O4 B6 G6 A6 B6 E6 O5 D6 C6 O4 B6 A6 G6 D6 G6 F#6 G1 G2 P1"
+            Text(Voice2MMLTB) = "T120 @4 V36 S75 P2 O4 G3 F#6 G3 A6 B3 A6 B3 G6 E3 D6 E3 F#6 G3 D6 E3 O3 B6 A3 O4 D6 A3 G6 A3 F#6 D3 F#6 G3 " + _
+                               "F#6 G3 A6 B3 A6 B3 G6 E3 G6 A3 F#6 G3 E6 O3 A3 O4 C6 O3 B3 O4 G6 B3 O5 D6 G3 D6 O4 G1 G2 A1 B2 B2 A2 G2 A2 D3 " + _
+                               "E6 F#3 G6 A3 O5 C6 O4 A3 F#6 D3 F#6 G3 D6 G3 F#6 G3 A6 B3 A6 G3 F#6 E3 G6 A3 G6 F#3 G6 A3 C6 O3 B3 O4 D6 G3 " + _
+                               "F#6 G3 A6 B3 A6 B3 G6 E3 D6 E3 F#6 G3 D6 E3 O3 B6 A3 O4 F#6 A3 G6 A3 F#6 D3 F#6 G3 F#6 G3 A6 B3 A6 B3 G6 E3 G6 " + _
+                               "A3 F#6 G3 E6 O3 A3 O4 C6 B1 O5 C2 D1 D2 C1 O4 B2 A2 D3 E6 F#3 G6 A3 O5 C6 O4 A3 F#6 D3 F#6 B1 O5 C2 D1 O4 B2 " + _
+                               "A4 B8 O5 C8 O4 B2 A2 G3 D6 G3 F#6 G3 A6 B3 A6 B3 G6 E3 D6 E3 F#6 G3 D6 E3 O3 B6 A3 O4 D6 A3 G6 A3 F#6 D3 F#6 " + _
+                               "G3 F#6 G3 A6 B3 A6 B3 G6 E3 G6 A3 F#6 G3 E6 O3 A3 O4 C6 O3 B3 O4 G6 B3 O5 D6 G3 O4 G6 A1 B2 O5 C1 C2 O4 B2 B4 " + _
+                               "O5 C8 D8 O4 B2 A2 A3 G#6 A3 B6 O5 C3 O4 B6 O5 C3 O4 A6 F3 A6 A3 G#6 A3 F#6 O3 B3 O4 D6 O5 C1 D2 E1 E2 D2 D4 E8 " + _
+                               "F8 D2 C3 O4 G6 O5 C3 O4 G6 E3 D6 C3 E6 F3 A6 B3 O5 D6 C3 O4 G6 O5 C3 O4 A6 O5 D3 O4 F#6 B1 O5 C2 D1 D2 C2 O4 " + _
+                               "B1 A3 C#6 D3 E6 F#3 G6 A3 O5 C6 O4 A3 F#6 D3 F#6 B1 O5 C2 D1 O4 B2 A4 B8 O5 C8 O4 B2 A2 G2 O3 B3 O4 D6 G3 D6 " + _
+                               "O3 B3 G6 O4 D3 B6 O5 C2 C3 O4 A6 B2 B3 G6 A2 A3 F#6 D3 F#6 G3 D6 G3 F#6 G3 A6 B3 A6 B3 G6 E3 D6 E3 F#6 G3 D6 " + _
+                               "E3 O3 B6 A3 O4 D6 A3 G6 A3 F#6 D3 F#6 G3 F#6 G3 A6 B3 A6 B3 G6 E3 G6 A3 F#6 G3 E6 O3 A3 O4 C6 O3 B1 B2 P1"
+            Text(Voice3MMLTB) = "T120 @4 V28 S75 P2 O4 D2 E2 G2 E2 O3 B2 A2 O4 D2 C2 C2 O3 A2 O4 F#2 G2 O3 G2 O4 E2 G2 E2 O3 B2 O4 C2 E2 D2 D2 " + _
+                               "P2 B3 G6 D2 O3 G2 G2 A2 G2 F#2 G2 A2 G2 F#2 A3 A6 O4 D3 D6 F#3 A6 F#3 D6 O3 A3 O4 D6 D2 D2 E2 G2 D2 O3 B2 O4 " + _
+                               "C4 O3 A4 O4 D4 O3 B4 O4 C4 O3 A4 B2 O4 D2 E2 G2 E2 O3 B2 A2 O4 D2 C2 C2 O3 A2 O4 F#2 G2 O3 G2 O4 E2 G2 E2 O3 " + _
+                               "B2 O4 C2 E2 D2 D2 O3 G2 G2 A2 G2 F#2 G2 A2 G2 F#2 A3 A6 O4 D3 D6 F#3 A6 F#3 D6 O3 A3 O4 D6 D2 D2 E2 G2 D2 O3 " + _
+                               "B2 O4 C4 O3 A4 O4 D4 O3 B4 O4 C4 O3 A4 B2 O4 D2 E2 G2 E2 O3 B2 A2 O4 D2 C2 C2 O3 A2 O4 F#2 G2 O3 G2 O4 E2 G2 " + _
+                               "E2 O3 B2 O4 C2 E2 D2 D2 P3 G6 D3 E6 F#2 D2 D2 E2 O3 A2 O4 A2 A2 A2 G#2 E2 O3 A2 O4 F#2 A2 F2 C2 D2 F#2 E2 C2 " + _
+                               "O3 A2 G2 O4 C2 A2 G2 D2 F#2 G2 G2 E2 G2 F2 A2 G2 G2 P3 D6 D3 D6 D2 D2 E2 G2 E2 O3 B2 A2 O4 D2 C2 C2 O3 A3 A6 " + _
+                               "O4 D3 D6 F#3 A6 F#3 D6 O3 A3 O4 D6 D2 D2 E2 G2 D2 O3 B2 O4 C4 O3 A4 O4 D4 O3 B4 O4 C4 O3 A4 G2 P3 O4 G6 D3 G6 " + _
+                               "D2 P3 G6 E3 C6 O3 A2 P3 O4 D6 O3 B3 O4 E6 O3 E3 A6 F#3 O4 A6 F#3 D6 D2 D2 E2 G2 E2 O3 B2 A2 O4 D2 O3 C2 C2 O2 " + _
+                               "A2 O3 F#2 G2 O2 G2 O3 E2 G2 E2 O2 D2 D1 D2 P2 P1 P1"
+            Text(Voice4MMLTB) = "T120 @4 V40 S25 O2 G2 O3 G2 E2 O2 B2 O3 E2 O2 E2 A2 B2 O3 C2 D2 F#2 D2 G2 E2 C2 O2 B2 O3 E2 D2 C2 C#2 D2 O2 " + _
+                               "G2 P3 O3 G6 D3 O2 B6 G2 O3 F#2 E2 F#2 E2 D2 E2 F#2 G2 D2 P3 D6 D3 D6 O2 D2 P3 O3 D6 D3 D6 G2 F#2 E2 B2 O2 B2 " + _
+                               "O3 E2 C2 D2 O2 D2 G2 O3 G2 E2 O2 B2 O3 E2 O2 E2 A2 B2 O3 C2 D2 F#2 D2 G2 E2 C2 O2 B2 O3 E2 D2 C2 C#2 D2 O2 G2 " + _
+                               "O3 F#2 E2 F#2 E2 D2 E2 F#2 G2 D2 P3 D6 D3 D6 O2 D2 P3 O3 D6 D3 D6 G2 F#2 E2 B2 O2 B2 O3 E2 C2 D2 O2 D2 G2 O3 " + _
+                               "G2 E2 O2 B2 O3 E2 O2 E2 A2 B2 O3 C2 D2 F#2 D2 G2 E2 C2 O2 B2 O3 E2 D2 C2 C#2 D2 O2 G2 P3 O3 G6 F#3 E6 D2 C2 O2 " + _
+                               "B2 A2 O3 A4 G4 F4 E4 D2 O2 B2 O3 E2 A2 O4 F2 D2 C2 F2 E2 D2 D#2 E2 O3 A2 O4 A2 B2 O5 C2 O4 A2 E2 F2 D2 G2 C2 " + _
+                               "E2 C2 F2 D2 G2 C2 P3 C6 O3 B3 O4 D6 O3 G2 O4 G2 E2 O3 B2 O4 E2 O3 E2 A2 B2 O4 C2 D2 P3 D6 D3 D6 O3 D2 P3 O4 D6 " + _
+                               "D3 D6 G2 F#2 E2 B2 O3 B2 O4 E2 C2 D2 O3 D2 G1 G2 G1 G2 G1 G2 G1 G2 G2 O4 G2 E2 O3 B2 O4 E2 O3 E2 A2 B2 O4 C2 " + _
+                               "D2 F#2 D2 G2 E2 C2 O3 B2 O4 E2 D2 C2 C#2 D2 O3 G1 G2 P1"
 
         CASE ELSE ' Custom / Empty
             DIM i AS LONG
