@@ -944,7 +944,7 @@ FUNCTION __GIF_Load%% (Id AS LONG, sf AS StringFile)
 
                 ' Possibly more blocks until terminator block (0)
                 WHILE i > 0 _ANDALSO NOT StringFile_IsEOF(sf)
-                    DIM seekPos AS _INTEGER64: seekPos = StringFile_GetPosition(sf) + i
+                    DIM seekPos AS _UNSIGNED _OFFSET: seekPos = StringFile_GetPosition(sf) + i
                     IF seekPos > StringFile_GetSize(sf) THEN seekPos = StringFile_GetSize(sf)
                     StringFile_Seek sf, seekPos
                     IF NOT StringFile_IsEOF(sf) THEN
