@@ -187,7 +187,7 @@ END FUNCTION
 ''' @return The formatted string.
 FUNCTION String_FormatString$ (fmtStr AS STRING, s AS STRING)
     DECLARE LIBRARY
-        FUNCTION __String_FormatString& ALIAS "std::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, s AS STRING)
+        FUNCTION __String_FormatString& ALIAS "::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, s AS STRING)
     END DECLARE
 
     DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)
@@ -208,7 +208,7 @@ END FUNCTION
 ''' @return The formatted string.
 FUNCTION String_FormatLong$ (fmtStr AS STRING, n AS LONG)
     DECLARE LIBRARY
-        FUNCTION __String_FormatLong& ALIAS "std::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL n AS LONG)
+        FUNCTION __String_FormatLong& ALIAS "::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL n AS LONG)
     END DECLARE
 
     DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)
@@ -228,7 +228,7 @@ END FUNCTION
 ''' @return The formatted string.
 FUNCTION String_FormatInteger64$ (fmtStr AS STRING, n AS _INTEGER64)
     DECLARE LIBRARY
-        FUNCTION __String_FormatInteger64& ALIAS "std::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL n AS _INTEGER64)
+        FUNCTION __String_FormatInteger64& ALIAS "::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL n AS _INTEGER64)
     END DECLARE
 
     DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)
@@ -248,7 +248,7 @@ END FUNCTION
 ''' @return The formatted string.
 FUNCTION String_FormatSingle$ (fmtStr AS STRING, f AS SINGLE)
     DECLARE LIBRARY
-        FUNCTION __String_FormatSingle& ALIAS "std::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL f AS SINGLE)
+        FUNCTION __String_FormatSingle& ALIAS "::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL f AS SINGLE)
     END DECLARE
 
     DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)
@@ -268,7 +268,7 @@ END FUNCTION
 ''' @return The formatted string.
 FUNCTION String_FormatDouble$ (fmtStr AS STRING, d AS DOUBLE)
     DECLARE LIBRARY
-        FUNCTION __String_FormatDouble& ALIAS "std::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL d AS DOUBLE)
+        FUNCTION __String_FormatDouble& ALIAS "::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL d AS DOUBLE)
     END DECLARE
 
     DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)

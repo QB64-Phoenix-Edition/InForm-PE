@@ -11,17 +11,17 @@ DECLARE CUSTOMTYPE LIBRARY
     ''' @param dst The destination memory address.
     ''' @param src The source memory address.
     ''' @param count The number of bytes to copy.
-    SUB Memory_Copy ALIAS "std::memcpy" (BYVAL dst AS _UNSIGNED _OFFSET, BYVAL src AS _UNSIGNED _OFFSET, BYVAL count AS _UNSIGNED _OFFSET)
+    SUB Memory_Copy ALIAS "::memcpy" (BYVAL dst AS _UNSIGNED _OFFSET, BYVAL src AS _UNSIGNED _OFFSET, BYVAL count AS _UNSIGNED _OFFSET)
     ''' @brief Safely copies bytes between potentially overlapping memory locations.
     ''' @param dst The destination memory address.
     ''' @param src The source memory address.
     ''' @param count The number of bytes to copy.
-    SUB Memory_CopySafe ALIAS "std::memmove" (BYVAL dst AS _UNSIGNED _OFFSET, BYVAL src AS _UNSIGNED _OFFSET, BYVAL count AS _UNSIGNED _OFFSET)
+    SUB Memory_CopySafe ALIAS "::memmove" (BYVAL dst AS _UNSIGNED _OFFSET, BYVAL src AS _UNSIGNED _OFFSET, BYVAL count AS _UNSIGNED _OFFSET)
     ''' @brief Fills a block of memory with a specified byte value.
     ''' @param dst The starting memory address to fill.
     ''' @param value The byte value to set.
     ''' @param count The number of bytes to set.
-    SUB Memory_Set ALIAS "std::memset" (BYVAL dst AS _UNSIGNED _OFFSET, BYVAL value AS LONG, BYVAL count AS _UNSIGNED _OFFSET)
+    SUB Memory_Set ALIAS "::memset" (BYVAL dst AS _UNSIGNED _OFFSET, BYVAL value AS LONG, BYVAL count AS _UNSIGNED _OFFSET)
 END DECLARE
 
 DECLARE LIBRARY
