@@ -135,6 +135,7 @@ InForm/extensions/*.*
 | TicTacToe2 | Fellippe Heitor |
 | Trackword | Richard Notley |
 | VDrops | bobalooie |
+| VideoPlayer | Fellippe Heitor |
 | WordClock | Fellippe Heitor |
 | wordSearch | George McGinn |
 

@@ -7,7 +7,12 @@ This example demonstrates video playback inside an InForm-PE PictureBox control 
 
 `Video_Open` looks at the file and picks the right player: a file that starts with `SPRV` or ends in `.spv` is an SPV video; anything else goes to VLC.
 
-This example is built on [ahenry3068](https://github.com/ahenry3068)'s .spv video libraries (MIT License): `VIDHandles.bi` routes each video to `SPVHandles.bi` (with `SPVAspect.bi` and `SPVExtra.bi`) or to `VLCHandles.bi` and `qbvlc.h`.
+## Attribution
+
+This example was created by [Fellippe Heitor](https://github.com/FellippeHeitor) and includes:
+
+- VLC support code and demo implementation by [Fellippe Heitor](https://github.com/FellippeHeitor)
+- SPV video libraries by [ahenry3068](https://github.com/ahenry3068) (MIT License): `VIDHandles.bi` routes each video to `SPVHandles.bi` (with `SPVAspect.bi` and `SPVExtra.bi`) or to `VLCHandles.bi` and `qbvlc.h`
 
 ## Requirements
 
