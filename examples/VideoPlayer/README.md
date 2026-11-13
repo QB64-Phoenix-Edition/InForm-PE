@@ -1,17 +1,17 @@
-# Video Player Library
+# VideoPlayer Example
 
-The `VideoPlay` library plays videos inside an InForm-PE PictureBox control:
+This example demonstrates video playback inside an InForm-PE PictureBox control using a custom video player implementation:
 
 - **Standard video files and streams** (MP4, MKV, WebM, AVI, MOV, `http://` and other URLs). Decoding and sound are handled by [VLC](https://www.videolan.org), which is loaded while the program runs.
 - **SPV videos**, the format made for the Commander X16, decoded by the library itself, so they play without VLC.
 
 `Video_Open` looks at the file and picks the right player: a file that starts with `SPRV` or ends in `.spv` is an SPV video; anything else goes to VLC.
 
-It is built on Tony3068's video libraries (MIT License): `VIDHandles.bi` routes each video to `SPVHandles.bi` (with `SPVAspect.bi` and `SPVExtra.bi`) or to `VLCHandles.bi` and `qbvlc.h`.
+This example is built on [ahenry3068](https://github.com/ahenry3068)'s .spv video libraries (MIT License): `VIDHandles.bi` routes each video to `SPVHandles.bi` (with `SPVAspect.bi` and `SPVExtra.bi`) or to `VLCHandles.bi` and `qbvlc.h`.
 
 ## Requirements
 
-- **To compile:** nothing extra. Keep `VideoPlay.bi` and Tony3068's files (`VIDHandles.bi`, `VLCHandles.bi`, `qbvlc.h`, `SPVHandles.bi`, `SPVAspect.bi`, `SPVExtra.bi`) together in `InForm/extensions`.
+- **To compile:** nothing extra. All required files are included in this example directory: `VideoPlayer.bi`, `VIDHandles.bi`, `VLCHandles.bi`, `qbvlc.h`, `SPVHandles.bi`, `SPVAspect.bi`, `SPVExtra.bi`.
 - **To play SPV videos:** nothing extra.
 - **To play anything else:** VLC 3.x installed on the computer running the program. VLC 4 is not supported. The VLC build has to match the program:
   - **Windows:** same bitness as QB64-PE (64-bit VLC for a 64-bit program). VLC is found in `Program Files`, or put `libvlc.dll`, `libvlccore.dll` and the `plugins` folder next to the `.exe`.
@@ -22,17 +22,47 @@ Use `Video_IsAvailable` to check for VLC and show a friendly message if it's mis
 
 ## Usage
 
-Include `VideoPlay.bi` before `InForm.bi`:
+This example includes a complete video player with the following features:
+
+- Open video files or URLs
+- Play/Pause/Stop controls
+- Seek bar for navigation
+- Loop toggle
+- Volume control
+- Time display
+
+To run the example:
+
+1. Ensure QB64-PE is installed
+2. Navigate to the `examples/VideoPlayer` directory
+3. Compile with QB64-PE: `qb64pe -x -w -e VideoPlayer.bas`
+4. Run the compiled executable
+5. Open a video file using the Open button, or pass a file/URL as a command-line argument
+
+### Integration into Your Own Project
+
+To use the video player in your own project:
+
+1. Copy the following files from this example to your project's directory:
+   - `VideoPlayer.bi`
+   - `VIDHandles.bi`
+   - `VLCHandles.bi`
+   - `qbvlc.h`
+   - `SPVHandles.bi`
+   - `SPVAspect.bi`
+   - `SPVExtra.bi`
+
+2. Include `VideoPlayer.bi` before `InForm.bi` in your `.bas` file:
 
 ```vb
 ': External modules: ---------------------------------------------------------------
-'$INCLUDE:'InForm/extensions/VideoPlay.bi'
+'$INCLUDE:'VideoPlayer.bi'
 '$INCLUDE:'InForm/InForm.bi'
 '$INCLUDE:'MyForm.frm'
 '$INCLUDE:'InForm/InForm.ui'
 ```
 
-### Example
+1. Use the video player API in your event handlers:
 
 ```vb
 SUB __UI_OnLoad
@@ -54,14 +84,12 @@ END SUB
 
 `Video_Draw` must be called every loop. Besides drawing, it is what makes looping and `Video_SetLimit` work.
 
-See `examples/VideoPlaySample` for a player with a seek bar, looping and volume.
-
 ## API Reference
 
 `Id` is the control ID of the PictureBox that shows the video. Up to 8 standard videos and 16 SPV videos can be open at once. Seconds and volume are `SINGLE`.
 
 | Name | Description |
-|---|---|
+| --- | --- |
 | `Video_IsAvailable%%` | True if VLC 3.x can be loaded (needed for everything but SPV). On false, `Video_GetError` says why. |
 | `Video_Open%% (Id, fileName$)` | Opens a file or URL into the PictureBox and stops on its first frame. Returns false on failure. |
 | `Video_Close Id` | Closes the video and clears the PictureBox. |
