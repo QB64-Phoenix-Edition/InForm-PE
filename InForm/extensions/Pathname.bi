@@ -29,7 +29,6 @@ CONST PATHNAME_EXT_SEPARATOR = _CHR_FULLSTOP
 CONST PATHNAME_SCHEME_TERMINATOR_CODE~%% = _ASC_COLON
 CONST PATHNAME_SCHEME_TERMINATOR = _CHR_COLON
 
-
 ''' @brief Checks if a path is absolute.
 ''' @param pathName The path to check.
 ''' @return _TRUE if the path is absolute, _FALSE otherwise.
