@@ -1,4 +1,4 @@
-': VideoPlay extension demo - plays standard video files and streams in a PictureBox
+': Video Player example - plays standard video files and streams in a PictureBox
 ': Fellippe Heitor, 2026
 ': Uses Tony3068's video libraries. SPV videos play as is; other formats need VLC 3.x installed.
 ': https://github.com/QB64-Phoenix-Edition/InForm-PE
@@ -8,7 +8,7 @@ DEFLNG A-Z
 OPTION _EXPLICIT
 
 ': Controls' IDs: ------------------------------------------------------------------
-DIM SHARED VideoPlaySample AS LONG
+DIM SHARED VideoPlayerForm AS LONG
 DIM SHARED VideoPictureBox AS LONG
 DIM SHARED SeekTrackBar AS LONG
 DIM SHARED OpenButton AS LONG
@@ -32,14 +32,14 @@ DIM SHARED SeekValueByCode AS LONG
 SUB OpenVideo (fileName AS STRING)
     IF Video_Open(VideoPictureBox, fileName) THEN
         Video_SetVolume VideoPictureBox, Control(VolumeTrackBar).Value / 100
-        Caption(VideoPlaySample) = "VideoPlay Sample - " + fileName
+        Caption(VideoPlayerForm) = "Video Player - " + fileName
         Control(PlayButton).Disabled = False
         Control(StopButton).Disabled = False
         Control(SeekTrackBar).Disabled = (Video_GetLength(VideoPictureBox) <= 0)
         SeekValueByCode = 0
         Control(SeekTrackBar).Value = 0
     ELSE
-        MessageBox "Could not open the video:\n\n" + Video_GetError, Caption(VideoPlaySample), MsgBox_OkOnly + MsgBox_Exclamation
+        MessageBox "Could not open the video:\n\n" + Video_GetError, Caption(VideoPlayerForm), MsgBox_OkOnly + MsgBox_Exclamation
     END IF
 END SUB
 
@@ -55,7 +55,7 @@ END SUB
 
 SUB __UI_OnLoad
     IF NOT Video_IsAvailable THEN
-        MessageBox "Only SPV videos can be played: other formats need VLC 3.x (https://www.videolan.org).\n\n" + Video_GetError, Caption(VideoPlaySample), MsgBox_OkOnly + MsgBox_Exclamation
+        MessageBox "Only SPV videos can be played: other formats need VLC 3.x (https://www.videolan.org).\n\n" + Video_GetError, Caption(VideoPlayerForm), MsgBox_OkOnly + MsgBox_Exclamation
     END IF
 
     ' A file or URL can be passed on the command line
@@ -92,7 +92,7 @@ SUB __UI_Click (id AS LONG)
     SELECT CASE id
         CASE OpenButton
             DIM fileName AS STRING
-            fileName = _OPENFILEDIALOG$(Caption(VideoPlaySample), , "*.mp4|*.MP4|*.mkv|*.MKV|*.spv|*.SPV|*.webm|*.WEBM|*.avi|*.AVI|*.mov|*.MOV|*.mpg|*.MPG|*.mpeg|*.MPEG", "Video files")
+            fileName = _OPENFILEDIALOG$(Caption(VideoPlayerForm), , "*.mp4|*.MP4|*.mkv|*.MKV|*.spv|*.SPV|*.webm|*.WEBM|*.avi|*.AVI|*.mov|*.MOV|*.mpg|*.MPG|*.mpeg|*.MPEG", "Video files")
             IF LEN(fileName) > 0 THEN OpenVideo fileName
 
         CASE PlayButton

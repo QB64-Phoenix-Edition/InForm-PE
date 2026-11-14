@@ -7,10 +7,10 @@
 '
 ' Plays standard video files and streams (MP4, MKV, WebM, AVI, MOV, http://...) and SPV videos
 ' inside a PictureBox. Standard videos need the VLC 3.x runtime on the user's machine; SPV
-' videos don't. Nothing extra is needed to compile. See docs/VideoPlay.md.
+' videos don't. Nothing extra is needed to compile. See README.md in this folder.
 '
 ' Usage:
-'   '$INCLUDE:'InForm/extensions/VideoPlay.bi'   (before InForm.bi)
+'   '$INCLUDE:'VideoPlayer.bi'   (before InForm.bi)
 '   IF Video_Open(MyPictureBox, "movie.mp4") THEN Video_Play MyPictureBox
 '   SUB __UI_BeforeUpdateDisplay: Video_Draw MyPictureBox
 '   SUB __UI_BeforeUnload: Video_CloseAll

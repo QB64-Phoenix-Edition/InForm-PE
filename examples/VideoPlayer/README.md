@@ -9,10 +9,8 @@ This example demonstrates video playback inside an InForm-PE PictureBox control 
 
 ## Attribution
 
-This example was created by [Fellippe Heitor](https://github.com/FellippeHeitor) and includes:
-
-- VLC support code and demo implementation by [Fellippe Heitor](https://github.com/FellippeHeitor)
-- SPV video libraries by [ahenry3068](https://github.com/ahenry3068) (MIT License): `VIDHandles.bi` routes each video to `SPVHandles.bi` (with `SPVAspect.bi` and `SPVExtra.bi`) or to `VLCHandles.bi` and `qbvlc.h`
+- The video libraries are by Tony3068 ([ahenry3068](https://github.com/ahenry3068)): `VIDHandles.bi` routes each video to `SPVHandles.bi` (with `SPVAspect.bi` and `SPVExtra.bi`) or to `VLCHandles.bi` and `qbvlc.h`. They are released under the MIT License, as the author confirmed on the [QB64 Phoenix Edition Discord](https://discord.com/channels/975381912350752819/975398631937015808/1568454142962176001). Each file keeps its `Copyright (c) 2026 Tony3068` notice.
+- `VideoPlayer.bi` (the InForm `Video_` layer over those libraries), macOS support in `qbvlc.h` and the demo program are by [Fellippe Heitor](https://github.com/FellippeHeitor).
 
 ## Requirements
 
@@ -121,6 +119,6 @@ END SUB
 
 - **Opening waits for the first frame.** For a local file that is usually well under a second, but a slow stream can take up to 10 seconds, and the form doesn't respond during that time.
 - **Decoding size.** VLC decodes the video shrunk to fit the PictureBox's size when it was opened, which keeps playback cheap. If the PictureBox grows afterwards, the picture is scaled up. Reopen the video to get full detail at the new size.
-- **SPV timer.** SPV videos are decoded on a QB64 `ON TIMER` that `VideoPlay.bi` starts and stops by itself (it only runs while an SPV video is open), so your program doesn't have to set one up. Don't call `Video_` commands from your own `ON TIMER` handlers.
+- **SPV timer.** SPV videos are decoded on a QB64 `ON TIMER` that `VideoPlayer.bi` starts and stops by itself (it only runs while an SPV video is open), so your program doesn't have to set one up. Don't call `Video_` commands from your own `ON TIMER` handlers.
 - **Dialogs.** For standard videos, sound keeps playing while a message box or file dialog is open, but the picture pauses until it closes. SPV videos pause completely and their sound can break up, because the timer can't run while a dialog is open.
 - File paths are passed to VLC as UTF-8. Plain ASCII paths are the safest.

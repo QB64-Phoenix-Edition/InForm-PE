@@ -7,9 +7,9 @@ SUB __UI_LoadForm
     $RESIZE:ON
     DIM __UI_NewID AS LONG, __UI_RegisterResult AS LONG
 
-    __UI_NewID = __UI_NewControl(__UI_Type_Form, "VideoPlaySample", 660, 470, 0, 0, 0)
+    __UI_NewID = __UI_NewControl(__UI_Type_Form, "VideoPlayerForm", 660, 470, 0, 0, 0)
     __UI_RegisterResult = 0
-    SetCaption __UI_NewID, "VideoPlay Sample"
+    SetCaption __UI_NewID, "Video Player"
     Control(__UI_NewID).Font = SetFont("segoeui.ttf?arial.ttf?Arial.ttf?Helvetica.ttc?Geneva.ttf?truetype/liberation/LiberationSans-Regular.ttf?TTF/arial.ttf?InForm/resources/NotoMono-Regular.ttf?cour.ttf?Courier.ttc", 12)
     Control(__UI_NewID).CenteredWindow = True
     Control(__UI_NewID).CanResize = True
@@ -89,7 +89,7 @@ SUB __UI_LoadForm
 END SUB
 
 SUB __UI_AssignIDs
-    VideoPlaySample = __UI_GetID("VideoPlaySample")
+    VideoPlayerForm = __UI_GetID("VideoPlayerForm")
     VideoPictureBox = __UI_GetID("VideoPictureBox")
     SeekTrackBar = __UI_GetID("SeekTrackBar")
     OpenButton = __UI_GetID("OpenButton")
