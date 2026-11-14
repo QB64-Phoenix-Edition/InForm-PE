@@ -1,6 +1,6 @@
 # Array Library
 
-The `Array` library provides a generic dynamic array implementation. It supports storing various data types and automatically resizes itself as needed. Array index always beings at 1.
+The `Array` library provides a generic dynamic array implementation. It supports storing various data types and automatically resizes itself as needed. Array index always begins at 1.
 
 ## Usage
 

@@ -187,13 +187,21 @@ END FUNCTION
 ''' @return The formatted string.
 FUNCTION String_FormatString$ (fmtStr AS STRING, s AS STRING)
     DECLARE LIBRARY
-        SUB __String_FormatString ALIAS "snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, s AS STRING)
+        FUNCTION __String_FormatString& ALIAS "::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, s AS STRING)
     END DECLARE
 
-    DIM buffer AS STRING: buffer = STRING$(LEN(fmtStr) + LEN(s) + 16, _ASC_NUL)
-    __String_FormatString buffer, LEN(buffer), String_ToCStr(fmtStr), String_ToCStr(s)
+    STATIC buffer AS STRING
 
-    String_FormatString = String_ToBStr(buffer)
+    DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)
+    DIM cS AS STRING: cS = String_ToCStr(s)
+    DIM req AS LONG: req = __String_FormatString(buffer, LEN(buffer), cFmt, cS)
+
+    IF req >= LEN(buffer) THEN
+        buffer = STRING$(req + 1, _ASC_NUL)
+        req = __String_FormatString(buffer, LEN(buffer), cFmt, cS)
+    END IF
+
+    String_FormatString = LEFT$(buffer, req)
 END FUNCTION
 
 ''' @brief Formats a string using a format string and a LONG argument.
@@ -202,13 +210,20 @@ END FUNCTION
 ''' @return The formatted string.
 FUNCTION String_FormatLong$ (fmtStr AS STRING, n AS LONG)
     DECLARE LIBRARY
-        SUB __String_FormatLong ALIAS "snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL n AS LONG)
+        FUNCTION __String_FormatLong& ALIAS "::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL n AS LONG)
     END DECLARE
 
-    DIM buffer AS STRING: buffer = STRING$(LEN(fmtStr) + 64, _ASC_NUL)
-    __String_FormatLong buffer, LEN(buffer), String_ToCStr(fmtStr), n
+    STATIC buffer AS STRING
 
-    String_FormatLong = String_ToBStr(buffer)
+    DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)
+    DIM req AS LONG: req = __String_FormatLong(buffer, LEN(buffer), cFmt, n)
+
+    IF req >= LEN(buffer) THEN
+        buffer = STRING$(req + 1, _ASC_NUL)
+        req = __String_FormatLong(buffer, LEN(buffer), cFmt, n)
+    END IF
+
+    String_FormatLong = LEFT$(buffer, req)
 END FUNCTION
 
 ''' @brief Formats a string using a format string and a _INTEGER64 argument.
@@ -217,13 +232,20 @@ END FUNCTION
 ''' @return The formatted string.
 FUNCTION String_FormatInteger64$ (fmtStr AS STRING, n AS _INTEGER64)
     DECLARE LIBRARY
-        SUB __String_FormatInteger64 ALIAS "snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL n AS _INTEGER64)
+        FUNCTION __String_FormatInteger64& ALIAS "::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL n AS _INTEGER64)
     END DECLARE
 
-    DIM buffer AS STRING: buffer = STRING$(LEN(fmtStr) + 128, _ASC_NUL)
-    __String_FormatInteger64 buffer, LEN(buffer), String_ToCStr(fmtStr), n
+    STATIC buffer AS STRING
 
-    String_FormatInteger64 = String_ToBStr(buffer)
+    DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)
+    DIM req AS LONG: req = __String_FormatInteger64(buffer, LEN(buffer), cFmt, n)
+
+    IF req >= LEN(buffer) THEN
+        buffer = STRING$(req + 1, _ASC_NUL)
+        req = __String_FormatInteger64(buffer, LEN(buffer), cFmt, n)
+    END IF
+
+    String_FormatInteger64 = LEFT$(buffer, req)
 END FUNCTION
 
 ''' @brief Formats a string using a format string and a SINGLE argument.
@@ -232,13 +254,20 @@ END FUNCTION
 ''' @return The formatted string.
 FUNCTION String_FormatSingle$ (fmtStr AS STRING, f AS SINGLE)
     DECLARE LIBRARY
-        SUB __String_FormatSingle ALIAS "snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL f AS SINGLE)
+        FUNCTION __String_FormatSingle& ALIAS "::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL f AS SINGLE)
     END DECLARE
 
-    DIM buffer AS STRING: buffer = STRING$(LEN(fmtStr) + 256, _ASC_NUL)
-    __String_FormatSingle buffer, LEN(buffer), String_ToCStr(fmtStr), f
+    STATIC buffer AS STRING
 
-    String_FormatSingle = String_ToBStr(buffer)
+    DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)
+    DIM req AS LONG: req = __String_FormatSingle(buffer, LEN(buffer), cFmt, f)
+
+    IF req >= LEN(buffer) THEN
+        buffer = STRING$(req + 1, _ASC_NUL)
+        req = __String_FormatSingle(buffer, LEN(buffer), cFmt, f)
+    END IF
+
+    String_FormatSingle = LEFT$(buffer, req)
 END FUNCTION
 
 ''' @brief Formats a string using a format string and a DOUBLE argument.
@@ -247,11 +276,18 @@ END FUNCTION
 ''' @return The formatted string.
 FUNCTION String_FormatDouble$ (fmtStr AS STRING, d AS DOUBLE)
     DECLARE LIBRARY
-        SUB __String_FormatDouble ALIAS "snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL d AS DOUBLE)
+        FUNCTION __String_FormatDouble& ALIAS "::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL d AS DOUBLE)
     END DECLARE
 
-    DIM buffer AS STRING: buffer = STRING$(LEN(fmtStr) + 512, _ASC_NUL)
-    __String_FormatDouble buffer, LEN(buffer), String_ToCStr(fmtStr), d
+    STATIC buffer AS STRING
 
-    String_FormatDouble = String_ToBStr(buffer)
+    DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)
+    DIM req AS LONG: req = __String_FormatDouble(buffer, LEN(buffer), cFmt, d)
+
+    IF req >= LEN(buffer) THEN
+        buffer = STRING$(req + 1, _ASC_NUL)
+        req = __String_FormatDouble(buffer, LEN(buffer), cFmt, d)
+    END IF
+
+    String_FormatDouble = LEFT$(buffer, req)
 END FUNCTION

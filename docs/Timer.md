@@ -5,7 +5,7 @@ The `Timer` library provides non-blocking, cooperative interval timers designed 
 ## Features
 
 - **Cooperative & Thread-Safe**: Operates via non-blocking polling (`Timer_Poll`), typically inside InForm's `__UI_BeforeUpdateDisplay` or `__UI_BeforeCheckEvents` hooks, eliminating re-entrancy hazards while drawing.
-- **Midnight-Safe**: Built on top of `Time_GetTicks`, avoiding the midnight rollover bug of QB64's `TIMER`.
+- **Midnight-Safe**: Built on top of `Time_GetTicks`, avoiding the midnight rollover behavior of QB64's `TIMER`.
 - **Periodic & One-Shot**: Supports continuous periodic intervals as well as self-deactivating one-shot timers.
 - **Accurate Pause & Resume**: Preserves elapsed time within an interval so resuming continues where it left off.
 - **Lag Compensation**: Prevents "catch-up storms" if the application is frozen, dragged, or blocked.
@@ -73,7 +73,7 @@ FUNCTION Timer_Create& (intervalTicks AS _UNSIGNED _INTEGER64)
 
 - **Parameters:**
   - `intervalTicks`: Interval in milliseconds (1000 ticks = 1 second).
-- **Returns:** A unique `LONG` timer handle (`> 0`).
+- **Returns:** A unique `LONG` timer handle (`> 0`), or `TIMER_INVALID` (`0`) if `intervalTicks` is 0.
 
 ---
 
@@ -87,7 +87,7 @@ FUNCTION Timer_CreateOneShot& (intervalTicks AS _UNSIGNED _INTEGER64)
 
 - **Parameters:**
   - `intervalTicks`: Delay in milliseconds before firing.
-- **Returns:** A unique `LONG` timer handle (`> 0`).
+- **Returns:** A unique `LONG` timer handle (`> 0`), or `TIMER_INVALID` (`0`) if `intervalTicks` is 0.
 
 ---
 
@@ -273,3 +273,13 @@ FUNCTION Timer_GetHertzFromTicks! (ticks AS _UNSIGNED _INTEGER64)
 ```
 
 - **Example:** `Timer_GetHertzFromTicks(20)` returns `50.0` Hz.
+
+---
+
+### Constants
+
+The following constants are defined in `Timer.bi`:
+
+| Constant | Type | Value | Description |
+| - | - | - | - |
+| `TIMER_INVALID` | `LONG` | `0` | Represents an invalid or uninitialized timer handle. |

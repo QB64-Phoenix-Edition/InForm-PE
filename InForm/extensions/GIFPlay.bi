@@ -62,8 +62,16 @@ REDIM __GIFPlay(0 TO 0) AS __GIFPlayType ' main GIFPlay array - each array eleme
 REDIM __GIFPlayFrame(0 TO 0) AS __GIFPlayFrameType ' shared GIF frame array - this holds GIF frame and frame information for all loaded GIFs
 DIM __GIF_FirstFreeFrame AS LONG ' index of the lowest free frame in __GIFPlayFrame
 
-' Opens a GIF file from a buffer in memory
+''' @brief Opens an animated GIF file from a buffer in memory.
+''' @param Id The InForm PictureBox control ID.
+''' @param buffer The string containing raw GIF file data.
+''' @return _TRUE if the GIF was loaded successfully, _FALSE otherwise.
 FUNCTION GIF_LoadFromMemory%% (Id AS LONG, buffer AS STRING)
+    IF Id < LBOUND(Control) _ORELSE Id > UBOUND(Control) THEN
+        ERROR _ERR_ILLEGAL_FUNCTION_CALL
+        EXIT FUNCTION
+    END IF
+
     IF Control(Id).Type <> __UI_Type_PictureBox THEN
         ERROR _ERR_ILLEGAL_FUNCTION_CALL
         EXIT FUNCTION
@@ -76,9 +84,16 @@ FUNCTION GIF_LoadFromMemory%% (Id AS LONG, buffer AS STRING)
     GIF_LoadFromMemory = __GIF_Load(Id, sf)
 END FUNCTION
 
-
-' Opens a GIF file from a file on disk
+''' @brief Opens an animated GIF file from a file on disk.
+''' @param Id The InForm PictureBox control ID.
+''' @param fileName The path to the GIF file on disk.
+''' @return _TRUE if the GIF was loaded successfully, _FALSE otherwise.
 FUNCTION GIF_LoadFromFile%% (Id AS LONG, fileName AS STRING)
+    IF Id < LBOUND(Control) _ORELSE Id > UBOUND(Control) THEN
+        ERROR _ERR_ILLEGAL_FUNCTION_CALL
+        EXIT FUNCTION
+    END IF
+
     IF Control(Id).Type <> __UI_Type_PictureBox THEN
         ERROR _ERR_ILLEGAL_FUNCTION_CALL
         EXIT FUNCTION
@@ -91,39 +106,57 @@ FUNCTION GIF_LoadFromFile%% (Id AS LONG, fileName AS STRING)
     END IF
 END FUNCTION
 
+''' @brief Internal helper to safely get the __GIFPlay slot index for an ID.
+''' @param Id The InForm PictureBox control ID.
+''' @return The index in __GIFPlay(), or -1 if not found.
+FUNCTION __GIF_GetSlot& (Id AS LONG)
+    $CHECKING:OFF
+    SHARED __GIFPlayHashTable() AS HMap64
 
-' Free a GIF and all associated resources
+    IF HMap64_IsInitialized(__GIFPlayHashTable()) _ANDALSO HMap64_Contains(__GIFPlayHashTable(), Id) THEN
+        __GIF_GetSlot = HMap64_GetLong(__GIFPlayHashTable(), Id)
+    ELSE
+        __GIF_GetSlot = -1
+    END IF
+    $CHECKING:ON
+END FUNCTION
+
+''' @brief Frees a loaded GIF and all associated frame images and resources.
+''' @param Id The InForm PictureBox control ID.
 SUB GIF_Free (Id AS LONG)
     SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
     SHARED __GIFPlayFrame() AS __GIFPlayFrameType
     SHARED __GIF_FirstFreeFrame AS LONG
 
-    ' Nothing to do if Id is invalid
-    IF NOT HMap64_Contains(__GIFPlayHashTable(), Id) THEN EXIT SUB
-
     ' Get the slot we need to free
-    DIM idx AS LONG: idx = HMap64_GetLong(__GIFPlayHashTable(), Id)
+    DIM idx AS LONG: idx = __GIF_GetSlot(Id)
+    IF idx < 0 THEN EXIT SUB
 
     ' Walk the whole animation chain to free all the frames and associated data
-    __GIFPlay(idx).frame = __GIFPlay(idx).firstFrame
+    IF __GIFPlay(idx).firstFrame >= 0 THEN
+        DIM currFrame AS LONG: currFrame = __GIFPlay(idx).firstFrame
+        DO
+            DIM nextFrame AS LONG: nextFrame = __GIFPlayFrame(currFrame).nextFrame
 
-    DO
-        ' Free the image being held by the frame
-        IF __GIFPlayFrame(__GIFPlay(idx).frame).image < -1 THEN
-            _FREEIMAGE __GIFPlayFrame(__GIFPlay(idx).frame).image
-            __GIFPlayFrame(__GIFPlay(idx).frame).image = 0
-        END IF
+            ' Free the image being held by the frame
+            IF __GIFPlayFrame(currFrame).image < -1 THEN
+                _FREEIMAGE __GIFPlayFrame(currFrame).image
+                __GIFPlayFrame(currFrame).image = 0
+            END IF
 
-        ' Mark the frame slot as unused so that it can be reused
-        __GIFPlayFrame(__GIFPlay(idx).frame).isUsed = _FALSE
+            ' Mark the frame slot as unused so that it can be reused
+            __GIFPlayFrame(currFrame).isUsed = _FALSE
+            __GIFPlayFrame(currFrame).nextFrame = -1
+            __GIFPlayFrame(currFrame).prevFrame = -1
 
-        ' Note the lowest free frame
-        IF __GIF_FirstFreeFrame > __GIFPlay(idx).frame THEN __GIF_FirstFreeFrame = __GIFPlay(idx).frame
+            ' Note the lowest free frame
+            IF __GIF_FirstFreeFrame > currFrame THEN __GIF_FirstFreeFrame = currFrame
 
-        ' Move to the next frame
-        __GIFPlay(idx).frame = __GIFPlayFrame(__GIFPlay(idx).frame).nextFrame
-    LOOP UNTIL __GIFPlay(idx).frame = __GIFPlay(idx).firstFrame ' loop until we come back to the first frame
+            ' Move to the next frame
+            currFrame = nextFrame
+        LOOP WHILE currFrame >= 0 _ANDALSO currFrame <> __GIFPlay(idx).firstFrame
+    END IF
 
     ' Free the rendered image
     IF __GIFPlay(idx).image < -1 THEN
@@ -137,6 +170,12 @@ SUB GIF_Free (Id AS LONG)
         __GIFPlay(idx).savedImage = 0
     END IF
 
+    ' Reset frame pointers
+    __GIFPlay(idx).firstFrame = -1
+    __GIFPlay(idx).lastFrame = -1
+    __GIFPlay(idx).frame = -1
+    __GIFPlay(idx).isReady = _FALSE
+
     ' Finally mark the GIF slot as unused so that it can be reused
     __GIFPlay(idx).isUsed = _FALSE
 
@@ -144,84 +183,80 @@ SUB GIF_Free (Id AS LONG)
     HMap64_Remove __GIFPlayHashTable(), Id
 END SUB
 
-
-' Returns the width of the animation in pixels
+''' @brief Returns the width of the animation in pixels.
+''' @param Id The InForm PictureBox control ID.
+''' @return The width in pixels, or 0 if not loaded.
 FUNCTION GIF_GetWidth~& (Id AS LONG)
-    SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
-        GIF_GetWidth = _WIDTH(__GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).image)
+    DIM idx AS LONG: idx = __GIF_GetSlot(Id)
+    IF idx >= 0 THEN
+        IF __GIFPlay(idx).image < -1 THEN GIF_GetWidth = _WIDTH(__GIFPlay(idx).image)
     END IF
 END FUNCTION
 
-
-' Returns the height of the animation in pixels
+''' @brief Returns the height of the animation in pixels.
+''' @param Id The InForm PictureBox control ID.
+''' @return The height in pixels, or 0 if not loaded.
 FUNCTION GIF_GetHeight~& (Id AS LONG)
-    SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
-        GIF_GetHeight = _HEIGHT(__GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).image)
+    DIM idx AS LONG: idx = __GIF_GetSlot(Id)
+    IF idx >= 0 THEN
+        IF __GIFPlay(idx).image < -1 THEN GIF_GetHeight = _HEIGHT(__GIFPlay(idx).image)
     END IF
 END FUNCTION
 
-
-' Returns the number of currently playing frame
+''' @brief Returns the index of the currently playing frame.
+''' @param Id The InForm PictureBox control ID.
+''' @return The 0-based frame number since playback started.
 FUNCTION GIF_GetFrameNumber~& (Id AS LONG)
-    SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
-        GIF_GetFrameNumber = __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).frameNumber
-    END IF
+    DIM idx AS LONG: idx = __GIF_GetSlot(Id)
+    IF idx >= 0 THEN GIF_GetFrameNumber = __GIFPlay(idx).frameNumber
 END FUNCTION
 
-
-' Returns the total frames in the GIF. If this is 1 then it is a static image
+''' @brief Returns the total number of frames in the GIF animation.
+''' If this returns 1, the image is a static (non-animated) GIF.
+''' @param Id The InForm PictureBox control ID.
+''' @return The total frame count.
 FUNCTION GIF_GetTotalFrames~& (Id AS LONG)
-    SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
-        GIF_GetTotalFrames = __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).frameCount
-    END IF
+    DIM idx AS LONG: idx = __GIF_GetSlot(Id)
+    IF idx >= 0 THEN GIF_GetTotalFrames = __GIFPlay(idx).frameCount
 END FUNCTION
 
-
-' Resume or starts playback
+''' @brief Starts or resumes animation playback.
+''' @param Id The InForm PictureBox control ID.
 SUB GIF_Play (Id AS LONG)
-    SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
-        DIM idx AS LONG: idx = HMap64_GetLong(__GIFPlayHashTable(), Id)
-
+    DIM idx AS LONG: idx = __GIF_GetSlot(Id)
+    IF idx >= 0 THEN
         __GIFPlay(idx).isPlaying = _TRUE
         __GIFPlay(idx).lastTick = Time_GetTicks
     END IF
 END SUB
 
-
-' Pauses playback. That same frame is served as long as playback is paused
+''' @brief Pauses animation playback at the current frame.
+''' @param Id The InForm PictureBox control ID.
 SUB GIF_Pause (Id AS LONG)
-    SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
-        __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).isPlaying = _FALSE
-    END IF
+    DIM idx AS LONG: idx = __GIF_GetSlot(Id)
+    IF idx >= 0 THEN __GIFPlay(idx).isPlaying = _FALSE
 END SUB
 
-
-' Stops playing the GIF and resets the cursor to the first frame
+''' @brief Stops animation playback and resets the cursor to the first frame.
+''' @param Id The InForm PictureBox control ID.
 SUB GIF_Stop (Id AS LONG)
-    SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
+    SHARED __GIFPlayFrame() AS __GIFPlayFrameType
 
-    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
-        DIM idx AS LONG: idx = HMap64_GetLong(__GIFPlayHashTable(), Id)
-
+    DIM idx AS LONG: idx = __GIF_GetSlot(Id)
+    IF idx >= 0 THEN
         __GIFPlay(idx).isPlaying = _FALSE
         __GIFPlay(idx).frame = __GIFPlay(idx).firstFrame
         __GIFPlay(idx).frameNumber = 0
@@ -229,44 +264,52 @@ SUB GIF_Stop (Id AS LONG)
         __GIFPlay(idx).elapsedTime = 0
         __GIFPlay(idx).lastFrameRendered = -1
         __GIFPlay(idx).hasSavedImage = _FALSE
+
+        ' Re-render the first frame onto the image surface so subsequent draws show frame 0
+        IF __GIFPlay(idx).firstFrame >= 0 _ANDALSO __GIFPlay(idx).image < -1 THEN
+            CLS , __GIFPlay(idx).bgColor, __GIFPlay(idx).image
+            DIM f AS LONG: f = __GIFPlay(idx).firstFrame
+            IF __GIFPlayFrame(f).image < -1 THEN
+                _PUTIMAGE (__GIFPlayFrame(f).L, __GIFPlayFrame(f).T), __GIFPlayFrame(f).image, __GIFPlay(idx).image
+            END IF
+            __GIFPlay(idx).lastFrameRendered = f
+        END IF
     END IF
 END SUB
 
-
-' Return True if GIF is currently playing
+''' @brief Checks whether the animation is currently playing.
+''' @param Id The InForm PictureBox control ID.
+''' @return _TRUE if the GIF is playing, _FALSE otherwise.
 FUNCTION GIF_IsPlaying%% (Id AS LONG)
-    SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
-        GIF_IsPlaying = __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).isPlaying
-    END IF
+    DIM idx AS LONG: idx = __GIF_GetSlot(Id)
+    IF idx >= 0 THEN GIF_IsPlaying = __GIFPlay(idx).isPlaying
 END FUNCTION
 
-
-' This draws the current frame on the destination surface @ (0, 0) (stretching the frame if needed)
-' This will also draw the overlay if the playback is stopped / paused
+''' @brief Draws the current frame on the destination surface at (0, 0), stretching if needed.
+''' If playback is paused or stopped and overlay is enabled, draws the GIF overlay icon.
+''' @param Id The InForm PictureBox control ID.
 SUB GIF_Draw (Id AS LONG)
-    SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
+    DIM idx AS LONG: idx = __GIF_GetSlot(Id)
+    IF idx >= 0 THEN
         BeginDraw ID
 
         ' Get the rendered image handle
         DIM renderedFrame AS LONG: renderedFrame = GIF_GetFrame(Id)
 
-        ' Cache the GIF index because we'll be using this a lot
-        DIM idx AS LONG: idx = HMap64_GetLong(__GIFPlayHashTable(), Id)
-
         ' Clear the surface using the background color (this will be black if the GIF has no global color table)
         CLS , __GIFPlay(idx).bgColor
 
         ' Blit the rendered frame
-        _PUTIMAGE , renderedFrame, , , _SMOOTH
+        IF renderedFrame < -1 THEN
+            _PUTIMAGE , renderedFrame, , , _SMOOTH
+        END IF
 
         ' Render the overlay if needed
-        IF NOT __GIFPlay(idx).isPlaying AND __GIFPlay(idx).overlayEnabled AND __GIFPlay(idx).frameCount > 1 THEN
+        IF NOT __GIFPlay(idx).isPlaying _ANDALSO __GIFPlay(idx).overlayEnabled _ANDALSO __GIFPlay(idx).frameCount > 1 THEN
             DIM overlayImage AS LONG: overlayImage = __GIF_GetOverlayImage
 
             _PUTIMAGE (_SHR(_WIDTH, 1) - _SHR(_WIDTH(overlayImage), 1), _SHR(_HEIGHT, 1) - _SHR(_HEIGHT(overlayImage), 1)), overlayImage
@@ -276,30 +319,27 @@ SUB GIF_Draw (Id AS LONG)
     END IF
 END SUB
 
-
-' This returns the current rendered frame (QB64 image) to be played
-' Playback is time sensitive so frames may be skipped or the last frame may be returned
-' Use this if you want to do your own rendering
-' Also do not free the image. The library will do that when it is no longer needed
+''' @brief Returns the current rendered frame image handle (QB64 image).
+''' Playback is time-sensitive so frames may be advanced or skipped based on elapsed time.
+''' The caller must not free this image handle.
+''' @param Id The InForm PictureBox control ID.
+''' @return The QB64 image handle of the rendered frame.
 FUNCTION GIF_GetFrame& (Id AS LONG)
-    SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
     SHARED __GIFPlayFrame() AS __GIFPlayFrameType
 
-    ' Exit if Id is not valid
-    IF NOT HMap64_Contains(__GIFPlayHashTable(), Id) THEN EXIT FUNCTION
-
-    ' Cache the GIF index because we'll be using this a lot
-    DIM idx AS LONG: idx = HMap64_GetLong(__GIFPlayHashTable(), Id)
+    ' Get the GIF slot
+    DIM idx AS LONG: idx = __GIF_GetSlot(Id)
+    IF idx < 0 THEN EXIT FUNCTION
 
     ' Always return the rendered image handle (since this does not change during the GIFs lifetime)
     GIF_GetFrame = __GIFPlay(idx).image
 
     ' Exit if we are paused or not ready
-    IF NOT __GIFPlay(idx).isPlaying OR NOT __GIFPlay(idx).isReady THEN EXIT FUNCTION
+    IF NOT __GIFPlay(idx).isPlaying _ORELSE NOT __GIFPlay(idx).isReady THEN EXIT FUNCTION
 
     ' Exit if we finished a single or the specified number of loops
-    IF __GIFPlay(idx).loops <> 0 AND (__GIFPlay(idx).loopCounter < 0 OR __GIFPlay(idx).loopCounter >= __GIFPlay(idx).loops) THEN EXIT FUNCTION
+    IF __GIFPlay(idx).loops <> 0 _ANDALSO (__GIFPlay(idx).loopCounter < 0 _ORELSE __GIFPlay(idx).loopCounter >= __GIFPlay(idx).loops) THEN EXIT FUNCTION
 
     ' Fetch and store the current tick
     DIM currentTick AS _UNSIGNED _INTEGER64: currentTick = Time_GetTicks
@@ -367,88 +407,83 @@ FUNCTION GIF_GetFrame& (Id AS LONG)
     _PUTIMAGE (__GIFPlayFrame(__GIFPlay(idx).frame).L, __GIFPlayFrame(__GIFPlay(idx).frame).T), __GIFPlayFrame(__GIFPlay(idx).frame).image, __GIFPlay(idx).image
 END FUNCTION
 
-
-' Returns the background color that should be used to clear the surface before drawing the final rendered frame
+''' @brief Returns the background color that should be used to clear the surface before drawing the final rendered frame.
+''' @param Id The InForm PictureBox control ID.
+''' @return The background color as a 32-bit RGBA value.
 FUNCTION GIF_GetBackgroundColor~& (Id AS LONG)
-    SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
-        GIF_GetBackgroundColor = __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).bgColor
-    END IF
+    DIM idx AS LONG: idx = __GIF_GetSlot(Id)
+    IF idx >= 0 THEN GIF_GetBackgroundColor = __GIFPlay(idx).bgColor
 END FUNCTION
 
-
-' Returns the total runtime of the animation in ms
+''' @brief Returns the total duration of the animation in milliseconds.
+''' @param Id The InForm PictureBox control ID.
+''' @return The total duration in milliseconds.
 FUNCTION GIF_GetTotalDuration~&& (Id AS LONG)
-    SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
-        GIF_GetTotalDuration = __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).duration
-    END IF
+    DIM idx AS LONG: idx = __GIF_GetSlot(Id)
+    IF idx >= 0 THEN GIF_GetTotalDuration = __GIFPlay(idx).duration
 END FUNCTION
 
-
-' Returns the total runtime of the current frame in ms
+''' @brief Returns the display duration of the current frame in milliseconds.
+''' @param Id The InForm PictureBox control ID.
+''' @return The current frame duration in milliseconds.
 FUNCTION GIF_GetFrameDuration~&& (Id AS LONG)
-    SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
     SHARED __GIFPlayFrame() AS __GIFPlayFrameType
 
-    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
-        GIF_GetFrameDuration = __GIFPlayFrame(__GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).frame).duration
+    DIM idx AS LONG: idx = __GIF_GetSlot(Id)
+    IF idx >= 0 THEN
+        IF __GIFPlay(idx).frame >= 0 THEN
+            GIF_GetFrameDuration = __GIFPlayFrame(__GIFPlay(idx).frame).duration
+        END IF
     END IF
 END FUNCTION
 
-
-' Returns the current runtime of the animation in ms
+''' @brief Returns the elapsed playback time since the animation started in milliseconds.
+''' @param Id The InForm PictureBox control ID.
+''' @return The elapsed time in milliseconds.
 FUNCTION GIF_GetElapsedTime~&& (Id AS LONG)
-    SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
-        GIF_GetElapsedTime = __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).elapsedTime
-    END IF
+    DIM idx AS LONG: idx = __GIF_GetSlot(Id)
+    IF idx >= 0 THEN GIF_GetElapsedTime = __GIFPlay(idx).elapsedTime
 END FUNCTION
 
-
-' Set the looping behavior
+''' @brief Configures looping behavior for the animation.
+''' @param Id The InForm PictureBox control ID.
+''' @param loops Number of times to loop (-1 = no loop, 0 = infinite, n = loop n times).
 SUB GIF_SetLoop (Id AS LONG, loops AS LONG)
-    SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
-        __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).loops = loops
-    END IF
+    DIM idx AS LONG: idx = __GIF_GetSlot(Id)
+    IF idx >= 0 THEN __GIFPlay(idx).loops = loops
 END SUB
 
-
-' Sets the GIF overlay to enable / disable
+''' @brief Enables or disables the GIF overlay icon when playback is paused or stopped.
+''' @param Id The InForm PictureBox control ID.
+''' @param isEnabled _TRUE to show the overlay icon, _FALSE to hide it.
 SUB GIF_EnableOverlay (Id AS LONG, isEnabled AS _BYTE)
-    SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_Contains(__GIFPlayHashTable(), Id) THEN
-        __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).overlayEnabled = isEnabled
-    END IF
+    DIM idx AS LONG: idx = __GIF_GetSlot(Id)
+    IF idx >= 0 THEN __GIFPlay(idx).overlayEnabled = isEnabled
 END SUB
 
-
-' Returns TRUE if a GIF with Id is loaded
+''' @brief Checks if a GIF is fully loaded and ready for playback.
+''' @param Id The InForm PictureBox control ID.
+''' @return _TRUE if the GIF is loaded and ready, _FALSE otherwise.
 FUNCTION GIF_IsLoaded%% (Id AS LONG)
-    $CHECKING:OFF
-    SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
 
-    IF HMap64_IsInitialized(__GIFPlayHashTable()) _ANDALSO HMap64_Contains(__GIFPlayHashTable(), Id) THEN
-        GIF_IsLoaded = __GIFPlay(HMap64_GetLong(__GIFPlayHashTable(), Id)).isReady
-    END IF
-    $CHECKING:ON
+    DIM idx AS LONG: idx = __GIF_GetSlot(Id)
+    IF idx >= 0 THEN GIF_IsLoaded = __GIFPlay(idx).isReady
 END FUNCTION
 
-
-' Deinterlaces a raw GIF frame
+''' @brief Internal helper to deinterlace an interlaced GIF frame image.
+''' @param bmp The raw frame image handle to deinterlace.
 SUB __GIF_DeinterlaceFrameImage (bmp AS LONG)
     DIM W AS LONG: W = _WIDTH(bmp)
     DIM H AS LONG: H = _HEIGHT(bmp)
@@ -488,8 +523,12 @@ SUB __GIF_DeinterlaceFrameImage (bmp AS LONG)
     _FREEIMAGE n
 END SUB
 
-
-' https://commandlinefanatic.com/cgi-bin/showarticle.cgi?article=art011
+''' @brief Internal helper to read an LZW code of variable bit size from a bit stream.
+''' @param sf The StringFile stream.
+''' @param buffer The input byte buffer.
+''' @param bitPos The current bit position in the buffer.
+''' @param bitSize The number of bits to read.
+''' @return The decoded LZW code, or -1 on end of stream.
 FUNCTION __GIF_ReadLZWCode& (sf AS StringFile, buffer AS STRING, bitPos AS LONG, bitSize AS LONG)
     DIM AS LONG code, p: p = 1
 
@@ -497,9 +536,19 @@ FUNCTION __GIF_ReadLZWCode& (sf AS StringFile, buffer AS STRING, bitPos AS LONG,
         DIM bytePos AS LONG: bytePos = _SHR(bitPos, 3) AND 255
 
         IF bytePos = 0 THEN
+            IF StringFile_IsEOF(sf) THEN
+                __GIF_ReadLZWCode = -1
+                EXIT FUNCTION
+            END IF
+
             DIM dataLen AS LONG: dataLen = StringFile_ReadByte(sf)
 
             IF dataLen = 0 THEN
+                __GIF_ReadLZWCode = -1
+                EXIT FUNCTION
+            END IF
+
+            IF StringFile_GetPosition(sf) + dataLen > StringFile_GetSize(sf) THEN
                 __GIF_ReadLZWCode = -1
                 EXIT FUNCTION
             END IF
@@ -519,9 +568,16 @@ FUNCTION __GIF_ReadLZWCode& (sf AS StringFile, buffer AS STRING, bitPos AS LONG,
     __GIF_ReadLZWCode = code
 END FUNCTION
 
-
-' https://stackoverflow.com/questions/26894809/gif-lzw-decompression
+''' @brief Internal helper to decode LZW compressed image data into pixel memory.
+''' @param sf The StringFile stream containing LZW compressed data.
+''' @param bmpMem The destination bitmap memory block.
+''' @return _TRUE on successful decompression, _FALSE otherwise.
 FUNCTION __GIF_DecodeLZW%% (sf AS StringFile, bmpMem AS _MEM)
+    IF StringFile_IsEOF(sf) THEN EXIT FUNCTION
+
+    DIM origBitSize AS LONG: origBitSize = StringFile_ReadByte(sf)
+    IF origBitSize < 2 _ORELSE origBitSize > 8 THEN EXIT FUNCTION
+
     TYPE __LZWCodeType
         c AS LONG
         prefix AS LONG
@@ -530,7 +586,6 @@ FUNCTION __GIF_DecodeLZW%% (sf AS StringFile, bmpMem AS _MEM)
 
     DIM codes(0 TO 4095) AS __LZWCodeType ' maximum bit size is 12
 
-    DIM origBitSize AS LONG: origBitSize = StringFile_ReadByte(sf)
     DIM n AS LONG: n = 2 + _SHL(1, origBitSize)
 
     DIM i AS LONG: WHILE i < n
@@ -572,7 +627,9 @@ FUNCTION __GIF_DecodeLZW%% (sf AS StringFile, bmpMem AS _MEM)
 
         i = 0
         DO
-            _MEMPUT bmpMem, bmpMem.OFFSET + outPos - i, codes(c).c AS _UNSIGNED _BYTE
+            IF outPos - i >= 0 _ANDALSO outPos - i < bmpMem.SIZE THEN
+                _MEMPUT bmpMem, bmpMem.OFFSET + outPos - i, codes(c).c AS _UNSIGNED _BYTE
+            END IF
 
             IF codes(c).length <> 0 THEN
                 c = codes(c).prefix
@@ -587,12 +644,17 @@ FUNCTION __GIF_DecodeLZW%% (sf AS StringFile, bmpMem AS _MEM)
 
         ' Unknown code -> must be double char
         IF code >= n THEN
-            _MEMPUT bmpMem, bmpMem.OFFSET + outPos, codes(c).c AS _UNSIGNED _BYTE
+            IF outPos >= 0 _ANDALSO outPos < bmpMem.SIZE THEN
+                _MEMPUT bmpMem, bmpMem.OFFSET + outPos, codes(c).c AS _UNSIGNED _BYTE
+            END IF
             outPos = outPos + 1
         END IF
 
+        ' If outPos has reached or exceeded the buffer capacity, stop decoding
+        IF outPos > bmpMem.SIZE THEN EXIT DO
+
         ' Except after clear marker, build new code
-        IF prev <> clearMarker AND n < 4096 THEN
+        IF prev <> clearMarker _ANDALSO n < 4096 THEN
             codes(n).prefix = prev
             codes(n).length = codes(prev).length + 1
             codes(n).c = codes(c).c
@@ -610,10 +672,9 @@ FUNCTION __GIF_DecodeLZW%% (sf AS StringFile, bmpMem AS _MEM)
     __GIF_DecodeLZW = _TRUE
 END FUNCTION
 
-
-' This applies the palette and transparency to a raw GIF frame image
-' info - the GIF global and local frame data needed to prepare the frame image
-' bmp - the raw frame image
+''' @brief Internal helper to apply the color palette and transparency to a raw GIF frame image.
+''' @param info The frame metadata containing palette and transparency settings.
+''' @param bmp The raw 8-bit frame image handle.
 SUB __GIF_PrepareFrameImage (info AS __GIFFrameType, bmp AS LONG)
     ' Set the 8-bit image palette
     DIM AS LONG x, y
@@ -637,8 +698,10 @@ SUB __GIF_PrepareFrameImage (info AS __GIFFrameType, bmp AS LONG)
     IF info.transparentColor >= 0 THEN _CLEARCOLOR info.transparentColor, bmp
 END SUB
 
-
-' This is an internal loading function common for both memory and file loaders
+''' @brief Internal helper that parses and loads a GIF from a StringFile stream.
+''' @param Id The InForm PictureBox control ID.
+''' @param sf The StringFile stream containing GIF data.
+''' @return _TRUE on successful load, _FALSE otherwise.
 FUNCTION __GIF_Load%% (Id AS LONG, sf AS StringFile)
     SHARED __GIFPlayHashTable() AS HMap64
     SHARED __GIFPlay() AS __GIFPlayType
@@ -652,12 +715,12 @@ FUNCTION __GIF_Load%% (Id AS LONG, sf AS StringFile)
     ' Check if Id already exists and if so free it
     IF GIF_IsLoaded(Id) THEN GIF_Free Id
 
-    ' Check if we can read the signature at a minimum
-    IF StringFile_GetSize(sf) < 6 THEN EXIT FUNCTION
+    ' Minimal GIF header (6) + Logical Screen Descriptor (7) = 13 bytes
+    IF StringFile_GetSize(sf) < 13 THEN EXIT FUNCTION
 
     ' Check the file signature before proceeding further
     DIM buffer AS STRING: buffer = StringFile_ReadString(sf, 6)
-    IF buffer <> "GIF87a" AND buffer <> "GIF89a" THEN EXIT FUNCTION
+    IF buffer <> "GIF87a" _ANDALSO buffer <> "GIF89a" THEN EXIT FUNCTION
 
     ' Ok, so it is a GIF. Allocate resources to load the rest of the file
     DIM idx AS LONG: FOR idx = 0 TO UBOUND(__GIFPlay)
@@ -691,10 +754,12 @@ FUNCTION __GIF_Load%% (Id AS LONG, sf AS StringFile)
     DIM W AS _UNSIGNED INTEGER: W = StringFile_ReadInteger(sf)
     DIM H AS _UNSIGNED INTEGER: H = StringFile_ReadInteger(sf)
 
+    IF W = 0 _ORELSE H = 0 THEN GOTO gif_load_error
+
     ' Create the 32bpp rendered image using the width and height we got above
     __GIFPlay(idx).image = _NEWIMAGE(W, H, 32)
     __GIFPlay(idx).savedImage = _NEWIMAGE(W, H, 32)
-    IF __GIFPlay(idx).image >= -1 OR __GIFPlay(idx).savedImage >= -1 THEN GOTO gif_load_error
+    IF __GIFPlay(idx).image >= -1 _ORELSE __GIFPlay(idx).savedImage >= -1 THEN GOTO gif_load_error
 
     DIM i AS _UNSIGNED _BYTE: i = StringFile_ReadByte(sf)
 
@@ -707,7 +772,7 @@ FUNCTION __GIF_Load%% (Id AS LONG, sf AS StringFile)
     IF _READBIT(i, 7) THEN rawFrame.globalColors = _SHL(1, ((i AND 7) + 1))
 
     ' Background color is only valid with a global palette
-    i = StringFile_ReadByte(sf)
+    DIM bgColorIndex AS _UNSIGNED _BYTE: bgColorIndex = StringFile_ReadByte(sf)
 
     ' Skip aspect ratio
     StringFile_Seek sf, StringFile_GetPosition(sf) + 1
@@ -715,12 +780,17 @@ FUNCTION __GIF_Load%% (Id AS LONG, sf AS StringFile)
     ' Read the global palette data
     IF rawFrame.globalColors > 0 THEN MID$(rawFrame.globalPalette, 1, 3 * rawFrame.globalColors) = StringFile_ReadString(sf, 3 * rawFrame.globalColors)
 
-    ' Get RGBA value from the global palette for the backgrond color
-    __GIFPlay(idx).bgColor = _RGB32(ASC(rawFrame.globalPalette, i + 1), ASC(rawFrame.globalPalette, i + 2), ASC(rawFrame.globalPalette, i + 3))
+    ' Get RGBA value from the global palette for the background color
+    IF rawFrame.globalColors > 0 _ANDALSO bgColorIndex < rawFrame.globalColors THEN
+        DIM bgOffset AS LONG: bgOffset = 3 * bgColorIndex
+        __GIFPlay(idx).bgColor = _RGB32(ASC(rawFrame.globalPalette, bgOffset + 1), ASC(rawFrame.globalPalette, bgOffset + 2), ASC(rawFrame.globalPalette, bgOffset + 3))
+    ELSE
+        __GIFPlay(idx).bgColor = _RGBA32(0, 0, 0, 0)
+    END IF
 
     DIM frameIdx AS LONG: frameIdx = -1
 
-    DO
+    DO WHILE NOT StringFile_IsEOF(sf)
         i = StringFile_ReadByte(sf)
 
         SELECT CASE i
@@ -751,6 +821,8 @@ FUNCTION __GIF_Load%% (Id AS LONG, sf AS StringFile)
                 __GIFPlayFrame(frameIdx).T = StringFile_ReadInteger(sf)
                 W = StringFile_ReadInteger(sf)
                 H = StringFile_ReadInteger(sf)
+
+                IF W = 0 _ORELSE H = 0 THEN GOTO gif_load_error
 
                 ' Create a raw frame image from the width and height we got above
                 __GIFPlayFrame(frameIdx).image = _NEWIMAGE(W, H, 256)
@@ -846,20 +918,24 @@ FUNCTION __GIF_Load%% (Id AS LONG, sf AS StringFile)
                 END IF
 
                 ' Possibly more blocks until terminator block (0)
-                WHILE i > 0
-                    StringFile_Seek sf, StringFile_GetPosition(sf) + i
-                    i = StringFile_ReadByte(sf)
+                WHILE i > 0 _ANDALSO NOT StringFile_IsEOF(sf)
+                    DIM seekPos AS _UNSIGNED _OFFSET: seekPos = StringFile_GetPosition(sf) + i
+                    IF seekPos > StringFile_GetSize(sf) THEN seekPos = StringFile_GetSize(sf)
+                    StringFile_Seek sf, seekPos
+                    IF NOT StringFile_IsEOF(sf) THEN
+                        i = StringFile_ReadByte(sf)
+                    ELSE
+                        i = 0
+                    END IF
                 WEND
 
             CASE &H3B ' GIF trailer
                 EXIT DO
         END SELECT
-    LOOP WHILE NOT StringFile_IsEOF(sf)
+    LOOP
 
     ' Bad / corrupt GIF?
     IF __GIFPlay(idx).frameCount = 0 THEN GOTO gif_load_error
-
-    '__GIF_PrintDebugInfo idx
 
     __GIFPlay(idx).isReady = _TRUE ' set the ready flag
 
@@ -875,52 +951,9 @@ FUNCTION __GIF_Load%% (Id AS LONG, sf AS StringFile)
     GIF_Free Id ' use GIF_Free() to cleanup if we encountered any error
 END FUNCTION
 
-
-'SUB __GIF_PrintDebugInfo (index AS LONG)
-'    SHARED __GIFPlay() AS __GIFPlayType
-'    SHARED __GIFPlayFrame() AS __GIFPlayFrameType
-
-'    _ECHO "Dump for GIF:" + STR$(index) + CHR$(10)
-
-'    _ECHO "isUsed =" + STR$(__GIFPlay(index).isUsed)
-'    _ECHO "image =" + STR$(__GIFPlay(index).image)
-'    _ECHO "bgColor =" + STR$(__GIFPlay(index).bgColor)
-'    _ECHO "firstFrame =" + STR$(__GIFPlay(index).firstFrame)
-'    _ECHO "lastFrame =" + STR$(__GIFPlay(index).lastFrame)
-'    _ECHO "frame =" + STR$(__GIFPlay(index).frame)
-'    _ECHO "frameCount =" + STR$(__GIFPlay(index).frameCount)
-'    _ECHO "frameNumber =" + STR$(__GIFPlay(index).frameNumber)
-'    _ECHO "isPlaying =" + STR$(__GIFPlay(index).isPlaying)
-'    _ECHO "loops =" + STR$(__GIFPlay(index).loops)
-'    _ECHO "loopCounter =" + STR$(__GIFPlay(index).loopCounter)
-'    _ECHO "duration =" + STR$(__GIFPlay(index).duration)
-'    _ECHO "lastTick =" + STR$(__GIFPlay(index).lastTick)
-'    _ECHO "lastFrameRendered =" + STR$(__GIFPlay(index).lastFrameRendered)
-'    _ECHO "savedImage =" + STR$(__GIFPlay(index).savedImage)
-'    _ECHO "hasSavedImage =" + STR$(__GIFPlay(index).hasSavedImage)
-'    _ECHO "overlayEnabled =" + STR$(__GIFPlay(index).overlayEnabled)
-
-'    _ECHO CHR$(10) + "Walking animation chain..." + CHR$(10)
-
-'    DO
-'        _ECHO "Dump for frame:" + STR$(__GIFPlay(index).frame) + CHR$(10)
-
-'        _ECHO "isUsed =" + STR$(__GIFPlayFrame(__GIFPlay(index).frame).isUsed)
-'        _ECHO "prevFrame =" + STR$(__GIFPlayFrame(__GIFPlay(index).frame).prevFrame)
-'        _ECHO "nextFrame =" + STR$(__GIFPlayFrame(__GIFPlay(index).frame).nextFrame)
-'        _ECHO "image =" + STR$(__GIFPlayFrame(__GIFPlay(index).frame).image)
-'        _ECHO "L =" + STR$(__GIFPlayFrame(__GIFPlay(index).frame).L)
-'        _ECHO "T =" + STR$(__GIFPlayFrame(__GIFPlay(index).frame).T)
-'        _ECHO "disposalMethod =" + STR$(__GIFPlayFrame(__GIFPlay(index).frame).disposalMethod)
-'        _ECHO "duration =" + STR$(__GIFPlayFrame(__GIFPlay(index).frame).duration)
-
-'        _ECHO CHR$(10) + "Changing to next frame..."
-'        __GIFPlay(index).frame = __GIFPlayFrame(__GIFPlay(index).frame).nextFrame
-'    LOOP UNTIL __GIFPlay(index).frame = __GIFPlay(index).firstFrame
-'END SUB
-
-
-' This gets the GIF overlay image (real loading only happens once)
+''' @brief Internal helper to retrieve the cached GIF overlay icon image handle.
+''' Loads the image from embedded resources on first call.
+''' @return The QB64 image handle of the overlay icon.
 FUNCTION __GIF_GetOverlayImage&
     CONST SIZE_GIFOVERLAYIMAGE_BMP_16506~& = 16506~&
     CONST COMP_GIFOVERLAYIMAGE_BMP_16506%% = _TRUE

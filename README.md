@@ -1,4 +1,4 @@
-# INFORM-PE
+# InForm Phoenix Edition
 
 ![InForm logo](InForm/resources/Application-icon-128.png)
 
@@ -135,6 +135,7 @@ InForm/extensions/*.*
 | TicTacToe2 | Fellippe Heitor |
 | Trackword | Richard Notley |
 | VDrops | bobalooie |
+| VideoPlayer | Fellippe Heitor (video libraries by Tony3068) |
 | WordClock | Fellippe Heitor |
 | wordSearch | George McGinn |
 

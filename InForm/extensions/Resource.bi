@@ -36,11 +36,12 @@ FUNCTION Resource_LoadBase64Data$
     DIM buffer AS STRING: buffer = SPACE$(datSize) ' preallocate complete buffer
 
     ' Read the whole resource data
-    DIM i AS _UNSIGNED LONG: DO WHILE i < datSize
+    DIM i AS _UNSIGNED LONG
+    WHILE i < datSize
         DIM chunk AS STRING: READ chunk
         MID$(buffer, i + 1) = chunk
         i = i + LEN(chunk)
-    LOOP
+    WEND
 
     ' Decode the data
     buffer = _BASE64DECODE$(buffer)

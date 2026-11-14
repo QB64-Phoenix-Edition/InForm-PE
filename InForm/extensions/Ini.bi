@@ -53,6 +53,9 @@ END TYPE
 ' Global variables declaration
 DIM __ini AS __IniType
 
+''' @brief Sorts all keys alphabetically within the specified section.
+''' @param file$ The INI file name.
+''' @param __section$ The section whose keys should be sorted.
 SUB Ini_SortSection (file$, __section$)
     SHARED __ini AS __IniType
 
@@ -105,6 +108,9 @@ SUB Ini_SortSection (file$, __section$)
     __ini.code = 22
 END SUB
 
+''' @brief Deletes an entire section and all of its keys from an INI file.
+''' @param file$ The INI file name.
+''' @param __section$ The section to delete.
 SUB Ini_DeleteSection (file$, __section$)
     SHARED __ini AS __IniType
 
@@ -122,6 +128,10 @@ SUB Ini_DeleteSection (file$, __section$)
     __ini.code = 13
 END SUB
 
+''' @brief Deletes a specific key from a section in an INI file.
+''' @param file$ The INI file name.
+''' @param __section$ The section containing the key.
+''' @param __key$ The key to delete.
 SUB Ini_DeleteKey (file$, __section$, __key$)
     SHARED __ini AS __IniType
 
@@ -155,7 +165,11 @@ SUB Ini_DeleteKey (file$, __section$, __key$)
     __ini.code = 19
 END SUB
 
-'A move operation is a copy operation + a delete operation
+''' @brief Moves a key and its value from one section to another.
+''' @param file$ The INI file name.
+''' @param __section$ The current section containing the key.
+''' @param __key$ The key to move.
+''' @param __newsection$ The destination section.
 SUB Ini_MoveKey (file$, __section$, __key$, __newsection$)
     SHARED __ini AS __IniType
 
@@ -171,6 +185,7 @@ SUB Ini_MoveKey (file$, __section$, __key$, __newsection$)
     IF __ini.code = 19 THEN __ini.code = 20
 END SUB
 
+''' @brief Internal helper to commit pending changes from memory to disk.
 SUB __Ini_Commit
     SHARED __ini AS __IniType
 
@@ -206,6 +221,9 @@ SUB __Ini_Commit
     END IF
 END SUB
 
+''' @brief Internal helper to retrieve the raw text data for a section.
+''' @param __section$ The section name.
+''' @return The raw text content of the section.
 FUNCTION __Ini_GetSectionData$ (__section$)
     SHARED __ini AS __IniType
 
@@ -278,6 +296,9 @@ FUNCTION __Ini_GetSectionData$ (__section$)
     END IF
 END FUNCTION
 
+''' @brief Internal helper to format a section name enclosed in square brackets.
+''' @param __section$ The section name to format.
+''' @return The formatted section header string.
 FUNCTION __Ini_FormatSection$ (__section$)
     SHARED __ini AS __IniType
 
@@ -297,6 +318,11 @@ FUNCTION __Ini_FormatSection$ (__section$)
     __Ini_FormatSection = section$
 END FUNCTION
 
+''' @brief Reads a setting value from an INI file.
+''' @param file$ The INI file name.
+''' @param __section$ The section containing the key.
+''' @param __key$ The key to read. If empty, reads the next key in sequence.
+''' @return The setting value as a string.
 FUNCTION Ini_ReadSetting$ (file$, __section$, __key$)
     SHARED __ini AS __IniType
 
@@ -404,6 +430,8 @@ FUNCTION Ini_ReadSetting$ (file$, __section$, __key$)
     __ini.lastSection = Ini_GetCurrentSection
 END FUNCTION
 
+''' @brief Retrieves the section header for the current position in the INI file.
+''' @return The current section header string including brackets.
 FUNCTION Ini_GetCurrentSection$
     SHARED __ini AS __IniType
 
@@ -436,6 +464,12 @@ FUNCTION Ini_GetCurrentSection$
     END IF
 END FUNCTION
 
+''' @brief Writes a setting value to the specified section and key in an INI file.
+''' Creates the file or section if it does not already exist.
+''' @param file$ The INI file name.
+''' @param __section$ The section name.
+''' @param __key$ The key name.
+''' @param __value$ The value string to write.
 SUB Ini_WriteSetting (file$, __section$, __key$, __value$)
     SHARED __ini AS __IniType
 
@@ -592,6 +626,8 @@ SUB Ini_WriteSetting (file$, __section$, __key$, __value$)
     END IF
 END SUB
 
+''' @brief Sets whether the INI manager should force reloading from disk on each read.
+''' @param state _TRUE to force reload on every read, _FALSE to use cached data.
 SUB Ini_SetForceReload (state AS _BYTE)
     SHARED __ini AS __IniType
 
@@ -618,6 +654,7 @@ SUB Ini_Release (file$)
     IF __ini.currentFileName = file$ THEN __ini.currentFileName = _STR_EMPTY
 END SUB
 
+''' @brief Closes the currently loaded INI file and flushes any pending changes to disk.
 SUB Ini_Close
     SHARED __ini AS __IniType
 
@@ -641,6 +678,8 @@ SUB Ini_Close
     __ini.currentFileName = _STR_EMPTY
 END SUB
 
+''' @brief Loads an INI file into memory for subsequent operations.
+''' @param file$ The INI file name to load.
 SUB Ini_Load (file$)
     SHARED __ini AS __IniType
 
@@ -699,6 +738,8 @@ SUB Ini_Load (file$)
     END IF
 END SUB
 
+''' @brief Retrieves the next key in sequence from the current section data.
+''' @return The next key name, or an empty string if no more keys exist.
 FUNCTION Ini_GetNextKey$
     SHARED __ini AS __IniType
 
@@ -742,6 +783,9 @@ FUNCTION Ini_GetNextKey$
     __ini.position = Equal
 END FUNCTION
 
+''' @brief Retrieves the next section header in sequence from the INI file.
+''' @param file$ The INI file name.
+''' @return The next section header string including brackets, or an empty string if no more sections exist.
 FUNCTION Ini_GetNextSection$ (file$)
     SHARED __ini AS __IniType
 
@@ -790,6 +834,8 @@ FUNCTION Ini_GetNextSection$ (file$)
     END IF
 END FUNCTION
 
+''' @brief Returns a descriptive text message corresponding to the last INI operation result code.
+''' @return A status or error description string.
 FUNCTION Ini_GetInfo$
     SHARED __ini AS __IniType
     SELECT CASE __ini.code
@@ -821,16 +867,22 @@ FUNCTION Ini_GetInfo$
     END SELECT
 END FUNCTION
 
+''' @brief Returns the numeric result code (INI_INFO_*) of the last INI operation.
+''' @return The operation result code.
 FUNCTION Ini_GetCode&
     SHARED __ini AS __IniType
     Ini_GetCode = __ini.code
 END FUNCTION
 
+''' @brief Retrieves the name of the section accessed or modified during the last operation.
+''' @return The last section name.
 FUNCTION Ini_GetLastSection$
     SHARED __ini AS __IniType
     Ini_GetLastSection = __ini.lastSection
 END FUNCTION
 
+''' @brief Retrieves the name of the key accessed or modified during the last operation.
+''' @return The last key name.
 FUNCTION Ini_GetLastKey$
     SHARED __ini AS __IniType
     Ini_GetLastKey = __ini.lastKey

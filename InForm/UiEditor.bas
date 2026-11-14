@@ -291,7 +291,7 @@ $IF WIN THEN
     END DECLARE
 $ELSE
     DECLARE LIBRARY
-        FUNCTION PROCESS_CLOSED& ALIAS kill (BYVAL pid AS INTEGER, BYVAL signal AS INTEGER)
+        FUNCTION PROCESS_CLOSED& ALIAS "::kill" (BYVAL pid AS INTEGER, BYVAL signal AS INTEGER)
     END DECLARE
 $END IF
 
@@ -817,6 +817,7 @@ SUB __UI_Click (id AS LONG)
         CASE ViewMenuThemeDark
             SetPreviewTheme "dark"
         CASE ViewMenuThemeEdit
+            __UI_DoEvents ' allow the menu to close before opening the theme editor
             OpenThemeEditor
         CASE ViewMenuThemeFile
             DIM ThemeFile$
@@ -878,17 +879,51 @@ SUB __UI_Click (id AS LONG)
 END SUB
 
 SUB __UI_MouseEnter (id AS LONG)
+    DIM i AS LONG
+
     SELECT CASE id
+        CASE FileMenu
+            Caption(StatusBar) = "Commands for creating, opening, saving, and managing projects."
+        CASE EditMenu
+            Caption(StatusBar) = "Commands for editing, arranging, and configuring controls."
+        CASE ViewMenu
+            Caption(StatusBar) = "Commands for configuring the preview window and preview themes."
+        CASE InsertMenu
+            Caption(StatusBar) = "Commands for inserting menu and context menu controls."
+        CASE AlignMenu
+            Caption(StatusBar) = "Commands for aligning, distributing, and centering controls."
+        CASE OptionsMenu
+            Caption(StatusBar) = "Commands for configuring editor settings and behavior."
+        CASE HelpMenu
+            Caption(StatusBar) = "Commands for displaying help and information about InForm."
+
         CASE FileMenuNew
             Caption(StatusBar) = "Creates a new project."
         CASE FileMenuOpen
             Caption(StatusBar) = "Loads an existing project from disk."
-        CASE FileMenuExit
-            Caption(StatusBar) = "Exits the editor."
+        CASE FileMenuRecent
+            Caption(StatusBar) = "Opens a recently used project."
+        CASE FileMenuRecent1, FileMenuRecent2, FileMenuRecent3, FileMenuRecent4, FileMenuRecent5, _
+             FileMenuRecent6, FileMenuRecent7, FileMenuRecent8, FileMenuRecent9
+            FOR i = 1 TO 9
+                IF RecentMenuItem(i) = id THEN
+                    IF LEN(RecentFile(i)) > 0 THEN
+                        Caption(StatusBar) = "Opens '" + RecentFile(i) + "'."
+                    ELSE
+                        Caption(StatusBar) = "Opens a recently used project."
+                    END IF
+                    EXIT FOR
+                END IF
+            NEXT
+        CASE FileMenuRecentRemoveMissing
+            Caption(StatusBar) = "Removes missing files from the recent projects list."
         CASE FileMenuSave
             Caption(StatusBar) = "Saves the current project to disk."
         CASE FileMenuSaveAs
             Caption(StatusBar) = "Saves a copy of the current project to disk."
+        CASE FileMenuExit
+            Caption(StatusBar) = "Exits the editor."
+
         CASE EditMenuUndo
             Caption(StatusBar) = "Undoes the last edit."
         CASE EditMenuRedo
@@ -913,10 +948,13 @@ SUB __UI_MouseEnter (id AS LONG)
             Caption(StatusBar) = "Makes the currently selected button the default button."
         CASE EditMenuRestoreDimensions
             Caption(StatusBar) = "Makes this control have the same dimensions as the loaded image."
+        CASE EditMenuBindControls
+            Caption(StatusBar) = "Configures property bindings between selected controls."
         CASE EditMenuAllowMinMax
             Caption(StatusBar) = "Enables and validates the .Min and .Max properties for NumericTextBox controls."
         CASE EditMenuZOrdering
             Caption(StatusBar) = "Allows you to change tab-order/z-ordering of controls."
+
         CASE ViewMenuPreviewDetach
             Caption(StatusBar) = "Toggles whether the preview form will be moved with the editor."
         CASE ViewMenuShowPositionAndSize
@@ -927,20 +965,64 @@ SUB __UI_MouseEnter (id AS LONG)
             Caption(StatusBar) = "Launches the preview window in case it's been closed accidentaly."
         CASE ViewMenuLoadedFonts
             Caption(StatusBar) = "Shows a list of all fonts in use in the current form."
+        CASE ViewMenuThemeXP
+            Caption(StatusBar) = "Applies the classic Windows XP theme to the preview form."
+        CASE ViewMenuThemeLight
+            Caption(StatusBar) = "Applies the flat light theme to the preview form."
+        CASE ViewMenuThemeDark
+            Caption(StatusBar) = "Applies the flat dark theme to the preview form."
+        CASE ViewMenuThemeFile
+            Caption(StatusBar) = "Loads an InForm theme file (.ini) from disk."
+        CASE ViewMenuThemeEdit
+            Caption(StatusBar) = "Opens the InForm Theme Editor to customize themes."
+
         CASE InsertMenuMenuBar
             Caption(StatusBar) = "Inserts a new MenuBar control."
+        CASE InsertMenuContextMenu
+            Caption(StatusBar) = "Inserts a new ContextMenu control."
         CASE InsertMenuMenuItem
             Caption(StatusBar) = "Inserts a new MenuItem control in the currently selected menu panel."
+
         CASE OptionsMenuSnapLines
             Caption(StatusBar) = "Toggles whether controls edges are automatically snapped to others."
+        CASE AlignMenuAlignLeft
+            Caption(StatusBar) = "Aligns the left edges of selected controls."
+        CASE AlignMenuAlignRight
+            Caption(StatusBar) = "Aligns the right edges of selected controls."
+        CASE AlignMenuAlignTops
+            Caption(StatusBar) = "Aligns the top edges of selected controls."
+        CASE AlignMenuAlignBottoms
+            Caption(StatusBar) = "Aligns the bottom edges of selected controls."
+        CASE AlignMenuAlignCentersV
+            Caption(StatusBar) = "Aligns the vertical centers of selected controls."
+        CASE AlignMenuAlignCentersH
+            Caption(StatusBar) = "Aligns the horizontal centers of selected controls."
+        CASE AlignMenuAlignCenterV
+            Caption(StatusBar) = "Centers selected controls vertically within the form."
+        CASE AlignMenuAlignCenterH
+            Caption(StatusBar) = "Centers selected controls horizontally within the form."
+        CASE AlignMenuDistributeV
+            Caption(StatusBar) = "Distributes selected controls evenly between top and bottom."
+        CASE AlignMenuDistributeH
+            Caption(StatusBar) = "Distributes selected controls evenly between left and right."
+
         CASE OptionsMenuAutoName
             Caption(StatusBar) = "Automatically sets control names based on caption and type."
+        CASE OptionsMenuSwapButtons
+            Caption(StatusBar) = "Toggles left/right mouse buttons."
         CASE OptionsMenuSaveFormOnly
             Caption(StatusBar) = "Saves only the .frm file."
         CASE OptionsMenuEditorThemeLight, OptionsMenuEditorThemeDark
             Caption(StatusBar) = "Changes the look of the editor (not of the form you're designing)."
-        CASE OptionsMenuSwapButtons
-            Caption(StatusBar) = "Toggles left/right mouse buttons."
+
+        CASE HelpMenuHelp
+            Caption(StatusBar) = "Displays general information and quick help for InForm."
+        CASE HelpMenuAbout
+            Caption(StatusBar) = "Displays version, copyright, and author information."
+
+        CASE FontSwitchMenuSwitch
+            Caption(StatusBar) = "Toggles between displaying the system fonts list and specifying a font file."
+
         CASE FontLB, FontListLB
             Control(FontLB).BackColor = Darken(__UI_DefaultColor(__UI_Type_Form, 2), 90)
             Control(FontListLB).BackColor = Darken(__UI_DefaultColor(__UI_Type_Form, 2), 90)

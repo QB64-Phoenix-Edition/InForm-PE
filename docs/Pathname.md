@@ -185,3 +185,24 @@ The drive letter (e.g., "C:") or URL scheme (e.g., "http:").
 ```vb
 FUNCTION Pathname_GetDriveOrScheme$ (pathOrURL AS STRING)
 ```
+
+***
+
+### Constants
+
+The following constants are defined in `Pathname.bi`:
+
+| Constant | Type | Description |
+| - | - | - |
+| `PATHNAME_DIR_SEPARATOR_CODE_WIN` | `_UNSIGNED _BYTE` | ASCII code for Windows directory separator (`\`). |
+| `PATHNAME_DIR_SEPARATOR_CODE_NIX` | `_UNSIGNED _BYTE` | ASCII code for Linux/Unix directory separator (`/`). |
+| `PATHNAME_DIR_SEPARATOR_WIN` | `STRING` | Windows directory separator string (`\`). |
+| `PATHNAME_DIR_SEPARATOR_NIX` | `STRING` | Linux/Unix directory separator string (`/`). |
+| `PATHNAME_DIR_SEPARATOR_CODE` | `_UNSIGNED _BYTE` | ASCII code for the platform-native directory separator. |
+| `PATHNAME_DIR_SEPARATOR` | `STRING` | Platform-native directory separator string. |
+| `PATHNAME_DIR_CURRENT` | `STRING` | Current directory token (`./` or `.\`). |
+| `PATHNAME_DIR_PARENT` | `STRING` | Parent directory token (`../` or `..\`). |
+| `PATHNAME_EXT_SEPARATOR_CODE` | `_UNSIGNED _BYTE` | ASCII code for file extension separator (`.`). |
+| `PATHNAME_EXT_SEPARATOR` | `STRING` | File extension separator string (`.`). |
+| `PATHNAME_SCHEME_TERMINATOR_CODE` | `_UNSIGNED _BYTE` | ASCII code for URL scheme / drive terminator (`:`). |
+| `PATHNAME_SCHEME_TERMINATOR` | `STRING` | URL scheme / drive terminator string (`:`). |

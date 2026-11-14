@@ -78,6 +78,7 @@ ELSE
     __TestState.errorHandlerEnabled = _TRUE
 END IF
 
+''' @brief Initializes the test framework, resets counters, and prints test environment information.
 SUB TEST_BEGIN_ALL
     SHARED __TestState AS __TestState
 
@@ -113,6 +114,7 @@ SUB TEST_BEGIN_ALL
     __TestResetColor
 END SUB
 
+''' @brief Finalizes the test run, prints summary statistics, and exits with a status code.
 SUB TEST_END_ALL
     SHARED __TestState AS __TestState
 
@@ -134,6 +136,8 @@ SUB TEST_END_ALL
     END IF
 END SUB
 
+''' @brief Starts a new test case with the specified name.
+''' @param testName The descriptive name of the test case.
 SUB TEST_CASE_BEGIN (testName AS STRING)
     SHARED __TestState AS __TestState
 
@@ -163,6 +167,7 @@ SUB TEST_CASE_BEGIN (testName AS STRING)
     __TestResetColor
 END SUB
 
+''' @brief Ends the current test case and prints its results and execution duration.
 SUB TEST_CASE_END
     SHARED __TestState AS __TestState
 
@@ -183,6 +188,9 @@ SUB TEST_CASE_END
     __TestResetColor
 END SUB
 
+''' @brief Asserts that a condition is true; records a failure if false without aborting the test.
+''' @param cond The condition expression to test.
+''' @param expr The string representation of the expression being tested.
 SUB TEST_CHECK (cond AS _INTEGER64, expr AS STRING)
     SHARED __TestState AS __TestState
 
@@ -198,10 +206,15 @@ SUB TEST_CHECK (cond AS _INTEGER64, expr AS STRING)
     __TestPrintFailure "TEST_CHECK", expr
 END SUB
 
+''' @brief Asserts that a condition is true without an expression label.
+''' @param cond The condition expression to test.
 SUB TEST_CHECK2 (cond AS _INTEGER64)
     TEST_CHECK cond, _STR_EMPTY
 END SUB
 
+''' @brief Asserts that a condition is false; records a failure if true without aborting the test.
+''' @param cond The condition expression to test.
+''' @param expr The string representation of the expression being tested.
 SUB TEST_CHECK_FALSE (cond AS _INTEGER64, expr AS STRING)
     SHARED __TestState AS __TestState
 
@@ -217,10 +230,15 @@ SUB TEST_CHECK_FALSE (cond AS _INTEGER64, expr AS STRING)
     __TestPrintFailure "TEST_CHECK_FALSE", expr
 END SUB
 
+''' @brief Asserts that a condition is false without an expression label.
+''' @param cond The condition expression to test.
 SUB TEST_CHECK_FALSE2 (cond AS _INTEGER64)
     TEST_CHECK_FALSE cond, _STR_EMPTY
 END SUB
 
+''' @brief Asserts that a condition is true; aborts the current test case immediately if false.
+''' @param cond The condition expression to test.
+''' @param expr The string representation of the expression being tested.
 SUB TEST_REQUIRE (cond AS _INTEGER64, expr AS STRING)
     SHARED __TestState AS __TestState
 
@@ -237,10 +255,15 @@ SUB TEST_REQUIRE (cond AS _INTEGER64, expr AS STRING)
     __TestState.abortCurrentTest = _TRUE
 END SUB
 
+''' @brief Asserts that a condition is true and aborts on failure without an expression label.
+''' @param cond The condition expression to test.
 SUB TEST_REQUIRE2 (cond AS _INTEGER64)
     TEST_REQUIRE cond, _STR_EMPTY
 END SUB
 
+''' @brief Asserts that a condition is false; aborts the current test case immediately if true.
+''' @param cond The condition expression to test.
+''' @param expr The string representation of the expression being tested.
 SUB TEST_REQUIRE_FALSE (cond AS _INTEGER64, expr AS STRING)
     SHARED __TestState AS __TestState
 
@@ -257,46 +280,65 @@ SUB TEST_REQUIRE_FALSE (cond AS _INTEGER64, expr AS STRING)
     __TestState.abortCurrentTest = _TRUE
 END SUB
 
+''' @brief Asserts that a condition is false and aborts on failure without an expression label.
+''' @param cond The condition expression to test.
 SUB TEST_REQUIRE_FALSE2 (cond AS _INTEGER64)
     TEST_REQUIRE_FALSE cond, _STR_EMPTY
 END SUB
 
+''' @brief Checks whether the current test case was aborted by a failed requirement.
+''' @return _TRUE if the current test case was aborted, _FALSE otherwise.
 FUNCTION TEST_ABORTED%%
     SHARED __TestState AS __TestState
     TEST_ABORTED = __TestState.abortCurrentTest
 END FUNCTION
 
+''' @brief Enables or disables ANSI color output in test reports.
+''' @param enable _TRUE to enable colored output, _FALSE to disable.
 SUB TEST_ENABLE_COLOR (enable AS _INTEGER64)
     SHARED __TestState AS __TestState
     __TestState.colorDisabled = (enable = _FALSE)
 END SUB
 
+''' @brief Enables or disables automatic termination of the process when TEST_END_ALL completes.
+''' @param enable _TRUE to call SYSTEM/END on completion, _FALSE to return normally.
 SUB TEST_ENABLE_EXIT_ON_END (enable AS _INTEGER64)
     SHARED __TestState AS __TestState
     __TestState.exitOnEndDisabled = (enable = _FALSE)
 END SUB
 
+''' @brief Sets the pseudo-random number generator seed used for the test run.
+''' @param rngSeed The 64-bit seed value.
 SUB TEST_SET_RNG_SEED (rngSeed AS _UNSIGNED _INTEGER64)
     SHARED __TestState AS __TestState
     __TestState.rngSeed = rngSeed
     RANDOMIZE rngSeed
 END SUB
 
+''' @brief Internal helper to set terminal foreground color via ANSI escape codes.
+''' @param fg The ANSI color code number.
 SUB __TestSetColor (fg AS _UNSIGNED _BYTE)
     SHARED __TestState AS __TestState
     IF NOT __TestState.colorDisabled THEN __TestPrint _CHR_ESC + "[" + _TOSTR$(fg) + "m"
 END SUB
 
+''' @brief Internal helper to reset terminal color to defaults.
 SUB __TestResetColor
     SHARED __TestState AS __TestState
     IF NOT __TestState.colorDisabled THEN __TestPrint _CHR_ESC + "[0m"
 END SUB
 
+''' @brief Internal helper to print a formatted status tag enclosed in brackets.
+''' @param tag The tag text to display (e.g., "OK", "FAIL", "SKIP").
+''' @param fg The ANSI color code for the tag.
 SUB __TestPrintTag (tag AS STRING, fg AS _UNSIGNED _BYTE)
     __TestSetColor fg: __TestPrint "[" + tag + "] "
     __TestResetColor
 END SUB
 
+''' @brief Internal helper to print a formatted assertion failure message.
+''' @param kind The assertion kind (e.g., "TEST_CHECK", "TEST_REQUIRE").
+''' @param expr The expression string that failed.
 SUB __TestPrintFailure (kind AS STRING, expr AS STRING)
     __TestSetColor __TEST_COLOR_FAIL: __TestPrint "    "
     __TestPrintTag "FAIL", __TEST_COLOR_FAIL
@@ -310,17 +352,21 @@ SUB __TestPrintFailure (kind AS STRING, expr AS STRING)
     __TestResetColor
 END SUB
 
+''' @brief Internal helper to print a message to standard output without a newline.
+''' @param message The text string to print.
 SUB __TestPrint (message AS STRING)
     DECLARE LIBRARY
-        SUB __TestPrintF ALIAS "printf" (message AS STRING)
+        SUB __TestPrintF ALIAS "::printf" (message AS STRING)
     END DECLARE
 
     __TestPrintF message + _CHR_NUL
 END SUB
 
+''' @brief Internal helper to print a message to standard output followed by a newline.
+''' @param message The text string to print.
 SUB __TestPrintLn (message AS STRING)
     DECLARE LIBRARY
-        SUB __TestPutS ALIAS "puts" (message AS STRING)
+        SUB __TestPutS ALIAS "::puts" (message AS STRING)
     END DECLARE
 
     __TestPutS message + _CHR_NUL

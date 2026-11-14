@@ -224,6 +224,7 @@ END SUB
 ''' @brief Check if a string exists in the set.
 ''' @param set The set to check.
 ''' @param v The string to check.
+''' @return _TRUE if the string exists in the set, _FALSE otherwise.
 FUNCTION HSet_ContainsString%% (set() AS HSet, v AS STRING)
     HSet_ContainsString = __HSet_Contains(set(), v)
 END FUNCTION
@@ -253,6 +254,7 @@ END SUB
 ''' @brief Check if a byte exists in the set.
 ''' @param set The set to check.
 ''' @param v The byte to check.
+''' @return _TRUE if the byte exists in the set, _FALSE otherwise.
 FUNCTION HSet_ContainsByte%% (set() AS HSet, v AS _BYTE)
     HSet_ContainsByte = __HSet_Contains(set(), _MK$(_BYTE, v))
 END FUNCTION
@@ -260,6 +262,7 @@ END FUNCTION
 ''' @brief Remove a byte from the set.
 ''' @param set The set to remove from.
 ''' @param v The byte to remove.
+''' @return _TRUE if the byte was removed, _FALSE otherwise.
 FUNCTION HSet_RemoveByte%% (set() AS HSet, v AS _BYTE)
     HSet_RemoveByte = __HSet_Remove(set(), _MK$(_BYTE, v))
 END FUNCTION
@@ -281,6 +284,7 @@ END SUB
 ''' @brief Check if an integer exists in the set.
 ''' @param set The set to check.
 ''' @param v The integer to check.
+''' @return _TRUE if the integer exists in the set, _FALSE otherwise.
 FUNCTION HSet_ContainsInteger%% (set() AS HSet, v AS INTEGER)
     HSet_ContainsInteger = __HSet_Contains(set(), MKI$(v))
 END FUNCTION
@@ -288,6 +292,7 @@ END FUNCTION
 ''' @brief Remove an integer from the set.
 ''' @param set The set to remove from.
 ''' @param v The integer to remove.
+''' @return _TRUE if the integer was removed, _FALSE otherwise.
 FUNCTION HSet_RemoveInteger%% (set() AS HSet, v AS INTEGER)
     HSet_RemoveInteger = __HSet_Remove(set(), MKI$(v))
 END FUNCTION
@@ -309,6 +314,7 @@ END SUB
 ''' @brief Check if a long exists in the set.
 ''' @param set The set to check.
 ''' @param v The long to check.
+''' @return _TRUE if the long exists in the set, _FALSE otherwise.
 FUNCTION HSet_ContainsLong%% (set() AS HSet, v AS LONG)
     HSet_ContainsLong = __HSet_Contains(set(), MKL$(v))
 END FUNCTION
@@ -316,6 +322,7 @@ END FUNCTION
 ''' @brief Remove a long from the set.
 ''' @param set The set to remove from.
 ''' @param v The long to remove.
+''' @return _TRUE if the long was removed, _FALSE otherwise.
 FUNCTION HSet_RemoveLong%% (set() AS HSet, v AS LONG)
     HSet_RemoveLong = __HSet_Remove(set(), MKL$(v))
 END FUNCTION
@@ -337,6 +344,7 @@ END SUB
 ''' @brief Check if an integer64 exists in the set.
 ''' @param set The set to check.
 ''' @param v The integer64 to check.
+''' @return _TRUE if the integer64 exists in the set, _FALSE otherwise.
 FUNCTION HSet_ContainsInteger64%% (set() AS HSet, v AS _INTEGER64)
     HSet_ContainsInteger64 = __HSet_Contains(set(), _MK$(_INTEGER64, v))
 END FUNCTION
@@ -344,6 +352,7 @@ END FUNCTION
 ''' @brief Remove an integer64 from the set.
 ''' @param set The set to remove from.
 ''' @param v The integer64 to remove.
+''' @return _TRUE if the integer64 was removed, _FALSE otherwise.
 FUNCTION HSet_RemoveInteger64%% (set() AS HSet, v AS _INTEGER64)
     HSet_RemoveInteger64 = __HSet_Remove(set(), _MK$(_INTEGER64, v))
 END FUNCTION
@@ -365,6 +374,7 @@ END SUB
 ''' @brief Check if a single exists in the set.
 ''' @param set The set to check.
 ''' @param v The single to check.
+''' @return _TRUE if the single exists in the set, _FALSE otherwise.
 FUNCTION HSet_ContainsSingle%% (set() AS HSet, v AS SINGLE)
     HSet_ContainsSingle = __HSet_Contains(set(), MKS$(v))
 END FUNCTION
@@ -372,6 +382,7 @@ END FUNCTION
 ''' @brief Remove a single from the set.
 ''' @param set The set to remove from.
 ''' @param v The single to remove.
+''' @return _TRUE if the single was removed, _FALSE otherwise.
 FUNCTION HSet_RemoveSingle%% (set() AS HSet, v AS SINGLE)
     HSet_RemoveSingle = __HSet_Remove(set(), MKS$(v))
 END FUNCTION
@@ -393,6 +404,7 @@ END SUB
 ''' @brief Check if a double exists in the set.
 ''' @param set The set to check.
 ''' @param v The double to check.
+''' @return _TRUE if the double exists in the set, _FALSE otherwise.
 FUNCTION HSet_ContainsDouble%% (set() AS HSet, v AS DOUBLE)
     HSet_ContainsDouble = __HSet_Contains(set(), MKD$(v))
 END FUNCTION
@@ -400,6 +412,7 @@ END FUNCTION
 ''' @brief Remove a double from the set.
 ''' @param set The set to remove from.
 ''' @param v The double to remove.
+''' @return _TRUE if the double was removed, _FALSE otherwise.
 FUNCTION HSet_RemoveDouble%% (set() AS HSet, v AS DOUBLE)
     HSet_RemoveDouble = __HSet_Remove(set(), MKD$(v))
 END FUNCTION
