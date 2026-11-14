@@ -46,7 +46,7 @@ jobs:
             archive_name: InForm-PE-linux-x64.tar.gz
           - name: Linux-arm64
             os: ubuntu-26.04-arm
-            asset_pattern: "qb64pe_lnx-arm64-*.tar.gz"
+            asset_pattern: "qb64pe_lnx-x64-*.tar.gz"
             exe_ext: ""
             setup_script: setup_inform_lnx.sh
             archive_name: InForm-PE-linux-arm64.tar.gz
@@ -85,8 +85,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download -R QB64-Phoenix-Edition/QB64pe -p "${{ matrix.asset_pattern }}" --dir qb64_dl || \
-          gh release download -R QB64-Phoenix-Edition/QB64pe -p "qb64pe_lnx-x64-*.tar.gz" --dir qb64_dl
+          gh release download -R QB64-Phoenix-Edition/QB64pe -p "${{ matrix.asset_pattern }}" --dir qb64_dl
 
       - name: Extract & Setup QB64-PE (Unix)
         if: runner.os != 'Windows'
