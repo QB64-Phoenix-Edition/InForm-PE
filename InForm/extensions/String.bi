@@ -190,16 +190,18 @@ FUNCTION String_FormatString$ (fmtStr AS STRING, s AS STRING)
         FUNCTION __String_FormatString& ALIAS "::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, s AS STRING)
     END DECLARE
 
+    STATIC buffer AS STRING
+
     DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)
     DIM cS AS STRING: cS = String_ToCStr(s)
-    DIM buffer AS STRING: buffer = STRING$(LEN(fmtStr) + LEN(s) + 16, _ASC_NUL)
     DIM req AS LONG: req = __String_FormatString(buffer, LEN(buffer), cFmt, cS)
+
     IF req >= LEN(buffer) THEN
         buffer = STRING$(req + 1, _ASC_NUL)
         req = __String_FormatString(buffer, LEN(buffer), cFmt, cS)
     END IF
 
-    String_FormatString = String_ToBStr(buffer)
+    String_FormatString = LEFT$(buffer, req)
 END FUNCTION
 
 ''' @brief Formats a string using a format string and a LONG argument.
@@ -211,15 +213,17 @@ FUNCTION String_FormatLong$ (fmtStr AS STRING, n AS LONG)
         FUNCTION __String_FormatLong& ALIAS "::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL n AS LONG)
     END DECLARE
 
+    STATIC buffer AS STRING
+
     DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)
-    DIM buffer AS STRING: buffer = STRING$(LEN(fmtStr) + 64, _ASC_NUL)
     DIM req AS LONG: req = __String_FormatLong(buffer, LEN(buffer), cFmt, n)
+
     IF req >= LEN(buffer) THEN
         buffer = STRING$(req + 1, _ASC_NUL)
         req = __String_FormatLong(buffer, LEN(buffer), cFmt, n)
     END IF
 
-    String_FormatLong = String_ToBStr(buffer)
+    String_FormatLong = LEFT$(buffer, req)
 END FUNCTION
 
 ''' @brief Formats a string using a format string and a _INTEGER64 argument.
@@ -231,15 +235,17 @@ FUNCTION String_FormatInteger64$ (fmtStr AS STRING, n AS _INTEGER64)
         FUNCTION __String_FormatInteger64& ALIAS "::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL n AS _INTEGER64)
     END DECLARE
 
+    STATIC buffer AS STRING
+
     DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)
-    DIM buffer AS STRING: buffer = STRING$(LEN(fmtStr) + 128, _ASC_NUL)
     DIM req AS LONG: req = __String_FormatInteger64(buffer, LEN(buffer), cFmt, n)
+
     IF req >= LEN(buffer) THEN
         buffer = STRING$(req + 1, _ASC_NUL)
         req = __String_FormatInteger64(buffer, LEN(buffer), cFmt, n)
     END IF
 
-    String_FormatInteger64 = String_ToBStr(buffer)
+    String_FormatInteger64 = LEFT$(buffer, req)
 END FUNCTION
 
 ''' @brief Formats a string using a format string and a SINGLE argument.
@@ -251,15 +257,17 @@ FUNCTION String_FormatSingle$ (fmtStr AS STRING, f AS SINGLE)
         FUNCTION __String_FormatSingle& ALIAS "::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL f AS SINGLE)
     END DECLARE
 
+    STATIC buffer AS STRING
+
     DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)
-    DIM buffer AS STRING: buffer = STRING$(LEN(fmtStr) + 256, _ASC_NUL)
     DIM req AS LONG: req = __String_FormatSingle(buffer, LEN(buffer), cFmt, f)
+
     IF req >= LEN(buffer) THEN
         buffer = STRING$(req + 1, _ASC_NUL)
         req = __String_FormatSingle(buffer, LEN(buffer), cFmt, f)
     END IF
 
-    String_FormatSingle = String_ToBStr(buffer)
+    String_FormatSingle = LEFT$(buffer, req)
 END FUNCTION
 
 ''' @brief Formats a string using a format string and a DOUBLE argument.
@@ -271,13 +279,15 @@ FUNCTION String_FormatDouble$ (fmtStr AS STRING, d AS DOUBLE)
         FUNCTION __String_FormatDouble& ALIAS "::snprintf" (buf AS STRING, BYVAL bufSize AS _UNSIGNED _OFFSET, fmt AS STRING, BYVAL d AS DOUBLE)
     END DECLARE
 
+    STATIC buffer AS STRING
+
     DIM cFmt AS STRING: cFmt = String_ToCStr(fmtStr)
-    DIM buffer AS STRING: buffer = STRING$(LEN(fmtStr) + 512, _ASC_NUL)
     DIM req AS LONG: req = __String_FormatDouble(buffer, LEN(buffer), cFmt, d)
+
     IF req >= LEN(buffer) THEN
         buffer = STRING$(req + 1, _ASC_NUL)
         req = __String_FormatDouble(buffer, LEN(buffer), cFmt, d)
     END IF
 
-    String_FormatDouble = String_ToBStr(buffer)
+    String_FormatDouble = LEFT$(buffer, req)
 END FUNCTION
