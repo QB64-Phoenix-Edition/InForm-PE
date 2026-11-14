@@ -44,12 +44,6 @@ jobs:
             exe_ext: ""
             setup_script: setup_inform_lnx.sh
             archive_name: InForm-PE-linux-x64.tar.gz
-          - name: Linux-arm64
-            os: ubuntu-26.04-arm
-            asset_pattern: "qb64pe_lnx-x64-*.tar.gz"
-            exe_ext: ""
-            setup_script: setup_inform_lnx.sh
-            archive_name: InForm-PE-linux-arm64.tar.gz
           - name: Windows-x64
             os: windows-latest
             asset_pattern: "qb64pe_win-x64-*.7z"
@@ -68,12 +62,6 @@ jobs:
             exe_ext: ""
             setup_script: setup_inform_mac.command
             archive_name: InForm-PE-macos-arm64.tar.gz
-          - name: macOS-x64
-            os: macos-latest-large
-            asset_pattern: "qb64pe_osx-*.tar.gz"
-            exe_ext: ""
-            setup_script: setup_inform_mac.command
-            archive_name: InForm-PE-macos-x64.tar.gz
 
     steps:
       - name: Checkout code
