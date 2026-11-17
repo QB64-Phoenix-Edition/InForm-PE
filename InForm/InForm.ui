@@ -605,7 +605,7 @@ SUB __UI_ProcessInput
                 END IF
                 _DEST 0
 
-                IF LEN(__UI_CurrentTitle) THEN _TITLE __UI_CurrentTitle
+                IF LEN(__UI_CurrentTitle) THEN __UI_SetTitle __UI_CurrentTitle
 
                 'Lay out anchored controls now, so the next frame drawn already fits the new size
                 IF __UI_AnchorFormWidth > 0 AND NOT __UI_DesignMode THEN
@@ -625,7 +625,7 @@ SUB __UI_ProcessInput
     'Update main window title if needed
     IF __UI_CurrentTitle <> Caption(__UI_FormID) THEN
         __UI_CurrentTitle = Caption(__UI_FormID)
-        _TITLE __UI_CurrentTitle
+        __UI_SetTitle __UI_CurrentTitle
         __UI_HasInput = True
     END IF
 
@@ -7365,6 +7365,15 @@ FUNCTION FromCP437$ (source$)
 
     FromCP437 = UTF8$(source$, table437$())
 END FUNCTION
+
+'Window titles must be UTF-8 (macOS aborts on invalid UTF-8), so convert from the form's encoding
+SUB __UI_SetTitle (Title$)
+    IF Control(__UI_FormID).Encoding = 1252 THEN
+        _TITLE FromCP1252$(Title$)
+    ELSE 'Default to 437
+        _TITLE FromCP437$(Title$)
+    END IF
+END SUB
 
 FUNCTION FromCP1252$ (source$)
     STATIC init&
